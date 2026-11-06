@@ -46,9 +46,9 @@ function serializeJson(path: string, data: unknown): string {
       ? error.message
       : String(error);
     throw new JsonFileError(
-      `Cannot serialize ${basename(path)}: ${reason}`, {
-        path, code: 'ERR_JSON_SERIALIZE', cause: error,
-      });
+      `Cannot serialize ${basename(path)}: ${reason}`,
+      { path, code: 'ERR_JSON_SERIALIZE', cause: error },
+    );
   }
   if (content === undefined) {
     throw new JsonFileError(
