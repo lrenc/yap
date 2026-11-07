@@ -117,10 +117,11 @@ export function readSSE(
 
         while (!closed) {
           const end = buffer.search(/[\r\n]/);
+          const lineEnd = end < 0 ? buffer.length : end;
+          if (lineEnd > maxLineLength) {
+            throw new SSEError(`SSE line exceeds ${maxLineLength} bytes`);
+          }
           if (end < 0) {
-            if (buffer.length > maxLineLength) {
-              throw new SSEError(`SSE line exceeds ${maxLineLength} bytes`);
-            }
             break;
           }
 

@@ -26,7 +26,7 @@ export interface PostJsonOptions {
   headers?: HeadersInit;
   signal?: AbortSignal | null;
   fetch?: typeof globalThis.fetch;
-  timeout?: number;
+  timeout?: number | undefined;
 }
 
 function withTimeout(
