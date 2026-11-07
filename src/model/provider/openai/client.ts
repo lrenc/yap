@@ -258,7 +258,10 @@ function validateItem(value: unknown): void {
     }
     default: {
       // 内置工具调用等未知类型不做校验，交给调用方判断
-      if (typeof value.type === 'string' && value.type !== '') {
+      if (
+        typeof value.type === 'string'
+        && value.type !== ''
+      ) {
         return;
       }
       throw new OpenAIError('Invalid Responses output item');
