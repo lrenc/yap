@@ -142,7 +142,10 @@ function parseEvent(data: string): ResponseStreamEvent | undefined {
     }
     case 'response.output_item.done': {
       validateItem(value.item);
-      if (!isInteger(value.output_index) || isNegativeInteger(value.output_index)) {
+      if (
+        !isInteger(value.output_index)
+        || isNegativeInteger(value.output_index)
+      ) {
         throw new OpenAIError('Invalid Responses output index');
       }
       return value as ResponseStreamEvent;
@@ -242,7 +245,11 @@ function validateItem(value: unknown): void {
         typeof value.id === 'string'
         && Array.isArray(value.summary)
         && value.summary.every(
-          part => isObject(part) && part.type === 'summary_text' && typeof part.text === 'string'
+          part => (
+            isObject(part)
+            && part.type === 'summary_text'
+            && typeof part.text === 'string'
+          )
         )
       ) {
         return;
