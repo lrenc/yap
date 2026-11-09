@@ -10,9 +10,9 @@ describe('Terminal', () => {
     rendered = undefined;
   });
 
-  test('renders the current placeholder text', () => {
+  test('renders the startup screen', () => {
     rendered = render(<Terminal />);
 
-    expect(rendered.lastFrame()).toContain('hello');
+    expect(rendered.lastFrame()).toContain('YAP');
   });
 });

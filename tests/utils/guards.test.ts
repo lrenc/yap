@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { isObject, isSafeInteger } from '../../src/utils/guards.ts';
-import { isWindows } from '../../src/utils/env.ts';
+import { isLinux, isMacOS, isWindows } from '../../src/utils/env.ts';
 
 describe('isObject', () => {
   test('accepts non-null, non-array objects', () => {
@@ -37,5 +37,17 @@ describe('isSafeInteger', () => {
 describe('isWindows', () => {
   test('reflects the current platform', () => {
     expect(isWindows()).toBe(process.platform === 'win32');
+  });
+});
+
+describe('isMacOS', () => {
+  test('reflects the current platform', () => {
+    expect(isMacOS()).toBe(process.platform === 'darwin');
+  });
+});
+
+describe('isLinux', () => {
+  test('reflects the current platform', () => {
+    expect(isLinux()).toBe(process.platform === 'linux');
   });
 });

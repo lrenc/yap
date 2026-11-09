@@ -61,7 +61,9 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
         ?.split(';')[0]?.trim().toLowerCase();
       if (!response.body || contentType !== 'text/event-stream') {
         await response.body?.cancel().catch(() => {});
-        throw new OpenAIError('Expected a text/event-stream response body');
+        throw new OpenAIError(
+          'Expected a text/event-stream response body'
+        );
       }
       const idleTimeout = requestOptions?.idleTimeout;
       return streamResponse(
@@ -141,13 +143,13 @@ function parseEvent(data: string): ResponseStreamEvent | null {
       validateOutputIndex(value);
       return value as ResponseStreamEvent;
     }
-    case 'response.refusal.done': {
-      validateStringFields(value, ['item_id', 'refusal']);
+    case 'response.function_call_arguments.done': {
+      validateStringFields(value, ['item_id', 'arguments']);
       validateOutputIndex(value);
       return value as ResponseStreamEvent;
     }
-    case 'response.function_call_arguments.done': {
-      validateStringFields(value, ['item_id', 'arguments']);
+    case 'response.refusal.done': {
+      validateStringFields(value, ['item_id', 'refusal']);
       validateOutputIndex(value);
       return value as ResponseStreamEvent;
     }
