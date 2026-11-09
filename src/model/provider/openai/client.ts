@@ -1,4 +1,4 @@
-import { isInteger, isNegativeInteger, isObject } from '../../../utils/guards.ts';
+import { isSafeInteger, isObject } from '../../../utils/guards.ts';
 import { postJson } from '../http.ts';
 import { readSSE } from '../sse.ts';
 import { cancellable } from '../stream.ts';
@@ -12,8 +12,6 @@ import type {
   ResponseStreamEvent,
 } from './type.ts';
 
-const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
-
 const STATUSES = [
   'queued', 'in_progress', 'completed', 'failed', 'cancelled', 'incomplete',
 ];
@@ -23,7 +21,7 @@ const TERMINAL_EVENTS = [
 ];
 
 export function createClient(options: OpenAIClientOptions): OpenAIClient {
-  const baseURL = (options.baseURL ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const baseURL = options.baseURL.replace(/\/+$/, '');
   const endpoint = `${baseURL}/responses`;
 
   function post(
@@ -95,11 +93,10 @@ async function* parseEvents(
       return;
     }
     if (data === '[DONE]') {
-      return;
+      break;
     }
-
     const event = parseEvent(data);
-    if (!event) {
+    if (event === null) {
       continue;
     }
     yield event;
@@ -107,13 +104,14 @@ async function* parseEvents(
       return;
     }
   }
-
   if (!closed()) {
-    throw new OpenAIError('Responses stream has no terminal event');
+    throw new OpenAIError(
+      'Responses stream has no terminal event'
+    );
   }
 }
 
-function parseEvent(data: string): ResponseStreamEvent | undefined {
+function parseEvent(data: string): ResponseStreamEvent | null {
   let value: unknown;
   try {
     value = JSON.parse(data);
@@ -129,25 +127,33 @@ function parseEvent(data: string): ResponseStreamEvent | undefined {
   switch (value.type) {
     case 'response.output_text.delta':
     case 'response.function_call_arguments.delta': {
-      requireStrings(value, ['item_id', 'delta']);
+      validateStringFields(value, ['item_id', 'delta']);
+      validateOutputIndex(value);
       return value as ResponseStreamEvent;
     }
     case 'response.output_text.done': {
-      requireStrings(value, ['item_id', 'text']);
+      validateStringFields(value, ['item_id', 'text']);
+      validateOutputIndex(value);
+      return value as ResponseStreamEvent;
+    }
+    case 'response.refusal.delta': {
+      validateStringFields(value, ['item_id', 'delta']);
+      validateOutputIndex(value);
+      return value as ResponseStreamEvent;
+    }
+    case 'response.refusal.done': {
+      validateStringFields(value, ['item_id', 'refusal']);
+      validateOutputIndex(value);
       return value as ResponseStreamEvent;
     }
     case 'response.function_call_arguments.done': {
-      requireStrings(value, ['item_id', 'arguments']);
+      validateStringFields(value, ['item_id', 'arguments']);
+      validateOutputIndex(value);
       return value as ResponseStreamEvent;
     }
     case 'response.output_item.done': {
-      validateItem(value.item);
-      if (
-        !isInteger(value.output_index)
-        || isNegativeInteger(value.output_index)
-      ) {
-        throw new OpenAIError('Invalid Responses output index');
-      }
+      validateOutputItem(value.item);
+      validateOutputIndex(value);
       return value as ResponseStreamEvent;
     }
     case 'response.completed':
@@ -167,16 +173,23 @@ function parseEvent(data: string): ResponseStreamEvent | undefined {
       );
     }
     default: {
-      // 本客户端不消费的事件（response.created 等）直接忽略
-      return undefined;
+      return null;
     }
   }
 }
 
-function requireStrings(event: Record<string, unknown>, fields: string[]): void {
+function validateOutputIndex(event: Record<string, unknown>) {
+  if (!isSafeInteger(event.output_index) || event.output_index < 0) {
+    throw new OpenAIError('Invalid Responses output index');
+  }
+}
+
+function validateStringFields(event: Record<string, unknown>, fields: string[]): void {
   for (const field of fields) {
     if (typeof event[field] !== 'string') {
-      throw new OpenAIError(`Invalid Responses event: ${String(event.type)}`);
+      throw new OpenAIError(
+        `Invalid Responses event: ${String(event.type)}`
+      );
     }
   }
 }
@@ -193,7 +206,7 @@ function parseResponse(value: unknown): OpenAIResponse {
   }
   const callIds = new Set<string>();
   for (const item of value.output) {
-    validateItem(item);
+    validateOutputItem(item);
     if (item.type === 'function_call') {
       if (callIds.has(item.call_id)) {
         throw new OpenAIError(`Duplicate Responses tool call: ${item.call_id}`);
@@ -204,7 +217,7 @@ function parseResponse(value: unknown): OpenAIResponse {
   return value as unknown as OpenAIResponse;
 }
 
-function validateItem(value: unknown): void {
+function validateOutputItem(value: unknown): void {
   if (!isObject(value)) {
     throw new OpenAIError('Invalid Responses output item');
   }
@@ -255,16 +268,6 @@ function validateItem(value: unknown): void {
         return;
       }
       break;
-    }
-    default: {
-      // 内置工具调用等未知类型不做校验，交给调用方判断
-      if (
-        typeof value.type === 'string'
-        && value.type !== ''
-      ) {
-        return;
-      }
-      throw new OpenAIError('Invalid Responses output item');
     }
   }
 

@@ -39,22 +39,13 @@ function withTimeout(
 
   const controller = new AbortController();
   const timer = setTimeout(() => {
-    controller.abort(new TimeoutError(`Request timed out after ${timeout}ms`));
+    controller.abort(
+      new TimeoutError(`Request timed out after ${timeout}ms`)
+    );
   }, timeout);
-  const onAbort = () => controller.abort(signal?.reason);
-
-  if (signal?.aborted) {
-    controller.abort(signal.reason);
-  } else {
-    signal?.addEventListener('abort', onAbort, { once: true });
-  }
-
   return {
-    signal: controller.signal,
-    dispose: () => {
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    },
+    signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
+    dispose: () => clearTimeout(timer),
   };
 }
 
@@ -72,20 +63,15 @@ export async function postJson(
   }
 
   const combined = withTimeout(options.timeout, options.signal ?? undefined);
+  let response: Response;
 
   try {
-    const response = await (options.fetch ?? globalThis.fetch)(url, {
+    response = await (options.fetch ?? globalThis.fetch)(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
       signal: combined.signal ?? null,
     });
-
-    if (!response.ok) {
-      throw new HttpError(response, await response.text());
-    }
-
-    return response;
   } catch (error) {
     const reason = combined.signal?.reason;
     if (
@@ -98,4 +84,9 @@ export async function postJson(
   } finally {
     combined.dispose();
   }
+
+  if (!response.ok) {
+    throw new HttpError(response, await response.text());
+  }
+  return response;
 }

@@ -9,21 +9,13 @@ export interface SSEEvent {
 
 export interface ReadSSEOptions {
   idleTimeout?: number;
-  maxLineLength?: number;
-  flush?: boolean;
 }
-
-const DEFAULT_MAX_LINE_LENGTH = 1024 * 1024;
 
 export function readSSE(
   body: ReadableStream<Uint8Array>,
   options: ReadSSEOptions = {},
 ): AsyncGenerator<SSEEvent> {
-  const {
-    idleTimeout,
-    maxLineLength = DEFAULT_MAX_LINE_LENGTH,
-    flush = false,
-  } = options;
+  const { idleTimeout } = options;
 
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let closed = false;
@@ -34,6 +26,7 @@ export function readSSE(
     cleanup ??= (async () => {
       const current = reader;
       if (!current) {
+        await body.cancel().catch(() => {});
         return;
       }
       try {
@@ -92,7 +85,7 @@ export function readSSE(
       if (field === 'event') {
         event = value || 'message';
       }
-      if (field === 'id') {
+      if (field === 'id' && !value.includes('\0')) {
         id = value;
       }
       return false;
@@ -117,10 +110,6 @@ export function readSSE(
 
         while (!closed) {
           const end = buffer.search(/[\r\n]/);
-          const lineEnd = end < 0 ? buffer.length : end;
-          if (lineEnd > maxLineLength) {
-            throw new SSEError(`SSE line exceeds ${maxLineLength} bytes`);
-          }
           if (end < 0) {
             break;
           }
@@ -140,16 +129,6 @@ export function readSSE(
         }
 
         if (done) {
-          if (flush) {
-            const rest = buffer.endsWith('\r') ? buffer.slice(0, -1) : buffer;
-            buffer = '';
-            if (rest.length > 0) {
-              applyLine(rest);
-            }
-            if (data.length) {
-              yield { event, data: data.join('\n'), id };
-            }
-          }
           return;
         }
       }

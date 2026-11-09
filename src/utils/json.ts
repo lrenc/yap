@@ -1,62 +1,22 @@
 import fs from 'node:fs/promises';
-import { basename } from 'node:path';
 import { writeFileAtomic } from './write.ts';
 import type { AtomicWriteOptions } from './write.ts';
 import { isObject } from './guards.ts';
 
-
 export type JsonParse<T> = (value: unknown) => T;
 
-export class JsonFileError extends Error {
-  readonly code: string | undefined;
-  readonly path: string;
-
-  constructor(
-    message: string,
-    options: {
-      path: string;
-      code?: string | undefined;
-      cause?: unknown;
-    }
-  ) {
-    super(message, {
-      cause: options.cause,
-    });
-    this.name = 'JsonFileError';
-    this.path = options.path;
-    this.code = options.code;
-  }
-}
-
-function codeOf(error: unknown): string | undefined {
-  return (
-    isObject(error)
-    && typeof error.code === 'string'
-      ? error.code
-      : undefined
-  );
-}
-
 function serializeJson(path: string, data: unknown): string {
-  let content: string | undefined;
   try {
-    content = JSON.stringify(data, null, 2);
+    const content = JSON.stringify(data, null, 2);
+    if (content === undefined) {
+      throw new TypeError('Value is not JSON serializable');
+    }
+    return `${content}\n`;
   } catch (error) {
-    const reason = error instanceof Error
-      ? error.message
-      : String(error);
-    throw new JsonFileError(
-      `Cannot serialize ${basename(path)}: ${reason}`,
-      { path, code: 'ERR_JSON_SERIALIZE', cause: error },
-    );
+    throw new Error(`Cannot serialize JSON for ${path}`, {
+      cause: error,
+    });
   }
-  if (content === undefined) {
-    throw new JsonFileError(
-      `Cannot serialize ${basename(path)}: ${typeof data} is not JSON serializable`,
-      { path, code: 'ERR_JSON_SERIALIZE' },
-    );
-  }
-  return `${content}\n`;
 }
 
 export async function readJson<T>(
@@ -66,14 +26,12 @@ export async function readJson<T>(
   try {
     content = await fs.readFile(path, 'utf8');
   } catch (error) {
-    const code = codeOf(error);
-    if (code === 'ENOENT') {
+    if (isObject(error) && error.code === 'ENOENT') {
       return null;
     }
-    throw new JsonFileError(
-      `Cannot read ${basename(path)}${code ? ` (${code})` : ''}: ${path}`,
-      { path, code, cause: error },
-    );
+    throw new Error(`Cannot read JSON file ${path}`, {
+      cause: error,
+    });
   }
 
   if (content.charCodeAt(0) === 0xfeff) {
@@ -84,11 +42,8 @@ export async function readJson<T>(
   try {
     value = JSON.parse(content);
   } catch (error) {
-    const reason = error instanceof Error
-      ? error.message
-      : String(error);
-    throw new JsonFileError(`Invalid JSON in ${path}: ${reason}`, {
-      path, code: 'ERR_INVALID_JSON', cause: error,
+    throw new Error(`Invalid JSON in ${path}`, {
+      cause: error,
     });
   }
 
@@ -106,11 +61,8 @@ export async function writeJson(
     if (options.signal?.aborted) {
       throw error;
     }
-    const code = codeOf(error);
-    throw new JsonFileError(
-      `Cannot write ${basename(path)}${code ? ` (${code})` : ''}: ${path}`,
-      { path, code, cause: error },
-    );
+    throw new Error(`Cannot write JSON file ${path}`, {
+      cause: error,
+    });
   }
 }
-

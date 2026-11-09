@@ -1,14 +1,12 @@
 export interface OpenAIClientOptions {
   apiKey: string;
-  baseURL?: string;
+  baseURL: string;
   fetch?: typeof globalThis.fetch;
 }
 
 export interface RequestOptions {
   signal?: AbortSignal;
-  /** 建立连接并拿到响应头的超时（毫秒） */
   timeout?: number;
-  /** 流式响应两次收到数据之间允许的最长静默（毫秒） */
   idleTimeout?: number;
 }
 
@@ -135,6 +133,18 @@ export type ResponseStreamEvent =
     item_id: string;
     output_index: number;
     text: string;
+  }
+  | {
+    type: 'response.refusal.delta';
+    item_id: string;
+    output_index: number;
+    delta: string;
+  }
+  | {
+    type: 'response.refusal.done';
+    item_id: string;
+    output_index: number;
+    refusal: string;
   }
   | {
     type: 'response.function_call_arguments.delta';
