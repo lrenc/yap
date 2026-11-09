@@ -24,8 +24,6 @@ async function start() {
   const ui = render(
     <Terminal />, {
       interactive: true,
-      incrementalRendering: true,
-      exitOnCtrlC: false,
     }
   );
   const stop = () => {

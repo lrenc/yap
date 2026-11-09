@@ -10,9 +10,12 @@ describe('Terminal', () => {
     rendered = undefined;
   });
 
-  test('renders the startup screen', () => {
+  test('renders the startup screen and prompt input', async () => {
     rendered = render(<Terminal />);
+    await new Promise(resolve => setTimeout(resolve, 0));
 
-    expect(rendered.lastFrame()).toContain('YAP');
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('YAP');
+    expect(frame).toContain('Ask anything...');
   });
 });
