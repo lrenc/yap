@@ -20,23 +20,28 @@ async function start() {
   if (process.env.TERM !== 'dumb') {
     process.stdout.write('\x1b[2J\x1b[H\x1b[3J');
   }
-
-  const ui = render(
-    <Terminal />, {
-      interactive: true,
-    }
-  );
-  const stop = () => {
-    ui.unmount();
-  };
-  process.once('SIGINT', stop);
-  process.once('SIGTERM', stop);
-  process.once('SIGHUP', stop);
+  process.stdin.setRawMode(true);
   try {
-    await ui.waitUntilExit();
+    const ui = render(
+      <Terminal />, {
+        interactive: true,
+        kittyKeyboard: { mode: 'auto' },
+      }
+    );
+    const stop = () => {
+      ui.unmount();
+    };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+    process.once('SIGHUP', stop);
+    try {
+      await ui.waitUntilExit();
+    } finally {
+      process.off('SIGINT', stop);
+      process.off('SIGTERM', stop);
+      process.off('SIGHUP', stop);
+    }
   } finally {
-    process.off('SIGINT', stop);
-    process.off('SIGTERM', stop);
-    process.off('SIGHUP', stop);
+    process.stdin.setRawMode(false);
   }
 }

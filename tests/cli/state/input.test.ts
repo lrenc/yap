@@ -4,6 +4,7 @@ import {
   createDraft,
   editInput,
   layoutInput,
+  moveVerticalCursor,
   normalizeCursor,
 } from '../../../src/cli/state/input.ts';
 
@@ -33,6 +34,17 @@ const neutralKey: Key = {
 
 function key(overrides: Partial<Key>): Key {
   return { ...neutralKey, ...overrides };
+}
+
+function layoutRows(
+  value: string,
+  cursor: number,
+  columns: number,
+) {
+  return layoutInput(value, cursor, columns).rows.map(line => ({
+    text: line.text,
+    cursor: line.cursor,
+  }));
 }
 
 describe('normalizeCursor', () => {
@@ -143,14 +155,18 @@ describe('editInput', () => {
 
 describe('layoutInput', () => {
   test('renders empty input with a visible cursor', () => {
-    expect(layoutInput('', 0, 20)).toEqual([
+    expect(layoutRows('', 0, 20)).toEqual([
       { text: ' ', cursor: 0 },
     ]);
   });
 
   test('handles LF, CRLF, and CR line separators', () => {
     for (const lineBreak of ['\n', '\r\n', '\r']) {
-      expect(layoutInput(`a${lineBreak}b`, 2 + lineBreak.length, 20)).toEqual([
+      expect(layoutRows(
+        `a${lineBreak}b`,
+        2 + lineBreak.length,
+        20,
+      )).toEqual([
         { text: 'a', cursor: -1 },
         { text: 'b ', cursor: 1 },
       ]);
@@ -158,30 +174,95 @@ describe('layoutInput', () => {
   });
 
   test('expands tabs to four-column stops', () => {
-    expect(layoutInput('a\tb', 3, 20)).toEqual([
+    expect(layoutRows('a\tb', 3, 20)).toEqual([
       { text: 'a   b ', cursor: 5 },
     ]);
   });
 
   test('wraps wide characters by display width', () => {
-    expect(layoutInput('你好世界', 2, 4)).toEqual([
+    expect(layoutRows('你好世界', 2, 4)).toEqual([
       { text: '你好', cursor: -1 },
       { text: '世界', cursor: 0 },
     ]);
   });
 
   test('normalizes invalid cursors before layout', () => {
-    expect(layoutInput('😀', 1, 20)).toEqual([
+    expect(layoutRows('😀', 1, 20)).toEqual([
       { text: '😀 ', cursor: 2 },
     ]);
   });
 
   test('uses a safe width for zero or negative columns', () => {
-    expect(layoutInput('ab', 2, 0)).toEqual([
+    expect(layoutRows('ab', 2, 0)).toEqual([
       { text: 'a', cursor: -1 },
       { text: 'b', cursor: -1 },
       { text: ' ', cursor: 0 },
     ]);
     expect(() => layoutInput('\t', 0, -1)).not.toThrow();
+  });
+});
+
+describe('moveVerticalCursor', () => {
+  test('moves between logical lines at the same display column', () => {
+    const draft = createDraft('abc\ndef');
+    const layout = layoutInput(draft.value, draft.cursor, 20);
+
+    const up = moveVerticalCursor(draft, layout, 'up');
+    expect(up).toEqual({ value: 'abc\ndef', cursor: 3 });
+
+    const upLayout = layoutInput(up.value, up.cursor, 20);
+    expect(moveVerticalCursor(up, upLayout, 'down')).toEqual(draft);
+  });
+
+  test('moves between soft-wrapped visual lines', () => {
+    const draft = createDraft('abcdef', 5);
+    const layout = layoutInput(draft.value, draft.cursor, 3);
+
+    expect(moveVerticalCursor(draft, layout, 'up')).toEqual({
+      value: 'abcdef',
+      cursor: 2,
+    });
+  });
+
+  test('clamps to the end of a shorter target line', () => {
+    const draft = createDraft('abcdef\nx');
+    const layout = layoutInput(draft.value, draft.cursor, 20);
+
+    expect(moveVerticalCursor(draft, layout, 'up')).toEqual({
+      value: 'abcdef\nx',
+      cursor: 1,
+    });
+  });
+
+  test('does nothing beyond the first and last rows', () => {
+    const first = createDraft('one\ntwo', 0);
+    const firstLayout = layoutInput(first.value, first.cursor, 20);
+    expect(moveVerticalCursor(first, firstLayout, 'up')).toEqual(first);
+
+    const last = createDraft('one\ntwo');
+    const lastLayout = layoutInput(last.value, last.cursor, 20);
+    expect(moveVerticalCursor(last, lastLayout, 'down')).toEqual(last);
+  });
+
+  test('uses the preferred column across shorter lines', () => {
+    const draft = createDraft('abcdef\nx\nabcdef');
+    const firstLayout = layoutInput(draft.value, draft.cursor, 20);
+    const middle = moveVerticalCursor(
+      draft,
+      firstLayout,
+      'up',
+      6,
+    );
+    const middleLayout = layoutInput(middle.value, middle.cursor, 20);
+
+    expect(moveVerticalCursor(
+      middle,
+      middleLayout,
+      'up',
+      6,
+    )).toEqual({
+      value: 'abcdef\nx\nabcdef',
+      cursor: 6,
+    });
   });
 });

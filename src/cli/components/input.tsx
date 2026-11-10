@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -16,18 +15,26 @@ import {
 } from 'ink';
 import stringWidth from 'string-width';
 import {
-  createDraft,
   editInput,
   layoutInput,
+  moveVerticalCursor,
+  type InputLayout,
 } from '../state/input.ts';
 import type { Draft } from '../types.ts';
 
-const VISIBLE_ROWS = 3;
+const DEFAULT_MAX_ROWS = 8;
+const EMPTY_LAYOUT: InputLayout = {
+  rows: [],
+  activeRow: 0,
+  activeColumn: 0,
+};
 
 export interface InputProps {
   draft: Draft;
   focus: boolean;
   placeholder: string;
+  maxRows?: number;
+  onDraftChange?: (draft: Draft) => void;
   onSubmit?: (value: string) => void;
 }
 
@@ -35,32 +42,16 @@ export function Input({
   draft,
   focus,
   placeholder,
+  maxRows = DEFAULT_MAX_ROWS,
+  onDraftChange,
   onSubmit,
 }: InputProps) {
-  const [editingDraft, setEditingDraft] = useState<Draft>(
-    () => createDraft(draft.value, draft.cursor),
-  );
-  const { value, cursor } = editingDraft;
+  const { value, cursor } = draft;
   const ref = useRef<DOMElement>(null);
   const { width, hasMeasured } = useBoxMetrics(ref);
   const { setCursorPosition } = useCursor();
   const [origin, setOrigin] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    setEditingDraft(current => (
-      current.value === draft.value && current.cursor === draft.cursor
-        ? current
-        : createDraft(draft.value, draft.cursor)
-    ));
-  }, [draft.value, draft.cursor]);
-
-  useInkInput((input, key) => {
-    if (key.return) {
-      onSubmit?.(editingDraft.value);
-      return;
-    }
-    setEditingDraft(current => editInput(current, input, key));
-  }, { isActive: focus });
+  const preferredColumn = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     if (!ref.current) {
@@ -75,17 +66,44 @@ export function Input({
   const displayValue = value || placeholder;
   const displayCursor = value ? cursor : 0;
   const canLayout = hasMeasured && width > 0;
-  const lines = useMemo(() => (
-    canLayout
-      ? layoutInput(displayValue, displayCursor, width)
-      : []
+  const layout = useMemo(() => (canLayout
+    ? layoutInput(displayValue, displayCursor, width)
+    : EMPTY_LAYOUT
   ), [canLayout, displayValue, displayCursor, width]);
-  const activeRow = Math.max(
-    0,
-    lines.findIndex(line => line.cursor >= 0),
+  const { rows, activeRow, activeColumn } = layout;
+  const start = Math.min(
+    Math.max(0, activeRow - maxRows + 1),
+    Math.max(0, rows.length - maxRows),
   );
-  const start = Math.max(0, activeRow - (VISIBLE_ROWS - 1));
-  const activeLine = lines[activeRow];
+  const activeLine = rows[activeRow];
+
+  useInkInput((input, key) => {
+    if (key.upArrow || key.downArrow) {
+      const column = preferredColumn.current ?? activeColumn;
+      const next = moveVerticalCursor(
+        draft,
+        layout,
+        key.upArrow ? 'up' : 'down',
+        column,
+      );
+      if (next !== draft) {
+        preferredColumn.current = column;
+        onDraftChange?.(next);
+      }
+      return;
+    }
+
+    preferredColumn.current = null;
+    if (key.return) {
+      if (key.shift || key.meta) {
+        onDraftChange?.(editInput(draft, '\n'));
+        return;
+      }
+      onSubmit?.(draft.value);
+      return;
+    }
+    onDraftChange?.(editInput(draft, input, key));
+  }, { isActive: focus });
 
   setCursorPosition(focus && activeLine ? {
     x: origin.x + stringWidth(
@@ -96,7 +114,7 @@ export function Input({
 
   return (
     <Box ref={ref} flexDirection='column' flexGrow={1} flexBasis={0} minWidth={0}>
-      {lines.slice(start, start + VISIBLE_ROWS).map((line, index) => (
+      {rows.slice(start, start + maxRows).map((line, index) => (
         <Text
           key={index}
           color={value ? '#E6E6E6' : '#B4B5BC'}

@@ -2,9 +2,21 @@ import stringWidth from 'string-width';
 import type { Key } from 'ink';
 import type { Draft } from '../types.ts';
 
-export interface InputLine {
+export interface CursorStop {
+  column: number;
+  sourceIndex: number;
+}
+
+export interface InputRow {
   text: string;
   cursor: number;
+  stops: CursorStop[];
+}
+
+export interface InputLayout {
+  rows: InputRow[];
+  activeRow: number;
+  activeColumn: number;
 }
 
 const segmenter = new Intl.Segmenter(undefined, {
@@ -89,19 +101,44 @@ function isLineBreak(segment: string): boolean {
   );
 }
 
-export function layoutInput(value: string, cursor: number, columns: number): InputLine[] {
+export function layoutInput(
+  value: string,
+  cursor: number,
+  columns: number,
+): InputLayout {
   const widthLimit = Number.isFinite(columns)
     ? Math.max(1, Math.floor(columns))
     : 1;
   const normalizedCursor = normalizeCursor(value, cursor);
-  const lines: InputLine[] = [];
-  let line: InputLine = { text: '', cursor: -1 };
+  const rows: InputRow[] = [];
+  let row: InputRow = { text: '', cursor: -1, stops: [] };
   let width = 0;
+  let activeRow = -1;
+  let activeColumn = -1;
 
   const newLine = function(): void {
-    lines.push(line);
-    line = { text: '', cursor: -1 };
+    rows.push(row);
+    row = { text: '', cursor: -1, stops: [] };
     width = 0;
+  };
+
+  const recordStop = function(sourceIndex: number): void {
+    const previous = row.stops.at(-1);
+    if (
+      previous?.sourceIndex === sourceIndex
+      && previous.column === width
+    ) {
+      return;
+    }
+    row.stops.push({
+      column: width,
+      sourceIndex,
+    });
+    if (sourceIndex === normalizedCursor && activeRow < 0) {
+      activeRow = rows.length;
+      activeColumn = width;
+      row.cursor = row.text.length;
+    }
   };
 
   const parts = [
@@ -121,15 +158,47 @@ export function layoutInput(value: string, cursor: number, columns: number): Inp
     if (width + size > widthLimit && width > 0) {
       newLine();
     }
-    if (active) {
-      line.cursor = line.text.length;
-    }
-    line.text += text;
+    recordStop(index);
+    row.text += text;
     width += size;
     if (lineBreak) {
       newLine();
     }
   }
-  lines.push(line);
-  return lines;
+  rows.push(row);
+
+  return {
+    rows,
+    activeRow: Math.max(0, activeRow),
+    activeColumn: Math.max(0, activeColumn),
+  };
+}
+
+function nearestStop(stops: CursorStop[], column: number): CursorStop {
+  return stops.reduce((nearest, stop) => (
+    Math.abs(stop.column - column) < Math.abs(nearest.column - column)
+      ? stop
+      : nearest
+  ));
+}
+
+export function moveVerticalCursor(
+  draft: Draft,
+  layout: InputLayout,
+  direction: 'up' | 'down',
+  preferredColumn = layout.activeColumn,
+): Draft {
+  const targetRow = layout.activeRow + (direction === 'up' ? -1 : 1);
+  const row = layout.rows[targetRow];
+  if (!row) {
+    return draft;
+  }
+
+  const target = nearestStop(row.stops, preferredColumn);
+  return target.sourceIndex === draft.cursor
+    ? draft
+    : {
+      value: draft.value,
+      cursor: target.sourceIndex,
+    };
 }

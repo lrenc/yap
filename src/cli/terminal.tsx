@@ -1,10 +1,8 @@
 import { Static, Box } from 'ink';
 import { Composer } from './components/composer.tsx';
 import { StartUp } from './components/startup.tsx';
-import { createDraft } from './state/input.ts';
 
 const startupItems: 'startup'[] = ['startup'];
-const initialDraft = createDraft('');
 
 export function Terminal() {
   return (
@@ -16,7 +14,7 @@ export function Terminal() {
           </Box>
         )}
       </Static>
-      <Composer draft={initialDraft} />
+      <Composer />
     </>
   );
 }
