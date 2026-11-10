@@ -7,7 +7,7 @@ import type {
   ResponseOutputItem,
   ResponseOutputMessage,
   ResponseStreamEvent,
-} from '../../../../src/model/provider/openai/type.ts';
+} from '../../../../src/model/provider/openai/types.ts';
 import {
   byteStream,
   sseEvent,

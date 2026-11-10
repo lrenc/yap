@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { isObject, isSafeInteger } from '../../src/utils/guards.ts';
+import {
+  isObject,
+  isPositiveInteger,
+  isSafeInteger,
+} from '../../src/utils/guards.ts';
 import { isLinux, isMacOS, isWindows } from '../../src/utils/env.ts';
 
 describe('isObject', () => {
@@ -31,6 +35,16 @@ describe('isSafeInteger', () => {
     expect(isSafeInteger(Number.NaN)).toBe(false);
     expect(isSafeInteger(Number.POSITIVE_INFINITY)).toBe(false);
     expect(isSafeInteger('1')).toBe(false);
+  });
+});
+
+describe('isPositiveInteger', () => {
+  test('accepts only positive safe integers', () => {
+    expect(isPositiveInteger(1)).toBe(true);
+    expect(isPositiveInteger(Number.MAX_SAFE_INTEGER)).toBe(true);
+    expect(isPositiveInteger(0)).toBe(false);
+    expect(isPositiveInteger(-1)).toBe(false);
+    expect(isPositiveInteger(1.5)).toBe(false);
   });
 });
 

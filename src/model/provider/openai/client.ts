@@ -10,7 +10,7 @@ import type {
   RequestOptions,
   ResponseCreateParams,
   ResponseStreamEvent,
-} from './type.ts';
+} from './types.ts';
 
 const STATUSES = [
   'queued', 'in_progress', 'completed', 'failed', 'cancelled', 'incomplete',
