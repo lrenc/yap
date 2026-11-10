@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/logo.svg" width="160" alt="YAP logo">
+  <img src="./assets/logo.svg" width="128" alt="YAP logo">
 </p>
 
 <h1 align="center">YAP</h1>
