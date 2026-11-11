@@ -12,18 +12,27 @@ async function waitForRender(): Promise<void> {
 
 function ControlledInput({
   focus = true,
+  initialValue = '',
+  onChange,
   onSubmit,
 }: {
   focus?: boolean;
+  initialValue?: string;
+  onChange?: (draft: Draft) => void;
   onSubmit?: (value: string) => void;
 }) {
-  const [draft, setDraft] = useState<Draft>(() => createDraft(''));
+  const [draft, setDraft] = useState<Draft>(
+    () => createDraft(initialValue),
+  );
 
   return (
     <Input
       draft={draft}
       focus={focus}
-      onDraftChange={setDraft}
+      onDraftChange={next => {
+        setDraft(next);
+        onChange?.(next);
+      }}
       placeholder=''
       {...(onSubmit ? { onSubmit } : {})}
     />
@@ -106,6 +115,40 @@ describe('Input', () => {
     expect(rendered.lastFrame()).toContain('hello');
   });
 
+  test('applies rapid text and cursor events in order', async () => {
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('ABCD');
+    rendered.stdin.write('\x1b[D');
+    rendered.stdin.write('\x1b[D');
+    rendered.stdin.write('\x1b[D');
+    rendered.stdin.write('X');
+    await waitForRender();
+
+    expect(rendered.lastFrame()).toContain('AXBCD');
+  });
+
+  test('applies rapid backspaces independently', async () => {
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput initialValue='abc' />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('\x7f');
+    rendered.stdin.write('\x7f');
+    await waitForRender();
+
+    expect(rendered.lastFrame()).toContain('a');
+    expect(rendered.lastFrame()).not.toContain('ab');
+  });
+
   test('submits the current value with Enter', async () => {
     let submitted = '';
     rendered = render(
@@ -121,6 +164,26 @@ describe('Input', () => {
 
     rendered.stdin.write('hello');
     await waitForRender();
+    rendered.stdin.write('\r');
+    await waitForRender();
+
+    expect(submitted).toBe('hello');
+  });
+
+  test('submits the latest text when Enter follows immediately', async () => {
+    let submitted = '';
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput
+          onSubmit={value => {
+            submitted = value;
+          }}
+        />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('hello');
     rendered.stdin.write('\r');
     await waitForRender();
 
@@ -212,6 +275,54 @@ describe('Input', () => {
     const frame = rendered.lastFrame() ?? '';
     expect(frame).toContain('hello');
     expect(frame).not.toContain('[?0u');
+  });
+
+  test('ignores Kitty key release events', async () => {
+    let submits = 0;
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput
+          onSubmit={() => {
+            submits += 1;
+          }}
+        />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('\x1b[13u');
+    rendered.stdin.write('\x1b[13;1:3u');
+    await waitForRender();
+
+    expect(submits).toBe(1);
+  });
+
+  test('inserts pasted line breaks and tabs literally', async () => {
+    let submitted = false;
+    let draft: Draft | undefined;
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput
+          onChange={next => {
+            draft = next;
+          }}
+          onSubmit={() => {
+            submitted = true;
+          }}
+        />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('\x1b[200~a\rb\tc\x1b[201~');
+    await waitForRender();
+
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('a');
+    expect(frame).toContain('b');
+    expect(frame).toContain('c');
+    expect(draft?.value).toBe('a\rb\tc');
+    expect(submitted).toBe(false);
   });
 
   test('ignores input while unfocused', async () => {

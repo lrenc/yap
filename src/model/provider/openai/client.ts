@@ -46,13 +46,7 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
 
     async create(params, requestOptions) {
       const response = await post({ ...params, stream: false }, requestOptions);
-      const result = parseResponse(await response.json());
-      if (result.status === 'failed') {
-        throw new OpenAIError(result.error?.message ?? 'Responses request failed', {
-          code: result.error?.code ?? undefined,
-        });
-      }
-      return result;
+      return parseResponse(await response.json());
     },
 
     async stream(params, requestOptions) {

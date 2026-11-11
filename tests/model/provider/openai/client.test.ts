@@ -165,8 +165,8 @@ describe('createClient', () => {
     }
   });
 
-  test('create throws the API error for a failed response', async () => {
-    const client = jsonClient({
+  test('create returns a failed response to the caller', async () => {
+    const payload: OpenAIResponse = {
       id: 'resp_failed',
       status: 'failed',
       output: [],
@@ -174,30 +174,27 @@ describe('createClient', () => {
         code: 'invalid_prompt',
         message: 'Prompt rejected',
       },
-    });
-
-    const error = await captureError(() => client.create({
+    };
+    const result = await jsonClient(payload).create({
       model: 'test-model',
       input: 'hello',
-    }));
+    });
 
-    expect(error).toBeInstanceOf(OpenAIError);
-    expect(error.message).toBe('Prompt rejected');
-    expect((error as OpenAIError).code).toBe('invalid_prompt');
+    expect(result).toEqual(payload);
   });
 
-  test('create uses a fallback message when a failed response has no error', async () => {
-    const client = jsonClient({
+  test('create preserves a failed response without an error object', async () => {
+    const payload: OpenAIResponse = {
       id: 'resp_failed',
       status: 'failed',
       output: [],
       error: null,
-    });
+    };
 
-    await expect(client.create({
+    expect(await jsonClient(payload).create({
       model: 'test-model',
       input: 'hello',
-    })).rejects.toThrow('Responses request failed');
+    })).toEqual(payload);
   });
 
   test('create rejects a response with an invalid top-level shape', async () => {

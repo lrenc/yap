@@ -148,6 +148,12 @@ export class Run {
         }
         response = next;
         const calls = this.#acceptResponse(response, captured.request);
+        if (calls.length === 0) {
+          if (this.#stalled) {
+            stopReason = 'stalled';
+          }
+          break;
+        }
         await this.#runTools(calls);
         if (this.signal.aborted || this.#interrupted) {
           continue;
@@ -155,9 +161,6 @@ export class Run {
         // 收尾只允许一次请求，即使模型仍返回工具调用也必须结束
         if (this.#stalled) {
           stopReason = 'stalled';
-          break;
-        }
-        if (calls.length === 0) {
           break;
         }
         this.#stalled = this.#guard.endTurn();

@@ -3,7 +3,10 @@ import { Session } from '../../../src/agent/session/session.ts';
 import type {
   SessionOptions,
 } from '../../../src/agent/session/types.ts';
-import type { AgentEvent } from '../../../src/agent/run/types.ts';
+import type {
+  AgentEvent,
+  AgentResult,
+} from '../../../src/agent/run/types.ts';
 import type { AgentConfig } from '../../../src/agent/types.ts';
 import type {
   OpenAIClient,
@@ -336,5 +339,23 @@ describe('Session', () => {
     expect((await first).stopReason).toBe('interrupted');
     expect((await second).stopReason).toBe('completed');
     expect(controlled.pending).toHaveLength(0);
+  });
+
+  test('keeps a run completed when the next message follows text_done', async () => {
+    const session = createSession(immediateClient());
+    let second: Promise<AgentResult> | undefined;
+    let firstDone: AgentEvent & { type: 'done' } | undefined;
+
+    for await (const event of session.runStream('first')) {
+      if (event.type === 'text_done') {
+        second = session.run('second');
+      }
+      if (event.type === 'done') {
+        firstDone = event;
+      }
+    }
+
+    expect(firstDone?.result.stopReason).toBe('completed');
+    expect((await second)?.stopReason).toBe('completed');
   });
 });

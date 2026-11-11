@@ -17,6 +17,7 @@ import {
   symlink,
   writeFile,
 } from 'node:fs/promises';
+import fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFileAtomic } from '../../src/utils/write.ts';
@@ -126,6 +127,51 @@ describe('writeFileAtomic', () => {
     ).rejects.toThrow('cancelled');
 
     expect(await readdir(root)).toEqual([]);
+  });
+
+  test('stops retrying when cancelled during a Windows rename delay', async () => {
+    const target = join(root, 'retry.json');
+    await writeFile(target, 'old');
+    const controller = new AbortController();
+    const originalPlatform = process.platform;
+    const originalRename = fs.rename;
+    let calls = 0;
+
+    Object.defineProperty(process, 'platform', {
+      configurable: true,
+      value: 'win32',
+    });
+    Object.defineProperty(fs, 'rename', {
+      configurable: true,
+      value: async () => {
+        calls += 1;
+        setTimeout(() => {
+          controller.abort(new Error('cancelled'));
+        }, 0);
+        const error = new Error('busy') as NodeJS.ErrnoException;
+        error.code = 'EPERM';
+        throw error;
+      },
+    });
+
+    try {
+      await expect(writeFileAtomic(target, 'new', {
+        signal: controller.signal,
+      })).rejects.toThrow('cancelled');
+    } finally {
+      Object.defineProperty(process, 'platform', {
+        configurable: true,
+        value: originalPlatform,
+      });
+      Object.defineProperty(fs, 'rename', {
+        configurable: true,
+        value: originalRename,
+      });
+    }
+
+    expect(calls).toBe(1);
+    expect(await readFile(target, 'utf8')).toBe('old');
+    expect(await readdir(root)).toEqual(['retry.json']);
   });
 
   test('cleans up the temporary file when writing data fails', async () => {

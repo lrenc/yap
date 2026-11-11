@@ -40,8 +40,13 @@ async function syncDirectory(directory: string): Promise<void> {
   }
 }
 
-async function renameWithRetry(from: string, to: string): Promise<void> {
+async function renameWithRetry(
+  from: string,
+  to: string,
+  signal?: AbortSignal,
+): Promise<void> {
   for (let attempt = 0;;attempt += 1) {
+    signal?.throwIfAborted();
     try {
       await fs.rename(from, to);
       return;
@@ -51,9 +56,26 @@ async function renameWithRetry(from: string, to: string): Promise<void> {
       if (!isWindows() || !transient || attempt >= 5) {
         throw error;
       }
-      await new Promise((r) => setTimeout(r, 20 * (attempt + 1)));
+      await delay(20 * (attempt + 1), signal);
     }
   }
+}
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(finish, ms);
+    const abort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
+      reject(signal?.reason);
+    };
+    function finish(): void {
+      signal?.removeEventListener('abort', abort);
+      resolve();
+    }
+    signal?.addEventListener('abort', abort, { once: true });
+  });
 }
 
 export async function writeFileAtomic(
@@ -83,7 +105,7 @@ export async function writeFileAtomic(
     await handle.close();
     handle = null;
     signal?.throwIfAborted();
-    await renameWithRetry(temporary, target);
+    await renameWithRetry(temporary, target, signal);
     created = false;
     await syncDirectory(directory);
   } catch (error) {

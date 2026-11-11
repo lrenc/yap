@@ -11,6 +11,7 @@ import {
   useBoxMetrics,
   useCursor,
   useInput as useInkInput,
+  usePaste,
   type DOMElement,
 } from 'ink';
 import stringWidth from 'string-width';
@@ -51,7 +52,12 @@ export function Input({
   const { width, hasMeasured } = useBoxMetrics(ref);
   const { setCursorPosition } = useCursor();
   const [origin, setOrigin] = useState({ x: 0, y: 0 });
+  const draftRef = useRef(draft);
   const preferredColumn = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useLayoutEffect(() => {
     if (!ref.current) {
@@ -70,39 +76,63 @@ export function Input({
     ? layoutInput(displayValue, displayCursor, width)
     : EMPTY_LAYOUT
   ), [canLayout, displayValue, displayCursor, width]);
-  const { rows, activeRow, activeColumn } = layout;
+  const { rows, activeRow } = layout;
   const start = Math.min(
     Math.max(0, activeRow - maxRows + 1),
     Math.max(0, rows.length - maxRows),
   );
   const activeLine = rows[activeRow];
 
+  const changeDraft = (change: (current: Draft) => Draft): void => {
+    const current = draftRef.current;
+    const next = change(current);
+    if (next === current) {
+      return;
+    }
+    draftRef.current = next;
+    onDraftChange?.(next);
+  };
+
   useInkInput((input, key) => {
+    if (key.eventType === 'release') {
+      return;
+    }
     if (key.upArrow || key.downArrow) {
-      const column = preferredColumn.current ?? activeColumn;
-      const next = moveVerticalCursor(
-        draft,
-        layout,
-        key.upArrow ? 'up' : 'down',
-        column,
-      );
-      if (next !== draft) {
-        preferredColumn.current = column;
-        onDraftChange?.(next);
-      }
+      changeDraft(current => {
+        const currentLayout = canLayout
+          ? layoutInput(current.value, current.cursor, width)
+          : layout;
+        const column = preferredColumn.current
+          ?? currentLayout.activeColumn;
+        const next = moveVerticalCursor(
+          current,
+          currentLayout,
+          key.upArrow ? 'up' : 'down',
+          column,
+        );
+        if (next !== current) {
+          preferredColumn.current = column;
+        }
+        return next;
+      });
       return;
     }
 
     preferredColumn.current = null;
     if (key.return) {
       if (key.shift || key.meta) {
-        onDraftChange?.(editInput(draft, '\n'));
+        changeDraft(current => editInput(current, '\n'));
         return;
       }
-      onSubmit?.(draft.value);
+      onSubmit?.(draftRef.current.value);
       return;
     }
-    onDraftChange?.(editInput(draft, input, key));
+    changeDraft(current => editInput(current, input, key));
+  }, { isActive: focus });
+
+  usePaste(text => {
+    preferredColumn.current = null;
+    changeDraft(current => editInput(current, text));
   }, { isActive: focus });
 
   setCursorPosition(focus && activeLine ? {

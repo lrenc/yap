@@ -72,6 +72,43 @@ describe('compact', () => {
     });
   });
 
+  test('reserves budget for escaped summary content', async () => {
+    const context = new Context();
+    context.addUserMessage('old user 1');
+    context.addResponse(textResponse('old-1', 'old response '.repeat(40)));
+    context.addUserMessage('old user 2');
+    context.addResponse(textResponse('old-2', 'recent'));
+    context.addUserMessage('pending user');
+    const summary = `C:${'\\a'.repeat(14)}`;
+    const result = await compact({
+      context,
+      budget: {
+        reserveTokens: 0,
+        keepRecentTokens: 30,
+        maxSummaryTokens: 10,
+        threshold: 230,
+        margin: 0,
+      },
+      client: clientWithCreate(async () => textResponse(
+        'summary',
+        summary,
+      )),
+      modelId: 'test-model',
+      contextWindow: 128_000,
+      signal: new AbortController().signal,
+      buildRequest,
+    });
+
+    expect(result).toEqual({ status: 'completed' });
+    expect(context.contextStart).toBe(4);
+    expect(context.toInput()[1]).toEqual({
+      role: 'user',
+      content: JSON.stringify({
+        conversation_summary: summary,
+      }),
+    });
+  });
+
   test('does not commit when the summary is too large', async () => {
     const context = contextWithTurns();
     const result = await compact({

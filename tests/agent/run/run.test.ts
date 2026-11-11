@@ -12,6 +12,7 @@ import type {
   ResponseCreateParams,
   ResponseStreamEvent,
 } from '../../../src/model/provider/openai/types.ts';
+import { createClient } from '../../../src/model/provider/openai/client.ts';
 import type { AgentModel } from '../../../src/model/types.ts';
 import type { AgentTool } from '../../../src/tools/types.ts';
 
@@ -116,6 +117,7 @@ function createRunWith(
   client: OpenAIClient,
   options: {
     signal?: AbortSignal;
+    streaming?: boolean;
     tools?: AgentTool[];
   } = {},
 ): Run {
@@ -136,7 +138,7 @@ function createRunWith(
   return new Run(agent, new Context(), {
     content: 'hello',
     getModelSelection: () => ({ modelId: 'test-model' }),
-    streaming: true,
+    streaming: options.streaming ?? true,
     signal: options.signal ?? new AbortController().signal,
   });
 }
@@ -247,6 +249,50 @@ describe('Run', () => {
     expect(result.error).toEqual(new Error('Missing final model response'));
   });
 
+  test('preserves a failed non-streaming response', async () => {
+    let requests = 0;
+    const client = createClient({
+      apiKey: 'test-key',
+      baseURL: 'https://example.test/v1',
+      fetch: async () => {
+        requests += 1;
+        const response = requests === 1
+          ? toolResponse()
+          : {
+            id: 'resp_failed',
+            status: 'failed',
+            output: [],
+            error: {
+              message: 'Prompt rejected',
+            },
+          };
+        return new Response(JSON.stringify(response), {
+          headers: {
+            'content-type': 'application/json',
+          },
+        });
+      },
+    });
+    const tool: AgentTool = {
+      name: 'echo',
+      description: 'Echo the input',
+      parameters: {},
+      async execute() {
+        return 'ok';
+      },
+    };
+    const run = createRunWith(client, {
+      streaming: false,
+      tools: [tool],
+    });
+
+    const result = await run.execute();
+
+    expect(result.stopReason).toBe('error');
+    expect(result.response?.id).toBe('resp_failed');
+    expect(result.error).toHaveProperty('message', 'Prompt rejected');
+  });
+
   test('does not request when already cancelled', async () => {
     const controller = new AbortController();
     controller.abort();
@@ -290,7 +336,7 @@ describe('Run', () => {
       },
     };
     const context = new Context();
-    for (let index = 0; index < 3; index += 1) {
+    for (let index = 0; index < 4; index += 1) {
       context.addUserMessage(`old user ${index}`);
       context.addResponse(textResponse('x'.repeat(20_000)));
     }
@@ -298,7 +344,7 @@ describe('Run', () => {
     const model: AgentModel = {
       id: 'test-model',
       client,
-      contextWindow: 30_000,
+      contextWindow: 40_000,
       params: {
         max_output_tokens: 16_384,
       },

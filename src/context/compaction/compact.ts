@@ -27,10 +27,13 @@ export async function compact({
   buildRequest: (input: ResponseInputItem[]) => ResponseCreateParams;
 }): Promise<CompactionResult> {
   try {
-    const fixedTokens = estimateTokens(buildRequest(summaryMessages('')));
+    const summarySample = '\\'.repeat(budget.maxSummaryTokens * 3);
+    const reservedTokens = estimateTokens(
+      buildRequest(summaryMessages(summarySample))
+    );
     const plan = context.plan({
       keepRecentTokens: budget.keepRecentTokens,
-      keepLimit: budget.threshold - fixedTokens - budget.maxSummaryTokens,
+      keepLimit: budget.threshold - reservedTokens,
     });
     const summary = await summarize({
       prefix: plan.prefix,
@@ -43,7 +46,10 @@ export async function compact({
       signal,
     });
     signal.throwIfAborted();
-    if (estimateText(summary) > budget.maxSummaryTokens) {
+    if (
+      estimateText(summary) > budget.maxSummaryTokens
+      || estimateTokens(buildRequest(summaryMessages(summary))) > reservedTokens
+    ) {
       throw new Error('Summary exceeds maxSummaryTokens');
     }
     const input = context.preview(plan, summary);
