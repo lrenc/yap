@@ -183,7 +183,7 @@ describe('Session', () => {
       30_000,
     );
 
-    expect(() => session.run('x'.repeat(40_000)))
+    expect(() => session.run('x'.repeat(50_000)))
       .toThrow('Pending input exceeds the context budget');
   });
 
@@ -339,6 +339,32 @@ describe('Session', () => {
     expect((await first).stopReason).toBe('interrupted');
     expect((await second).stopReason).toBe('completed');
     expect(controlled.pending).toHaveLength(0);
+  });
+
+  test('compacts when pending input leaves a smaller summary budget', async () => {
+    let requests = 0;
+    const client: OpenAIClient = {
+      async create() {
+        requests += 1;
+        if (requests === 1) {
+          return response('old', 'o'.repeat(30_000));
+        }
+        if (requests === 2) {
+          return response('summary', 'short summary');
+        }
+        return response('final', 'done');
+      },
+      async stream() {
+        throw new Error('stream is not used');
+      },
+    };
+    const session = createSession(client, {}, 64_000);
+
+    await session.run('old');
+    const result = await session.run('x'.repeat(120_000));
+
+    expect(result.stopReason).toBe('completed');
+    expect(requests).toBe(3);
   });
 
   test('keeps a run completed when the next message follows text_done', async () => {

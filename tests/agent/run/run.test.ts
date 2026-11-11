@@ -336,7 +336,7 @@ describe('Run', () => {
       },
     };
     const context = new Context();
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < 3; index += 1) {
       context.addUserMessage(`old user ${index}`);
       context.addResponse(textResponse('x'.repeat(20_000)));
     }
@@ -344,7 +344,7 @@ describe('Run', () => {
     const model: AgentModel = {
       id: 'test-model',
       client,
-      contextWindow: 40_000,
+      contextWindow: 30_000,
       params: {
         max_output_tokens: 16_384,
       },

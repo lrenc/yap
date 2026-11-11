@@ -7,6 +7,7 @@ import type { Context } from '../context.ts';
 import { summaryMessages } from '../history.ts';
 import { estimateText, estimateTokens } from '../tokens.ts';
 import type { CompactionBudget, CompactionResult } from '../types.ts';
+import { getSummaryLimit } from './budget.ts';
 import { summarize } from './summary.ts';
 
 export async function compact({
@@ -27,7 +28,18 @@ export async function compact({
   buildRequest: (input: ResponseInputItem[]) => ResponseCreateParams;
 }): Promise<CompactionResult> {
   try {
-    const summarySample = '\\'.repeat(budget.maxSummaryTokens * 3);
+    const required = estimateTokens(buildRequest([
+      ...summaryMessages(''),
+      ...context.pendingInput(),
+    ]));
+    const summaryLimit = getSummaryLimit(
+      budget.threshold - required,
+      budget.maxSummaryTokens,
+    );
+    if (summaryLimit <= 0) {
+      throw new Error('No budget for a summary');
+    }
+    const summarySample = '\\'.repeat(summaryLimit * 3);
     const reservedTokens = estimateTokens(
       buildRequest(summaryMessages(summarySample))
     );
@@ -40,17 +52,17 @@ export async function compact({
       client,
       modelId,
       contextWindow,
-      maxSummaryTokens: budget.maxSummaryTokens,
+      maxSummaryTokens: summaryLimit,
       summary: plan.summary,
       margin: budget.margin,
       signal,
     });
     signal.throwIfAborted();
     if (
-      estimateText(summary) > budget.maxSummaryTokens
+      estimateText(summary) > summaryLimit
       || estimateTokens(buildRequest(summaryMessages(summary))) > reservedTokens
     ) {
-      throw new Error('Summary exceeds maxSummaryTokens');
+      throw new Error('Summary exceeds available budget');
     }
     const input = context.preview(plan, summary);
     const after = estimateTokens(buildRequest(input));

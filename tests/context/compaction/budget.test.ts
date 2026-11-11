@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test';
-import { getModelBudget } from '../../../src/context/compaction/budget.ts';
+import {
+  getModelBudget,
+  getSummaryLimit,
+} from '../../../src/context/compaction/budget.ts';
 
 describe('getModelBudget', () => {
   test('derives the threshold and positive margin', () => {
@@ -19,5 +22,17 @@ describe('getModelBudget', () => {
       contextWindow: 128_000,
       maxOutputTokens: 32_000,
     }).margin).toBe(0);
+  });
+});
+
+describe('getSummaryLimit', () => {
+  test('uses the configured maximum when enough space remains', () => {
+    expect(getSummaryLimit(20_000, 4_096)).toBe(4_096);
+  });
+
+  test('shrinks the summary budget to fit available space', () => {
+    expect(getSummaryLimit(4_096, 4_096)).toBe(2_048);
+    expect(getSummaryLimit(1, 4_096)).toBe(0);
+    expect(getSummaryLimit(-1, 4_096)).toBe(0);
   });
 });

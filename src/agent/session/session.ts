@@ -1,4 +1,4 @@
-import { getModelBudget } from '../../context/compaction/budget.ts';
+import { getModelBudget, getSummaryLimit } from '../../context/compaction/budget.ts';
 import { Context } from '../../context/context.ts';
 import { summaryMessages } from '../../context/history.ts';
 import { estimateTokens } from '../../context/tokens.ts';
@@ -94,7 +94,7 @@ export class Session {
     }
     const { modelId, reasoningEffort } = this.#getModelSelection();
     const model = getModel(this.#agent.models, modelId);
-    const input = this.#inputWithReserve();
+    const input = this.#pendingInput();
     for (const { run } of this.#queue) {
       input.push({
         role: 'user',
@@ -115,7 +115,7 @@ export class Session {
     return run;
   }
 
-  #inputWithReserve(): ResponseInputItem[] {
+  #pendingInput(): ResponseInputItem[] {
     const input = this.#context.pendingInput();
     // The summary messages reserve the fixed token cost used by compaction.
     input.unshift(...summaryMessages(''));
@@ -133,7 +133,8 @@ export class Session {
     const request = buildRequest(
       this.#agent, model, input, reasoningEffort,
     );
-    if (estimateTokens(request) + budget.maxSummaryTokens > budget.threshold) {
+    const available = budget.threshold - estimateTokens(request);
+    if (getSummaryLimit(available, budget.maxSummaryTokens) <= 0) {
       throw new Error('Pending input exceeds the context budget');
     }
   }
@@ -159,7 +160,7 @@ export class Session {
       const { modelId, reasoningEffort } = this.#getModelSelection();
       const model = getModel(this.#agent.models, modelId);
       const ready = this.#isReady?.(modelId) !== false;
-      const input = ready ? this.#inputWithReserve() : [];
+      const input = ready ? this.#pendingInput() : [];
       let count = 0;
       for (let index = 0; index < this.#queue.length;) {
         const item = this.#queue[index];
