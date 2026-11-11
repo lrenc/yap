@@ -25,7 +25,7 @@ export class LoopGuard {
     if (!this.#recent.has(key)) {
       this.#progress = true;
     }
-    // 重复结果也刷新顺序，让纪录始终覆盖最近使用的结果
+    // 重复结果也刷新顺序，让记录始终覆盖最近使用的结果
     this.#recent.delete(key);
     this.#recent.add(key);
     if (this.#recent.size > 32) {
@@ -37,11 +37,10 @@ export class LoopGuard {
   }
 
   endTurn(): boolean {
-    this.#state = this.#progress ? 0 : this.#state + 1
+    this.#state = this.#progress ? 0 : this.#state + 1;
     this.#progress = false;
     return this.#state >= 3;
   }
-
 }
 
 function sortKeys(value: unknown): unknown {

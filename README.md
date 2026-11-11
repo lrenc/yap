@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/logo.svg" width="128" alt="YAP logo">
+  <img src="./assets/logo.svg" width="100" alt="YAP logo">
 </p>
 
 <h1 align="center">YAP</h1>
@@ -21,3 +21,6 @@ Run the checks:
 bun test
 bun run typecheck
 ```
+
+TODO:
+连续多行回车后输入文字位置发生偏移

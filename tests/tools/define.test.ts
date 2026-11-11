@@ -13,7 +13,7 @@ describe('defineTool', () => {
       }),
       async execute({ value }) {
         received = value;
-        return value * 2;
+        return String(value * 2);
       },
     });
 
@@ -27,7 +27,7 @@ describe('defineTool', () => {
     expect(await tool.execute(
       { value: '21' },
       new AbortController().signal,
-    )).toBe(42);
+    )).toBe('42');
     expect(received).toBe(21);
   });
 
