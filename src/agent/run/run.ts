@@ -25,9 +25,14 @@ import type {
 } from './types.ts';
 
 const STALLED_INSTRUCTIONS = `
-Tool calls have produced no new successful results for several consecutive turns.
-Using only the information already available, summarize confirmed findings, unfinished work, and blockers.
-Do not describe unfinished work as successful, and do not call any more tools.
+Repeated tool calls have produced no new successful information.
+Do not call any more tools. Using only the available context, provide a concise, user-facing response that covers:
+- confirmed findings and completed work
+- unfinished or unverified work
+- concrete blockers or the next useful step, if known
+
+If the task could not be completed, say so directly.
+Do not invent missing results or present unfinished work as completed.
 `.trim();
 
 export class Run {
@@ -280,7 +285,9 @@ export class Run {
     return input;
   }
 
-  #acceptResponse(response: OpenAIResponse, request: RequestInfo): FunctionCall[] {
+  #acceptResponse(
+    response: OpenAIResponse, request: RequestInfo
+  ): FunctionCall[] {
     this.#context.addResponse(response, request);
     this.#emitTextDone(response.output);
     return functionCalls(response.output);

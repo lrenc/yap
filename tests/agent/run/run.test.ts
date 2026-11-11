@@ -369,7 +369,7 @@ describe('Run', () => {
     expect(toolCalls).toBe(4);
     expect(requests.at(-1)?.tool_choice).toBe('none');
     expect(JSON.stringify(requests.at(-1)?.input))
-      .toContain('Tool calls have produced no new successful results');
+      .toContain('Repeated tool calls have produced no new successful information');
   });
 
   test('runs tool calls before requesting the next turn', async () => {
