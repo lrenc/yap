@@ -4,13 +4,13 @@ import type { HistoryEntry } from '../types.ts';
 export function planCompaction({
   history,
   boundaries,
-  pendingStart,
+  requiredStart,
   keepRecentTokens,
   keepLimit,
 }: {
   history: HistoryEntry[];
   boundaries: number[];
-  pendingStart: number | undefined;
+  requiredStart: number | undefined;
   keepRecentTokens: number;
   keepLimit: number;
 }): {
@@ -21,7 +21,6 @@ export function planCompaction({
     throw new Error('No budget for recent history');
   }
   const contextStart = boundaries[0];
-  const requiredStart = pendingStart ?? boundaries.at(-1);
   if (
     contextStart === undefined
     || requiredStart === undefined

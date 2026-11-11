@@ -32,7 +32,7 @@ describe('planCompaction', () => {
     const plan = planCompaction({
       history,
       boundaries,
-      pendingStart: 4,
+      requiredStart: 4,
       keepRecentTokens: 0,
       keepLimit: 1_000_000,
     });
@@ -49,7 +49,7 @@ describe('planCompaction', () => {
     const plan = planCompaction({
       history,
       boundaries,
-      pendingStart: 4,
+      requiredStart: 4,
       keepRecentTokens: recentTokens,
       keepLimit: 1_000_000,
     });
@@ -62,7 +62,7 @@ describe('planCompaction', () => {
     expect(() => planCompaction({
       history,
       boundaries,
-      pendingStart: 4,
+      requiredStart: 4,
       keepRecentTokens: 0,
       keepLimit: estimateEntry(history[4] as HistoryEntry) - 1,
     })).toThrow('Required recent history exceeds compaction budget');
@@ -72,7 +72,7 @@ describe('planCompaction', () => {
     expect(() => planCompaction({
       history,
       boundaries: [0, 2, 1],
-      pendingStart: undefined,
+      requiredStart: 1,
       keepRecentTokens: 1_000_000,
       keepLimit: 1_000_000,
     })).toThrow('Invalid history boundary');
@@ -82,7 +82,7 @@ describe('planCompaction', () => {
     expect(() => planCompaction({
       history: [user('only')],
       boundaries: [0],
-      pendingStart: undefined,
+      requiredStart: 0,
       keepRecentTokens: 0,
       keepLimit: 1_000,
     })).toThrow('No history prefix to compact');

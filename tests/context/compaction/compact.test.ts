@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { Context } from '../../../src/context/context.ts';
 import { compact } from '../../../src/context/compaction/compact.ts';
 import type { CompactionBudget } from '../../../src/context/types.ts';
+import { estimateTokens } from '../../../src/context/tokens.ts';
 import {
   buildRequest,
   clientWithCreate,
@@ -103,6 +104,51 @@ describe('compact', () => {
       role: 'user',
       content: summary,
     });
+  });
+
+  test('reserves the latest tool response and output', async () => {
+    const context = new Context();
+    const call = {
+      type: 'function_call' as const,
+      id: 'call-item',
+      call_id: 'call-1',
+      name: 'read',
+      arguments: '{}',
+    };
+    context.addUserMessage('old user');
+    context.addResponse(textResponse('old', 'o'.repeat(20_000)));
+    context.addUserMessage('use the tool');
+    context.addResponse({
+      id: 'tool-response',
+      status: 'completed',
+      output: [call],
+    });
+    context.addToolResult(call, 'x'.repeat(20_000));
+    const budget: CompactionBudget = {
+      reserveTokens: 0,
+      keepRecentTokens: 20_000,
+      maxSummaryTokens: 4_096,
+      threshold: 13_616,
+      margin: 0,
+    };
+
+    const result = await compact({
+      context,
+      budget,
+      client: clientWithCreate(async () => textResponse(
+        'summary',
+        'short summary',
+      )),
+      modelId: 'test-model',
+      contextWindow: 30_000,
+      signal: new AbortController().signal,
+      buildRequest,
+    });
+
+    expect(result).toEqual({ status: 'completed' });
+    expect(context.requiredInput()).toHaveLength(2);
+    expect(estimateTokens(buildRequest(context.toInput())))
+      .toBeLessThanOrEqual(budget.threshold);
   });
 
   test('does not commit when the summary is too large', async () => {

@@ -95,6 +95,11 @@ export class Context {
       : this.#buildInput(this.#pendingStart, '');
   }
 
+  requiredInput(): ResponseInputItem[] {
+    const start = this.#requiredStart();
+    return start === undefined ? [] : this.#buildInput(start, '');
+  }
+
   preview(plan: CompactionPlan, summary: string): ResponseInputItem[] {
     return this.#buildInput(plan.keepFrom, summary.trim());
   }
@@ -114,14 +119,14 @@ export class Context {
     const plan = planCompaction({
       history: this.#history,
       boundaries: this.#boundaries,
-      pendingStart: this.#pendingStart,
+      requiredStart: this.#requiredStart(),
       keepRecentTokens,
       keepLimit,
     });
     return {
       historyLength: this.#history.length,
       contextStart: this.#contextStart,
-      pendingStart: this.#pendingStart,
+      requiredStart: this.#requiredStart(),
       summary: this.#summary,
       prefix: structuredClone(toInput(plan.prefix)),
       keepFrom: plan.keepFrom,
@@ -132,7 +137,7 @@ export class Context {
     if (
       plan.historyLength !== this.#history.length
       || plan.contextStart !== this.#contextStart
-      || plan.pendingStart !== this.#pendingStart
+      || plan.requiredStart !== this.#requiredStart()
       || plan.summary !== this.#summary
     ) {
       throw new Error('Context changed since compaction was planned');
@@ -140,10 +145,8 @@ export class Context {
     const boundary = this.#boundaries.indexOf(plan.keepFrom);
     if (
       boundary <= 0
-      || (
-        this.#pendingStart !== undefined
-        && plan.keepFrom > this.#pendingStart
-      )
+      || plan.requiredStart === undefined
+      || plan.keepFrom > plan.requiredStart
     ) {
       throw new Error('Invalid compaction boundary');
     }
@@ -156,5 +159,9 @@ export class Context {
     this.#contextStart = plan.keepFrom;
     // 只移除被摘要覆盖的边界
     this.#boundaries.splice(0, boundary);
+  }
+
+  #requiredStart(): number | undefined {
+    return this.#pendingStart ?? this.#boundaries.at(-1);
   }
 }

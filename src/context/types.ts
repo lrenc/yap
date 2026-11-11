@@ -45,7 +45,7 @@ export interface CompactionBudget {
 export interface CompactionPlan {
   historyLength: number;
   contextStart: number;
-  pendingStart: number | undefined;
+  requiredStart: number | undefined;
   summary: string;
   prefix: ResponseInputItem[];
   keepFrom: number;

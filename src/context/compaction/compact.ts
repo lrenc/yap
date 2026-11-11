@@ -30,7 +30,7 @@ export async function compact({
   try {
     const required = estimateTokens(buildRequest([
       ...summaryMessages(''),
-      ...context.pendingInput(),
+      ...context.requiredInput(),
     ]));
     const summaryLimit = getSummaryLimit(
       budget.threshold - required,

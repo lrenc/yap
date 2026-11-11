@@ -68,6 +68,17 @@ describe('Context', () => {
       output: [call],
     });
     context.addToolResult(call, '{"value":42}');
+
+    expect(context.pendingInput()).toEqual([]);
+    expect(context.requiredInput()).toEqual([
+      call,
+      {
+        type: 'function_call_output',
+        call_id: 'call_1',
+        output: '{"value":42}',
+      },
+    ]);
+
     context.addUserMessage('continue');
 
     expect(context.toInput().map(item => item.type)).toEqual([
@@ -77,6 +88,9 @@ describe('Context', () => {
       undefined,
     ]);
     expect(context.pendingInput()).toEqual([
+      { role: 'user', content: 'continue' },
+    ]);
+    expect(context.requiredInput()).toEqual([
       { role: 'user', content: 'continue' },
     ]);
   });
