@@ -19,6 +19,7 @@
   "dependencies": {
     "ink": "^8.0.0",
     "react": "^19.3.1",
-    "string-width": "^8.3.0"
+    "string-width": "^8.3.0",
+    "zod": "^4.6.7"
   }
 }
