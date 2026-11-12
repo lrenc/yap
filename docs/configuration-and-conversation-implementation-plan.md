@@ -165,7 +165,7 @@ src/cli/components/
 
 ### 实现内容
 
-1. 定义 `SettingsDocument`：
+1. 定义 `AppConfig`：
    - `version`
    - `activeModelId`
    - `modelSettings`
