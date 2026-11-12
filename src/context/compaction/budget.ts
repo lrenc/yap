@@ -33,6 +33,9 @@ export function getSummaryLimit(
 ): number {
   return Math.max(
     0,
-    Math.min(maxTokens, Math.floor(availableTokens / ESCAPE_FACTOR)),
+    Math.min(
+      maxTokens,
+      Math.floor(availableTokens / ESCAPE_FACTOR)
+    ),
   );
 }
