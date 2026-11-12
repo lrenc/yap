@@ -170,6 +170,20 @@ describe('Input', () => {
     expect(submitted).toBe('hello');
   });
 
+  test('keeps the draft when no submit handler is provided', async () => {
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('hello\r');
+    await waitForRender();
+
+    expect(rendered.lastFrame()).toContain('hello');
+  });
+
   test('submits the latest text when Enter follows immediately', async () => {
     let submitted = '';
     rendered = render(
@@ -188,6 +202,69 @@ describe('Input', () => {
     await waitForRender();
 
     expect(submitted).toBe('hello');
+  });
+
+  test('clears the draft between submissions in the same batch', async () => {
+    const submitted: string[] = [];
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput
+          onSubmit={value => {
+            submitted.push(value);
+          }}
+        />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('first');
+    rendered.stdin.write('\r');
+    rendered.stdin.write('second');
+    rendered.stdin.write('\r');
+    await waitForRender();
+
+    expect(submitted).toEqual(['first', 'second']);
+    expect(rendered.lastFrame()).not.toContain('firstsecond');
+  });
+
+  test('submits consecutive Enters from one terminal batch', async () => {
+    const submitted: string[] = [];
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput
+          onSubmit={value => {
+            submitted.push(value);
+          }}
+        />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('hello');
+    rendered.stdin.write('\r\r');
+    await waitForRender();
+
+    expect(submitted).toEqual(['hello', '']);
+  });
+
+  test('submits text and Enter boundaries from one terminal batch', async () => {
+    const submitted: string[] = [];
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput
+          onSubmit={value => {
+            submitted.push(value);
+          }}
+        />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('first\r\nsecond\r');
+    await waitForRender();
+
+    expect(submitted).toEqual(['first', 'second']);
+    expect(rendered.lastFrame()).not.toContain('firstsecond');
   });
 
   test('inserts a newline with Shift+Enter', async () => {

@@ -45,6 +45,24 @@ export function normalizeCursor(value: string, cursor: number): number {
   return position - start < end - position ? start : end;
 }
 
+function snapCursorForward(value: string, cursor: number): number {
+  if (!Number.isFinite(cursor)) {
+    return 0;
+  }
+  const position = Math.min(
+    Math.max(Math.trunc(cursor), 0),
+    value.length,
+  );
+  if (position === 0 || position === value.length) {
+    return position;
+  }
+  const part = segmenter.segment(value).containing(position);
+  if (!part || position === part.index) {
+    return position;
+  }
+  return part.index + part.segment.length;
+}
+
 export function createDraft(value: string, cursor = value.length): Draft {
   return {
     value,
@@ -89,7 +107,7 @@ export function editInput(draft: Draft, text: string, key?: Key): Draft {
   }
   return {
     value: updated,
-    cursor: normalizeCursor(updated, start + inserted.length),
+    cursor: snapCursorForward(updated, start + inserted.length),
   };
 }
 

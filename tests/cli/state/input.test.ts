@@ -101,6 +101,22 @@ describe('editInput', () => {
     expect(negative).toEqual({ value: 'Xabc', cursor: 1 });
   });
 
+  test('keeps the cursor after an insertion that merges forward', () => {
+    const inserted = editInput(
+      createDraft('\u200d👩', 0),
+      '👨',
+    );
+
+    expect(inserted).toEqual({
+      value: '👨‍👩',
+      cursor: 5,
+    });
+    expect(editInput(inserted, 'X')).toEqual({
+      value: '👨‍👩X',
+      cursor: 6,
+    });
+  });
+
   test('moves by grapheme with arrows, Home, and End', () => {
     const draft = createDraft('a😀b');
 

@@ -7,6 +7,9 @@ import { truncateLines } from '../internal/truncate.ts';
 import type { AgentTool } from '../types.ts';
 
 const DEFAULT_LIMIT = 500;
+const nameCollator = new Intl.Collator(undefined, {
+  sensitivity: 'accent',
+});
 
 export function readDirTool(directory = process.cwd()): AgentTool {
   const resolvePath = pathResolver(directory);
@@ -32,9 +35,7 @@ export function readDirTool(directory = process.cwd()): AgentTool {
         withFileTypes: true,
       });
       signal.throwIfAborted();
-      entries.sort((a, b) => (
-        a.name.toLocaleLowerCase().localeCompare(b.name.toLocaleLowerCase())
-      ));
+      entries.sort((a, b) => nameCollator.compare(a.name, b.name));
       const lines: string[] = [];
       const maxEntries = limit ?? DEFAULT_LIMIT;
       let limitReached = false;

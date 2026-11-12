@@ -16,6 +16,7 @@ import {
 } from 'ink';
 import stringWidth from 'string-width';
 import {
+  createDraft,
   editInput,
   layoutInput,
   moveVerticalCursor,
@@ -93,6 +94,16 @@ export function Input({
     onDraftChange?.(next);
   };
 
+  const submitDraft = (): void => {
+    const submit = onSubmit;
+    if (!submit) {
+      return;
+    }
+    const value = draftRef.current.value;
+    changeDraft(() => createDraft(''));
+    submit(value);
+  };
+
   useInkInput((input, key) => {
     if (key.eventType === 'release') {
       return;
@@ -117,16 +128,29 @@ export function Input({
       });
       return;
     }
-
     preferredColumn.current = null;
     if (key.return) {
       if (key.shift || key.meta) {
         changeDraft(current => editInput(current, '\n'));
         return;
       }
-      onSubmit?.(draftRef.current.value);
+      submitDraft();
       return;
     }
+    // Ink may deliver text and Enter bytes together in one input event.
+    const parts = input.split(/\r\n?/u);
+    if (parts.length > 1) {
+      for (const [index, part] of parts.entries()) {
+        if (part) {
+          changeDraft(current => editInput(current, part, key));
+        }
+        if (index < parts.length - 1) {
+          submitDraft();
+        }
+      }
+      return;
+    }
+
     changeDraft(current => editInput(current, input, key));
   }, { isActive: focus });
 

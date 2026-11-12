@@ -12,16 +12,21 @@ describe('getModelBudget', () => {
     });
 
     expect(budget.threshold).toBe(111_616);
+    expect(budget.reserveTokens).toBe(16_384);
     expect(budget.margin).toBe(8_192);
     expect(budget.keepRecentTokens).toBe(20_000);
     expect(budget.maxSummaryTokens).toBe(4_096);
   });
 
   test('keeps a non-negative margin for large output limits', () => {
-    expect(getModelBudget({
+    const budget = getModelBudget({
       contextWindow: 128_000,
       maxOutputTokens: 32_000,
-    }).margin).toBe(0);
+    });
+
+    expect(budget.reserveTokens).toBe(32_000);
+    expect(budget.threshold).toBe(96_000);
+    expect(budget.margin).toBe(0);
   });
 });
 

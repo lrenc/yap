@@ -47,6 +47,24 @@ describe('readDirTool', () => {
     ]);
   });
 
+  test('sorts names case-insensitively', async () => {
+    await writeFile(join(root, 'B.txt'), '');
+    await writeFile(join(root, 'a.txt'), '');
+    await writeFile(join(root, 'C.txt'), '');
+    const tool = readDirTool(root);
+
+    const result = await tool.execute({
+      path: '.',
+      limit: null,
+    }, new AbortController().signal);
+
+    expect(String(result).split('\n')).toEqual([
+      'a.txt',
+      'B.txt',
+      'C.txt',
+    ]);
+  });
+
   test('reports when entries exceed the limit', async () => {
     await writeFile(join(root, 'a.txt'), '');
     await writeFile(join(root, 'b.txt'), '');

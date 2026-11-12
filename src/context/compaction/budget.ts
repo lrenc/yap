@@ -12,11 +12,15 @@ export function getModelBudget({
   contextWindow: number;
   maxOutputTokens: number;
 }): CompactionBudget {
+  const reserveTokens = Math.max(
+    RESERVE_TOKENS,
+    maxOutputTokens,
+  );
   return {
-    reserveTokens: RESERVE_TOKENS,
+    reserveTokens,
     keepRecentTokens: KEEP_RECENT_TOKENS,
     maxSummaryTokens: MAX_SUMMARY_TOKENS,
-    threshold: contextWindow - RESERVE_TOKENS,
+    threshold: contextWindow - reserveTokens,
     margin: Math.max(
       0, RESERVE_TOKENS - maxOutputTokens,
     ),
