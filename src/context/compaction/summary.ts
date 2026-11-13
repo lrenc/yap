@@ -1,7 +1,9 @@
 import type {
   ResponseInputItem,
   OpenAIClient,
+  ResponseCreateParams,
 } from '../../model/provider/openai/types.ts';
+import { isUndefined } from '../../utils/guards.ts';
 import { estimateTokens } from '../tokens.ts';
 
 const INSTRUCTIONS = `
@@ -41,6 +43,7 @@ export async function summarize({
   maxSummaryTokens,
   margin,
   signal,
+  requestConfig,
 }: {
   client: OpenAIClient,
   modelId: string;
@@ -50,16 +53,41 @@ export async function summarize({
   maxSummaryTokens: number;
   margin: number;
   signal: AbortSignal;
+  requestConfig?: Pick<
+    ResponseCreateParams,
+    'instructions' | 'include' | 'reasoning'
+  >;
 }): Promise<string> {
   signal.throwIfAborted();
   const messages = prefix.filter(item => item.type !== 'reasoning');
   if (!summary.trim() && messages.length === 0) {
     throw new Error('No content to summarize');
   }
-  const request = {
+  const source = JSON.stringify({ summary, messages });
+  const request: ResponseCreateParams = {
+    ...(isUndefined(requestConfig)
+      ? {}
+      : structuredClone({
+        instructions: requestConfig.instructions,
+        include: requestConfig.include,
+        reasoning: requestConfig.reasoning,
+      })
+    ),
     model: modelId,
-    instructions: INSTRUCTIONS,
-    input: JSON.stringify({ summary, messages }),
+    ...(isUndefined(requestConfig)
+      ? { instructions: INSTRUCTIONS }
+      : {}
+    ),
+    input: isUndefined(requestConfig) ? source : [
+      {
+        role: 'developer',
+        content: INSTRUCTIONS,
+      },
+      {
+        role: 'user',
+        content: source,
+      },
+    ],
     max_output_tokens: maxSummaryTokens,
     store: false,
   };

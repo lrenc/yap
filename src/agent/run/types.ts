@@ -14,8 +14,12 @@ export interface ToolOutcome {
   details?: unknown;
 }
 
+export type AgentTextPart =
+  | { type: 'output_text'; text: string }
+  | { type: 'refusal'; refusal: string }
+
 export type AgentEvent =
-  {
+  | {
     type: 'queue';
     waitingFor: string | null;
   }
@@ -44,6 +48,7 @@ export type AgentEvent =
     type: 'text_done';
     turn: number;
     text: string;
+    parts: AgentTextPart[];
   }
   | {
     type: 'tool_start';

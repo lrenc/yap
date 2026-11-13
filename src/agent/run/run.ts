@@ -1,9 +1,11 @@
 import { LoopGuard } from './guard.ts';
-import { getModelBudget } from '../../context/compaction/budget.ts';
 import { compact } from '../../context/compaction/compact.ts';
-import type { Context } from '../../context/context.ts';
-import type { CompactionBudget, RequestInfo } from '../../context/types.ts';
-import { buildRequest, captureRequest } from './request.ts';
+import {
+  captureRequest,
+  captureRunConfig,
+  buildRequest,
+  checkPendingInput,
+} from './request.ts';
 import { functionCalls, responseText } from './response.ts';
 import { RunStream } from './stream.ts';
 import { executeTool } from './tool-call.ts';
@@ -14,15 +16,20 @@ import type {
   ResponseCreateParams,
   ResponseInputItem,
 } from '../../model/provider/openai/types.ts';
-import { getModel } from '../../model/lookup.ts';
-import type { AgentModel, ModelSelection } from '../../model/types.ts';
-import type { AgentConfig } from '../types.ts';
+import type { Context } from '../../context/context.ts';
+import type { CompactionBudget, RequestInfo } from '../../context/types.ts';
+import type { AgentModel } from '../../model/types.ts';
 import type {
   AgentEvent,
-  AgentResult,
   RunOptions,
+  AgentResult,
   ToolOutcome,
 } from './types.ts';
+import type {
+  AgentConfig,
+  RunConfigResolver,
+  RunConfigSnapshot,
+} from '../types.ts';
 
 const STALLED_INSTRUCTIONS = `
 Repeated tool calls have produced no new successful information.
@@ -35,15 +42,21 @@ If the task could not be completed, say so directly.
 Do not invent missing results or present unfinished work as completed.
 `.trim();
 
+interface ExecutionOptions extends RunOptions {
+  content: string;
+  streaming: boolean;
+  resolveRunConfig: RunConfigResolver;
+}
+
 export class Run {
   readonly content: string;
   readonly signal: AbortSignal;
   readonly result: Promise<AgentResult>;
   readonly stream: RunStream;
 
-  readonly #agent: AgentConfig;
+  readonly #agent: Pick<AgentConfig, 'tools'>;
   readonly #context: Context;
-  readonly #getModelSelection: () => ModelSelection;
+  readonly #resolveRunConfig: RunConfigResolver;
   readonly #streaming: boolean;
   readonly #controller = new AbortController();
   readonly #guard = new LoopGuard();
@@ -51,19 +64,20 @@ export class Run {
   #execution: Promise<AgentResult> | null = null;
   #requestController: AbortController | null = null;
   #interrupted = false;
+  #inputPending = false;
   #turns = 0;
   #stalled = false;
   #finished = false;
   #resolve!: (result: AgentResult) => void;
 
-  constructor(agent: AgentConfig, context: Context, options: RunOptions & {
-    content: string;
-    getModelSelection: () => ModelSelection;
-    streaming: boolean;
-  }) {
+  constructor(
+    agent: Pick<AgentConfig, 'tools'>,
+    context: Context,
+    options: ExecutionOptions,
+  ) {
+    this.#resolveRunConfig = options.resolveRunConfig;
     this.#agent = agent;
     this.#context = context;
-    this.#getModelSelection = options.getModelSelection;
     this.#streaming = options.streaming;
     this.content = options.content;
     this.signal = options.signal
@@ -82,28 +96,60 @@ export class Run {
     this.#emit({ type: 'queue', waitingFor });
   }
 
-  execute(): Promise<AgentResult> {
+  get hasPendingInput() {
+    return this.#inputPending && (this.#finished || !this.signal.aborted);
+  }
+
+  execute(messages: string[] = []): Promise<AgentResult> {
     if (this.#execution) {
       return this.#execution;
     }
     if (this.#finished) {
       return this.result;
     }
-    this.#execution = this.#run();
+    this.#inputPending = messages.length > 0;
+    this.#execution = this.#run([...messages]);
     return this.#execution;
   }
 
-  async #run(): Promise<AgentResult> {
-    const result = await this.#executeLoop();
+  async #run(messages: string[]): Promise<AgentResult> {
+    const result = await this.#executeLoop(messages);
     this.finish(result);
     return result;
   }
 
-  async #executeLoop(): Promise<AgentResult> {
+  async #executeLoop(messages: string[]): Promise<AgentResult> {
     let stopReason: AgentResult['stopReason'] = 'completed';
     let response: OpenAIResponse | null = null;
     let error: unknown;
+    if (this.signal.aborted || this.#interrupted) {
+      return {
+        stopReason: this.signal.aborted ? 'cancelled' : 'interrupted',
+        response, turns: 0, error,
+      };
+    }
     try {
+      const config = await this.#captureConfig();
+      if (this.signal.aborted || this.#interrupted) {
+        return {
+          stopReason: this.signal.aborted ? 'cancelled' : 'interrupted',
+          response, turns: 0, error,
+        };
+      }
+      const { model } = config;
+      const client = model.client;
+      const budget = checkPendingInput(
+        this.#agent, config, [
+          ...this.#context.pendingInput(),
+          ...messages.map(content => ({
+            role: 'user' as const, content
+          })),
+        ],
+      );
+      for (const content of messages) {
+        this.#context.addUserMessage(content);
+      }
+      this.#inputPending = false;
       while (true) {
         if (this.signal.aborted) {
           stopReason = 'cancelled';
@@ -113,15 +159,8 @@ export class Run {
           stopReason = 'interrupted';
           break;
         }
-        const { modelId, reasoningEffort } = this.#getModelSelection();
-        const model = getModel(this.#agent.models, modelId);
-        const client = model.client;
-        const budget = getModelBudget({
-          contextWindow: model.contextWindow,
-          maxOutputTokens: model.params.max_output_tokens,
-        });
         const captured = captureRequest(
-          this.#buildRequest(model, reasoningEffort), {
+          this.#buildRequest(config), {
             endpoint: client.endpoint,
             contextStart: this.#context.contextStart,
             hasExtraInput: this.#stalled,
@@ -183,6 +222,34 @@ export class Run {
     };
   }
 
+  async #captureConfig(): Promise<RunConfigSnapshot> {
+    return this.#withRequest(async signal => {
+      signal.throwIfAborted();
+      const resolved = this.#resolveRunConfig(signal);
+      const captured = resolved instanceof Promise
+        ? resolved.then(config => {
+          signal.throwIfAborted();
+          return captureRunConfig(config);
+        })
+        : captureRunConfig(resolved);
+      let onAbort!: () => void;
+      const aborted = new Promise<never>((_, reject) => {
+        onAbort = () => reject(signal.reason);
+        signal.addEventListener('abort', onAbort, { once: true });
+        if (signal.aborted) {
+          onAbort();
+        }
+      });
+      try {
+        const config = await Promise.race([captured, aborted]);
+        signal.throwIfAborted();
+        return config;
+      } finally {
+        signal.removeEventListener('abort', onAbort);
+      }
+    });
+  }
+
   async #compact(
     model: AgentModel,
     budget: CompactionBudget,
@@ -195,6 +262,7 @@ export class Run {
       client: model.client,
       modelId: model.id,
       contextWindow: model.contextWindow,
+      requestConfig: params,
       signal,
       buildRequest: input => ({
         ...params, input: this.#prepareInput(input),
@@ -263,14 +331,11 @@ export class Run {
     return response;
   }
 
-  #buildRequest(
-    model: AgentModel, reasoningEffort: string | undefined,
-  ): ResponseCreateParams {
+  #buildRequest(config: RunConfigSnapshot): ResponseCreateParams {
     const params = buildRequest(
       this.#agent,
-      model,
+      config,
       this.#prepareInput(this.#context.toInput()),
-      reasoningEffort,
     );
     if (this.#stalled) {
       params.tool_choice = 'none';
@@ -304,6 +369,18 @@ export class Run {
       type: 'text_done',
       turn: this.#turns,
       text: responseText(output),
+      parts: output.flatMap(item => item.type === 'message'
+        ? item.content.map(part => part.type === 'refusal'
+          ? {
+            type: 'refusal' as const,
+            refusal: part.refusal
+          }
+          : {
+            type: 'output_text' as const,
+            text: part.text
+          }
+        ) : []
+      ),
     });
   }
 
@@ -362,6 +439,9 @@ export class Run {
       return;
     }
     this.#finished = true;
+    if (result.stopReason !== 'interrupted' || this.signal.aborted) {
+      this.#inputPending = false;
+    }
     this.#emit({ type: 'done', result });
     this.stream.close();
     this.#resolve(result);

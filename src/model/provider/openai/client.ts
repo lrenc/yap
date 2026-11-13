@@ -21,11 +21,17 @@ const TERMINAL_EVENTS = [
 ];
 
 export function createClient(options: OpenAIClientOptions): OpenAIClient {
+  const apiKey = options.apiKey;
+  if (!apiKey) {
+    throw new OpenAIError('API Key must not be empty');
+  }
   const baseURL = options.baseURL.replace(/\/+$/, '');
   const endpoint = `${baseURL}/responses`;
 
   function post(
-    params: ResponseCreateParams & { stream: boolean },
+    params: ResponseCreateParams & {
+      stream: boolean,
+    },
     requestOptions: RequestOptions = {},
   ): Promise<Response> {
     return postJson(endpoint, params, {
@@ -45,12 +51,16 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
     },
 
     async create(params, requestOptions) {
-      const response = await post({ ...params, stream: false }, requestOptions);
+      const response = await post({
+        ...params, stream: false,
+      }, requestOptions);
       return parseResponse(await response.json());
     },
 
     async stream(params, requestOptions) {
-      const response = await post({ ...params, stream: true }, requestOptions);
+      const response = await post({
+        ...params, stream: true,
+      }, requestOptions);
       const contentType = response.headers.get('content-type')
         ?.split(';')[0]?.trim().toLowerCase();
       if (!response.body || contentType !== 'text/event-stream') {

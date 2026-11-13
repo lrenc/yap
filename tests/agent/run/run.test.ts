@@ -107,7 +107,10 @@ function createRun(onRequest?: () => void): Run {
 
   return new Run(agent, new Context(), {
     content: 'hello',
-    getModelSelection: () => ({ modelId: 'test-model' }),
+    resolveRunConfig: () => ({
+      model,
+      instructions: agent.instructions,
+    }),
     streaming: true,
     signal: new AbortController().signal,
   });
@@ -137,7 +140,10 @@ function createRunWith(
 
   return new Run(agent, new Context(), {
     content: 'hello',
-    getModelSelection: () => ({ modelId: 'test-model' }),
+    resolveRunConfig: () => ({
+      model,
+      instructions: agent.instructions,
+    }),
     streaming: options.streaming ?? true,
     signal: options.signal ?? new AbortController().signal,
   });
@@ -169,6 +175,12 @@ describe('Run', () => {
       { type: 'refusal_delta', turn: 1, delta: 'not ' },
       { type: 'refusal_delta', turn: 1, delta: 'allowed' },
     ]);
+    expect(events.find(event => event.type === 'text_done')).toEqual({
+      type: 'text_done',
+      turn: 1,
+      text: 'not allowed',
+      parts: [{ type: 'refusal', refusal: 'not allowed' }],
+    });
   });
 
   test('executes only once', async () => {
@@ -349,13 +361,12 @@ describe('Run', () => {
         max_output_tokens: 16_384,
       },
     };
-    const run = new Run({
-      instructions: 'Be concise',
-      models: [model],
-      tools: [],
-    }, context, {
+    const run = new Run({ tools: [] }, context, {
       content: 'current user',
-      getModelSelection: () => ({ modelId: 'test-model' }),
+      resolveRunConfig: () => ({
+        model,
+        instructions: 'Be concise',
+      }),
       streaming: true,
       signal: new AbortController().signal,
     });
@@ -453,13 +464,12 @@ describe('Run', () => {
         max_output_tokens: 100,
       },
     };
-    const run = new Run({
-      instructions: 'Use tools',
-      models: [model],
-      tools: [tool],
-    }, new Context(), {
+    const run = new Run({ tools: [tool] }, new Context(), {
       content: 'hello',
-      getModelSelection: () => ({ modelId: 'test-model' }),
+      resolveRunConfig: () => ({
+        model,
+        instructions: 'Use tools',
+      }),
       streaming: true,
       signal: new AbortController().signal,
     });

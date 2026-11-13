@@ -6,3 +6,13 @@ export interface AgentConfig {
   models: AgentModel[];
   tools: AgentTool[];
 }
+
+export interface RunConfigSnapshot {
+  model: AgentModel;
+  instructions: string;
+  reasoningEffort?: string;
+}
+
+export type RunConfigResolver = (
+  signal: AbortSignal,
+) => RunConfigSnapshot | Promise<RunConfigSnapshot>;

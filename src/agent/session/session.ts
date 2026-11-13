@@ -1,18 +1,17 @@
-import { getModelBudget, getSummaryLimit } from '../../context/compaction/budget.ts';
 import { Context } from '../../context/context.ts';
-import { summaryMessages } from '../../context/history.ts';
-import { estimateTokens } from '../../context/tokens.ts';
-import { getModel } from '../../model/lookup.ts';
-import type { AgentModel } from '../../model/types.ts';
-import type { ResponseInputItem } from '../../model/provider/openai/types.ts';
-import { buildRequest } from '../run/request.ts';
+import { checkPendingInput, selectRunConfig } from '../run/request.ts';
 import { Run } from '../run/run.ts';
 import type { AgentEvent, AgentResult, RunOptions } from '../run/types.ts';
-import type { AgentConfig } from '../types.ts';
-import type { SessionOptions, WaitingState } from './types.ts';
+import type { AgentConfig, RunConfigResolver } from '../types.ts';
+import type {
+  WaitingState,
+  ResolverOptions,
+  SessionOptions,
+} from './types.ts';
 
 interface QueuedRun {
   run: Run;
+  messages: string[];
   admitted: boolean;
   waitingFor: string | null;
   onAbort: () => void;
@@ -20,36 +19,71 @@ interface QueuedRun {
 
 export class Session {
   readonly #queue: QueuedRun[] = [];
-  readonly #agent: AgentConfig;
+  readonly #agent: Pick<AgentConfig, 'tools'>;
   readonly #context = new Context();
-  readonly #getModelSelection: SessionOptions['getModelSelection'];
-  readonly #isReady: SessionOptions['isReady'];
+  readonly #resolveRunConfig: RunConfigResolver;
+  readonly #legacy: {
+    agent: AgentConfig;
+    options: SessionOptions;
+  } | undefined;
 
   #cancelling = false;
   #active: Run | null = null;
+  #pendingMessages: string[] = [];
   #draining = false;
 
-  constructor(agent: AgentConfig, options: SessionOptions) {
+  constructor(agent: AgentConfig, options: SessionOptions);
+  constructor(
+    agent: Pick<AgentConfig, 'tools'>,
+    options: ResolverOptions,
+  );
+  constructor(
+    agent: AgentConfig | Pick<AgentConfig, 'tools'>,
+    options: SessionOptions | ResolverOptions,
+  ) {
     this.#agent = agent;
-    this.#isReady = options.isReady;
-    this.#getModelSelection = options.getModelSelection;
+    if ('resolveRunConfig' in options) {
+      this.#resolveRunConfig = options.resolveRunConfig;
+    } else if (
+      'models' in agent
+      && 'instructions' in agent
+    ) {
+      this.#legacy = { agent, options };
+      this.#resolveRunConfig = () => (
+        selectRunConfig(agent, options.getModelSelection())
+      );
+    } else {
+      throw new Error(
+        'Model selection requires an agent configuration'
+      );
+    }
   }
 
   run(content: string, options: RunOptions = {}): Promise<AgentResult> {
-    return this.#submit(content, false, options).result;
+    return this.runMessages([content], options);
   }
 
   runStream(
     content: string, options: RunOptions = {}
   ): AsyncIterableIterator<AgentEvent> {
-    return this.#submit(content, true, options).stream;
+    return this.streamMessages([content], options);
+  }
+
+  runMessages(messages: string[], options: RunOptions = {}): Promise<AgentResult> {
+    return this.#submit(messages, false, options).result;
+  }
+
+  streamMessages(
+    messages: string[], options: RunOptions = {},
+  ): AsyncIterableIterator<AgentEvent> {
+    return this.#submit(messages, true, options).stream;
   }
 
   cancel(): void {
     this.#cancelling = true;
+    this.#pendingMessages = [];
     try {
       this.#active?.cancel();
-      // Abort listeners may remove waiting entries synchronously.
       for (const { run } of [...this.#queue]) {
         run.cancel();
       }
@@ -74,14 +108,18 @@ export class Session {
     this.#schedule();
   }
 
-  #submit(content: string, streaming: boolean, options: RunOptions): Run {
-    if (!content.trim()) {
+  #submit(messages: string[], streaming: boolean, options: RunOptions): Run {
+    if (
+      messages.length === 0 ||
+      messages.some(content => !content.trim())
+    ) {
       throw new Error('Message must not be empty');
     }
+    messages = [...messages];
     const run = new Run(this.#agent, this.#context, {
       ...options,
-      content,
-      getModelSelection: this.#getModelSelection,
+      content: messages.at(-1)!,
+      resolveRunConfig: this.#resolveRunConfig,
       streaming,
     });
     if (run.signal.aborted) {
@@ -92,19 +130,25 @@ export class Session {
       });
       return run;
     }
-    const { modelId, reasoningEffort } = this.#getModelSelection();
-    const model = getModel(this.#agent.models, modelId);
-    const input = this.#pendingInput();
-    for (const { run } of this.#queue) {
-      input.push({
-        role: 'user',
-        content: run.content,
-      });
+    if (this.#legacy) {
+      const { agent, options } = this.#legacy;
+      const config = selectRunConfig(agent, options.getModelSelection());
+      const input = this.#pendingInput();
+      for (const item of this.#queue) {
+        input.push(...item.messages.map(content => ({
+          role: 'user' as const,
+          content,
+        })));
+      }
+      input.push(...messages.map(content => ({
+        role: 'user' as const,
+        content,
+      })));
+      checkPendingInput(this.#agent, config, input);
     }
-    input.push({ role: 'user', content });
-    this.#checkInput(input, model, reasoningEffort);
     const item: QueuedRun = {
       run,
+      messages,
       admitted: false,
       waitingFor: null,
       onAbort: () => this.#cancelQueued(item),
@@ -115,28 +159,15 @@ export class Session {
     return run;
   }
 
-  #pendingInput(): ResponseInputItem[] {
+  #pendingInput() {
     const input = this.#context.pendingInput();
-    // The summary messages reserve the fixed token cost used by compaction.
-    input.unshift(...summaryMessages(''));
-    return input;
-  }
-
-  #checkInput(
-    input: ResponseInputItem[], model: AgentModel,
-    reasoningEffort: string | undefined,
-  ): void {
-    const budget = getModelBudget({
-      contextWindow: model.contextWindow,
-      maxOutputTokens: model.params.max_output_tokens,
-    });
-    const request = buildRequest(
-      this.#agent, model, input, reasoningEffort,
-    );
-    const available = budget.threshold - estimateTokens(request);
-    if (getSummaryLimit(available, budget.maxSummaryTokens) <= 0) {
-      throw new Error('Pending input exceeds the context budget');
+    if (this.#active?.hasPendingInput ?? true) {
+      input.push(...this.#pendingMessages.map(content => ({
+        role: 'user' as const,
+        content,
+      })));
     }
+    return input;
   }
 
   #cancelQueued(item: QueuedRun): void {
@@ -146,20 +177,29 @@ export class Session {
     }
     this.#queue.splice(index, 1);
     item.run.signal.removeEventListener('abort', item.onAbort);
-    item.run.finish({ stopReason: 'cancelled', response: null, turns: 0 });
+    item.run.finish({
+      stopReason: 'cancelled', response: null, turns: 0,
+    });
     if (!this.#cancelling) {
       this.#schedule();
     }
   }
 
   #refreshQueue(): number {
+    if (!this.#legacy) {
+      for (const item of this.#queue) {
+        item.admitted = true;
+      }
+      return this.#queue.length;
+    }
     if (this.#queue.every(item => item.admitted)) {
       return this.#queue.length;
     }
     try {
-      const { modelId, reasoningEffort } = this.#getModelSelection();
-      const model = getModel(this.#agent.models, modelId);
-      const ready = this.#isReady?.(modelId) !== false;
+      const { agent, options } = this.#legacy;
+      const config = selectRunConfig(agent, options.getModelSelection());
+      const modelId = config.model.id;
+      const ready = options.isReady?.(modelId) !== false;
       const input = ready ? this.#pendingInput() : [];
       let count = 0;
       for (let index = 0; index < this.#queue.length;) {
@@ -168,15 +208,16 @@ export class Session {
           break;
         }
         if (ready) {
-          input.push({
-            role: 'user',
-            content: item.run.content,
-          });
+          const previousLength = input.length;
+          input.push(...item.messages.map(content => ({
+            role: 'user' as const,
+            content,
+          })));
           if (!item.admitted) {
             try {
-              this.#checkInput(input, model, reasoningEffort);
+              checkPendingInput(this.#agent, config, input);
             } catch (error) {
-              input.pop();
+              input.length = previousLength;
               this.#rejectQueued(index, error);
               continue;
             }
@@ -223,7 +264,9 @@ export class Session {
     if (count === 0) {
       return;
     }
-    if (this.#queue.some((item, index) => index < count && !item.run.signal.aborted)) {
+    if (this.#queue.some((item, index) => (
+      index < count && !item.run.signal.aborted
+    ))) {
       this.#active?.interrupt();
     }
     if (!this.#draining) {
@@ -245,7 +288,6 @@ export class Session {
         for (const item of batch) {
           const input = item.run;
           input.signal.removeEventListener('abort', item.onAbort);
-          this.#context.addUserMessage(input.content);
           if (input !== run) {
             input.finish({
               stopReason: input.signal.aborted ? 'cancelled' : 'interrupted',
@@ -255,11 +297,17 @@ export class Session {
           }
         }
         this.#active = run;
-        await run.execute();
+        this.#pendingMessages.push(...batch.flatMap(item => item.messages));
+        await run.execute(this.#pendingMessages);
+        if (!run.hasPendingInput) {
+          this.#pendingMessages = [];
+        }
+        this.#active = null;
         batch = [];
         count = this.#refreshQueue();
       }
     } catch (error) {
+      this.#pendingMessages = [];
       for (const item of batch) {
         item.run.finish({
           stopReason: item.run.signal.aborted ? 'cancelled' : 'error',

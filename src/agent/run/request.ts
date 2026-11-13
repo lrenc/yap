@@ -1,26 +1,73 @@
 import { createHash } from 'node:crypto';
+import { getModelBudget, getSummaryLimit } from '../../context/compaction/budget.ts';
+import { summaryMessages } from '../../context/history.ts';
+import { estimateTokens } from '../../context/tokens.ts';
+import { getModel } from '../../model/lookup.ts';
+import { buildModelParams } from '../../model/params.ts';
+import { isUndefined } from '../../utils/guards.ts';
+import type { CompactionBudget, RequestInfo } from '../../context/types.ts';
 import type {
   ResponseCreateParams,
-  ResponseInputItem,
+  ResponseInputItem
 } from '../../model/provider/openai/types.ts';
-import type { RequestInfo } from '../../context/types.ts';
-import { buildModelParams } from '../../model/params.ts';
-import type { AgentModel } from '../../model/types.ts';
-import type { AgentConfig } from '../types.ts';
+import type { ModelSelection } from '../../model/types.ts';
+import type { AgentConfig, RunConfigSnapshot } from '../types.ts';
+
+export function selectRunConfig(
+  agent: AgentConfig, selection: ModelSelection,
+): RunConfigSnapshot {
+  return {
+    model: getModel(agent.models, selection.modelId),
+    instructions: agent.instructions,
+    ...(isUndefined(selection.reasoningEffort) ? {} : {
+      reasoningEffort: selection.reasoningEffort,
+    }),
+  };
+}
+
+export function captureRunConfig(config: RunConfigSnapshot): RunConfigSnapshot {
+  const { client, ...model } = config.model;
+  return {
+    ...config,
+    model: { ...structuredClone(model), client },
+  };
+}
+
+export function checkPendingInput(
+  agent: Pick<AgentConfig, 'tools'>,
+  config: RunConfigSnapshot,
+  input: ResponseInputItem[],
+): CompactionBudget {
+  const { model } = config;
+  const budget = getModelBudget({
+    contextWindow: model.contextWindow,
+    maxOutputTokens: model.params.max_output_tokens,
+  });
+  const request = buildRequest(agent, config, [
+    ...summaryMessages(''),
+    ...input,
+  ]);
+  const available = budget.threshold - estimateTokens(request);
+  if (getSummaryLimit(available, budget.maxSummaryTokens) <= 0) {
+    throw new Error(
+      'Pending input exceeds the context budget'
+    );
+  }
+  return budget;
+}
 
 export function buildRequest(
-  agent: AgentConfig,
-  model: AgentModel,
+  agent: Pick<AgentConfig, 'tools'>,
+  { model, instructions, reasoningEffort }: RunConfigSnapshot,
   input: ResponseInputItem[],
-  reasoningEffort: string | undefined,
 ): ResponseCreateParams {
   const params: ResponseCreateParams = {
     ...buildModelParams(
       model,
-      reasoningEffort === undefined ? {} : { reasoningEffort },
+      isUndefined(reasoningEffort) ? {} : { reasoningEffort },
     ),
     model: model.id,
-    instructions: agent.instructions,
+    instructions,
     input,
     tools: agent.tools.map(tool => ({
       type: 'function',
@@ -56,7 +103,7 @@ export function captureRequest(params: ResponseCreateParams, {
     contextStart,
     hasExtraInput,
   };
-  if (endpoint !== undefined) {
+  if (!isUndefined(endpoint)) {
     request.endpoint = endpoint;
   }
   return {

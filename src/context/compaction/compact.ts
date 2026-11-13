@@ -3,6 +3,7 @@ import type {
   ResponseCreateParams,
   ResponseInputItem,
 } from '../../model/provider/openai/types.ts';
+import { isUndefined } from '../../utils/guards.ts';
 import type { Context } from '../context.ts';
 import { summaryMessages } from '../history.ts';
 import { estimateText, estimateTokens } from '../tokens.ts';
@@ -11,20 +12,25 @@ import { getSummaryLimit } from './budget.ts';
 import { summarize } from './summary.ts';
 
 export async function compact({
-  context,
   budget,
-  client,
+  context,
   modelId,
+  client,
   contextWindow,
   signal,
+  requestConfig,
   buildRequest,
 }: {
-  context: Context,
   budget: CompactionBudget,
-  client: OpenAIClient,
+  context: Context,
   modelId: string;
+  client: OpenAIClient,
   contextWindow: number;
   signal: AbortSignal,
+  requestConfig: Pick<
+    ResponseCreateParams,
+    'instructions' | 'include' | 'reasoning'
+  >;
   buildRequest: (input: ResponseInputItem[]) => ResponseCreateParams;
 }): Promise<CompactionResult> {
   try {
@@ -56,6 +62,9 @@ export async function compact({
       summary: plan.summary,
       margin: budget.margin,
       signal,
+      ...(isUndefined(requestConfig)
+        ? {}
+        : { requestConfig }),
     });
     signal.throwIfAborted();
     if (

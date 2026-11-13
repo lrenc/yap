@@ -16,6 +16,7 @@ const budget: CompactionBudget = {
   threshold: 100_000,
   margin: 0,
 };
+const requestConfig = { instructions: 'Be concise' };
 
 function contextWithTurns(): Context {
   const context = new Context();
@@ -34,6 +35,7 @@ describe('compact', () => {
       modelId: 'test-model',
       contextWindow: 128_000,
       signal: new AbortController().signal,
+      requestConfig,
       buildRequest,
     });
 
@@ -53,6 +55,7 @@ describe('compact', () => {
       modelId: 'test-model',
       contextWindow: 128_000,
       signal: new AbortController().signal,
+      requestConfig,
       buildRequest,
     });
 
@@ -95,6 +98,7 @@ describe('compact', () => {
       modelId: 'test-model',
       contextWindow: 128_000,
       signal: new AbortController().signal,
+      requestConfig,
       buildRequest,
     });
 
@@ -142,6 +146,7 @@ describe('compact', () => {
       modelId: 'test-model',
       contextWindow: 30_000,
       signal: new AbortController().signal,
+      requestConfig,
       buildRequest,
     });
 
@@ -163,6 +168,7 @@ describe('compact', () => {
       modelId: 'test-model',
       contextWindow: 128_000,
       signal: new AbortController().signal,
+      requestConfig,
       buildRequest,
     });
 
@@ -185,6 +191,7 @@ describe('compact', () => {
       modelId: 'test-model',
       contextWindow: 128_000,
       signal: new AbortController().signal,
+      requestConfig,
       buildRequest,
     });
 
@@ -206,6 +213,7 @@ describe('compact', () => {
       modelId: 'test-model',
       contextWindow: 128_000,
       signal: new AbortController().signal,
+      requestConfig,
       buildRequest,
     });
 
@@ -224,6 +232,7 @@ describe('compact', () => {
       modelId: 'test-model',
       contextWindow: 128_000,
       signal: controller.signal,
+      requestConfig,
       buildRequest,
     });
 
