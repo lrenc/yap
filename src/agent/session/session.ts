@@ -59,23 +59,19 @@ export class Session {
     }
   }
 
-  run(content: string, options: RunOptions = {}): Promise<AgentResult> {
-    return this.runMessages([content], options);
-  }
-
-  runStream(
-    content: string, options: RunOptions = {}
-  ): AsyncIterableIterator<AgentEvent> {
-    return this.streamMessages([content], options);
-  }
-
-  runMessages(messages: string[], options: RunOptions = {}): Promise<AgentResult> {
+  run(
+    content: string | readonly string[],
+    options: RunOptions = {},
+  ): Promise<AgentResult> {
+    const messages = typeof content === 'string' ? [content] : content;
     return this.#submit(messages, false, options).result;
   }
 
-  streamMessages(
-    messages: string[], options: RunOptions = {},
+  runStream(
+    content: string | readonly string[],
+    options: RunOptions = {},
   ): AsyncIterableIterator<AgentEvent> {
+    const messages = typeof content === 'string' ? [content] : content;
     return this.#submit(messages, true, options).stream;
   }
 
@@ -108,14 +104,18 @@ export class Session {
     this.#schedule();
   }
 
-  #submit(messages: string[], streaming: boolean, options: RunOptions): Run {
+  #submit(
+    input: readonly string[],
+    streaming: boolean,
+    options: RunOptions,
+  ): Run {
+    const messages = [...input];
     if (
       messages.length === 0 ||
       messages.some(content => !content.trim())
     ) {
       throw new Error('Message must not be empty');
     }
-    messages = [...messages];
     const run = new Run(this.#agent, this.#context, {
       ...options,
       content: messages.at(-1)!,

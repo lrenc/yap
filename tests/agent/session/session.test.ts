@@ -161,6 +161,22 @@ describe('Session', () => {
     expect(result.response?.id).toBe('response_1');
   });
 
+  test('runs multiple messages as separate user inputs', async () => {
+    const controlled = controlledClient();
+    const session = createSession(controlled.client);
+
+    const result = session.run(['first', 'second']);
+    await waitFor(() => controlled.pending.length === 1);
+
+    expect(controlled.pending[0]?.params.input).toEqual([
+      { role: 'user', content: 'first' },
+      { role: 'user', content: 'second' },
+    ]);
+
+    controlled.resolveNext('reply');
+    expect((await result).stopReason).toBe('completed');
+  });
+
   test('streams events through runStream', async () => {
     const session = createSession(immediateClient());
 

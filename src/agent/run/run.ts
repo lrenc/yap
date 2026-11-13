@@ -122,19 +122,15 @@ export class Run {
     let stopReason: AgentResult['stopReason'] = 'completed';
     let response: OpenAIResponse | null = null;
     let error: unknown;
-    if (this.signal.aborted || this.#interrupted) {
-      return {
-        stopReason: this.signal.aborted ? 'cancelled' : 'interrupted',
-        response, turns: 0, error,
-      };
+    let stopped = this.#stoppedResult(response, error);
+    if (stopped) {
+      return stopped;
     }
     try {
       const config = await this.#captureConfig();
-      if (this.signal.aborted || this.#interrupted) {
-        return {
-          stopReason: this.signal.aborted ? 'cancelled' : 'interrupted',
-          response, turns: 0, error,
-        };
+      stopped = this.#stoppedResult(response, error);
+      if (stopped) {
+        return stopped;
       }
       const { model } = config;
       const client = model.client;
@@ -218,6 +214,19 @@ export class Run {
       response,
       turns: this.#turns,
       error,
+    };
+  }
+
+  #stoppedResult(
+    response: OpenAIResponse | null,
+    error: unknown,
+  ): AgentResult | null {
+    if (!this.signal.aborted && !this.#interrupted) {
+      return null;
+    }
+    return {
+      stopReason: this.signal.aborted ? 'cancelled' : 'interrupted',
+      response, turns: 0, error,
     };
   }
 

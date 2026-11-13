@@ -467,9 +467,9 @@ src/cli/components/
 
 ### Session 批处理要求
 
-需要为 Session 增加“一个 Run 包含多条用户消息”的明确入口，例如 `runMessages()`。不得通过字符串拼接模拟多条消息，也不得让多个 Run 并发执行。
+`Session.run(messages)` 和 `Session.runStream(messages)` 接受消息数组，使一个 Run 包含多条用户消息。不得通过字符串拼接模拟多条消息，也不得让多个 Run 并发执行。
 
-现有单消息 `run()` 和 `runStream()` 保留为兼容包装。
+单消息调用继续使用 `run(content)` 和 `runStream(content)`。
 
 ### 测试
 
@@ -672,7 +672,7 @@ bun run start
 | 模型回退修复失败导致状态歧义 | 仅内存回退，磁盘保留旧值，静默处理 |
 | Run 中途读取新配置 | Run 开始只解析一次 `RunConfigSnapshot` |
 | 双队列导致命令和消息乱序 | App Runtime 作为唯一 FIFO，命令作为批处理边界 |
-| 多消息被字符串拼接 | 使用 `runMessages()`，逐条写入 Context |
+| 多消息被字符串拼接 | 使用 `run(messages)`，逐条写入 Context |
 | Command Panel 和 Composer 同时抢输入 | Panel 打开时 Composer 失焦并暂停队列 |
 | Prompt 文件名与内容不一致 | `activePrompt` 存名称，Run 启动时读取实际内容 |
 | 删除活跃 Prompt 后悬空 | 确认删除后原子设置 `activePrompt: null` |
