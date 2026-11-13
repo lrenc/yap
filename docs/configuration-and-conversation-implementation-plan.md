@@ -451,7 +451,7 @@ src/cli/components/
 
 1. App Runtime 启动时只加载配置和依赖，不创建 Session。
 2. App Runtime 接收可注入的 Settings、Secret、Prompt、Client Factory、工具列表和工作目录。
-3. 默认注册现有 `readFileTool` 和 `readDirTool`。
+3. 默认注册现有 `readFileTool` 和 `readDirectoryTool`。
 4. 命令和普通消息进入同一个 FIFO。
 5. 命令不能越过队列中较早的普通消息。
 6. 命令只在两个 Run 之间处理。

@@ -11,7 +11,7 @@ const nameCollator = new Intl.Collator(undefined, {
   sensitivity: 'accent',
 });
 
-export function readDirTool(directory = process.cwd()): AgentTool {
+export function readDirectoryTool(directory = process.cwd()): AgentTool {
   const resolvePath = pathResolver(directory);
 
   return defineTool({

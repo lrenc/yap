@@ -14,9 +14,9 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readDirTool } from '../../../src/tools/files/read-dir.ts';
+import { readDirectoryTool } from '../../../src/tools/files/read-directory.ts';
 
-describe('readDirTool', () => {
+describe('readDirectoryTool', () => {
   let root = '';
 
   beforeEach(async () => {
@@ -32,7 +32,7 @@ describe('readDirTool', () => {
     await writeFile(join(root, 'a.txt'), '');
     await writeFile(join(root, '.hidden'), '');
     await mkdir(join(root, 'folder'));
-    const tool = readDirTool(root);
+    const tool = readDirectoryTool(root);
 
     const result = await tool.execute({
       path: '.',
@@ -51,7 +51,7 @@ describe('readDirTool', () => {
     await writeFile(join(root, 'B.txt'), '');
     await writeFile(join(root, 'a.txt'), '');
     await writeFile(join(root, 'C.txt'), '');
-    const tool = readDirTool(root);
+    const tool = readDirectoryTool(root);
 
     const result = await tool.execute({
       path: '.',
@@ -69,7 +69,7 @@ describe('readDirTool', () => {
     await writeFile(join(root, 'a.txt'), '');
     await writeFile(join(root, 'b.txt'), '');
     await writeFile(join(root, 'c.txt'), '');
-    const tool = readDirTool(root);
+    const tool = readDirectoryTool(root);
 
     expect(await tool.execute({
       path: '.',
@@ -83,7 +83,7 @@ describe('readDirTool', () => {
   test('does not report truncation when the limit is exact', async () => {
     await writeFile(join(root, 'a.txt'), '');
     await writeFile(join(root, 'b.txt'), '');
-    const tool = readDirTool(root);
+    const tool = readDirectoryTool(root);
 
     expect(await tool.execute({
       path: '.',
@@ -92,7 +92,7 @@ describe('readDirTool', () => {
   });
 
   test('reports an empty directory', async () => {
-    const tool = readDirTool(root);
+    const tool = readDirectoryTool(root);
 
     expect(await tool.execute({
       path: '.',
@@ -101,7 +101,7 @@ describe('readDirTool', () => {
   });
 
   test('describes non-recursive output and parameter defaults', () => {
-    const tool = readDirTool(root);
+    const tool = readDirectoryTool(root);
 
     expect(tool.description).toContain('Does not recurse.');
     expect(tool.parameters).toMatchObject({
@@ -122,7 +122,7 @@ describe('readDirTool', () => {
       const target = join(root, 'target');
       await mkdir(target);
       await symlink(target, join(root, 'linked'));
-      const tool = readDirTool(root);
+      const tool = readDirectoryTool(root);
 
       expect(await tool.execute({
         path: '.',
