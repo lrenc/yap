@@ -39,7 +39,7 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
       signal: requestOptions.signal ?? null,
       timeout: requestOptions.timeout,
       headers: {
-        Authorization: `Bearer ${options.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         Accept: params.stream ? 'text/event-stream' : 'application/json',
       },
     });

@@ -14,7 +14,8 @@ import type { ModelSelection } from '../../model/types.ts';
 import type { AgentConfig, RunConfigSnapshot } from '../types.ts';
 
 export function selectRunConfig(
-  agent: AgentConfig, selection: ModelSelection,
+  agent: AgentConfig,
+  selection: ModelSelection,
 ): RunConfigSnapshot {
   return {
     model: getModel(agent.models, selection.modelId),
@@ -29,7 +30,10 @@ export function captureRunConfig(config: RunConfigSnapshot): RunConfigSnapshot {
   const { client, ...model } = config.model;
   return {
     ...config,
-    model: { ...structuredClone(model), client },
+    model: {
+      ...structuredClone(model),
+      client,
+    },
   };
 }
 
@@ -99,7 +103,9 @@ export function captureRequest(params: ResponseCreateParams, {
   const { model, ...fixed } = snapshot;
   const request: RequestInfo = {
     model,
-    signature: createHash('sha256').update(JSON.stringify(fixed)).digest('hex'),
+    signature: createHash('sha256')
+      .update(JSON.stringify(fixed))
+      .digest('hex'),
     contextStart,
     hasExtraInput,
   };

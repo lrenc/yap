@@ -27,7 +27,7 @@ export async function compact({
   client: OpenAIClient,
   contextWindow: number;
   signal: AbortSignal,
-  requestConfig: Pick<
+  requestConfig?: Pick<
     ResponseCreateParams,
     'instructions' | 'include' | 'reasoning'
   >;

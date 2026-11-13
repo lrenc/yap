@@ -1,7 +1,4 @@
-import type {
-  FunctionCall,
-  ResponseOutputItem,
-} from '../../model/provider/openai/types.ts';
+import type { FunctionCall, ResponseOutputItem } from '../../model/provider/openai/types.ts';
 
 export function responseText(
   output: readonly ResponseOutputItem[],
@@ -10,7 +7,9 @@ export function responseText(
   for (const item of output) {
     if (item.type === 'message') {
       for (const part of item.content) {
-        text += part.type === 'refusal' ? part.refusal : part.text;
+        text += part.type === 'refusal'
+          ? part.refusal
+          : part.text;
       }
     }
   }

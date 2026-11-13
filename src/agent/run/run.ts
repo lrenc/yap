@@ -197,7 +197,6 @@ export class Run {
         if (this.signal.aborted || this.#interrupted) {
           continue;
         }
-        // 收尾只允许一次请求，即使模型仍返回工具调用也必须结束
         if (this.#stalled) {
           stopReason = 'stalled';
           break;
@@ -426,7 +425,6 @@ export class Run {
 
   interrupt(): void {
     this.#interrupted = true;
-    // 新输入只中止模型请求，已经开始的工具仍使用整个 Run 的取消信号。
     this.#requestController?.abort();
   }
 

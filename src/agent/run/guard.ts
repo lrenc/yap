@@ -4,6 +4,7 @@ import type { FunctionCall } from '../../model/provider/openai/types.ts';
 
 export class LoopGuard {
   readonly #recent = new Set<string>();
+
   #progress = false;
   #state = 0;
 

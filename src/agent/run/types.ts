@@ -48,7 +48,7 @@ export type AgentEvent =
     type: 'text_done';
     turn: number;
     text: string;
-    parts: AgentTextPart[];
+    parts?: AgentTextPart[];
   }
   | {
     type: 'tool_start';
