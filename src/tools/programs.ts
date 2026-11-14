@@ -14,7 +14,7 @@ export function getTaskkillPath(): string {
   );
 }
 
-export async function checkDeps(
+export async function checkDependencies(
   directory = process.cwd(),
 ): Promise<Issue[]> {
   const programs: Issue['program'][] = ['fd', 'rg', 'bash'];

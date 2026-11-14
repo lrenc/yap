@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  checkDeps,
+  checkDependencies,
   getBashPath,
   getTaskkillPath,
 } from '../../src/tools/programs.ts';
@@ -15,9 +15,9 @@ describe('program paths', () => {
   });
 });
 
-describe('checkDeps', () => {
+describe('checkDependencies', () => {
   test('returns structured dependency issues without duplicates', async () => {
-    const issues = await checkDeps();
+    const issues = await checkDependencies();
     const programs = issues.map(issue => issue.program);
 
     expect(new Set(programs).size).toBe(programs.length);
