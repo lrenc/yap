@@ -30,6 +30,7 @@ import type {
   RunConfigResolver,
   RunConfigSnapshot,
 } from '../types.ts';
+import type { AgentTool } from '../../tools/types.ts';
 
 const STALLED_INSTRUCTIONS = `
 Repeated tool calls have produced no new successful information.
@@ -54,7 +55,7 @@ export class Run {
   readonly result: Promise<AgentResult>;
   readonly stream: RunStream;
 
-  readonly #agent: Pick<AgentConfig, 'tools'>;
+  readonly #tools: AgentTool[];
   readonly #context: Context;
   readonly #resolveRunConfig: RunConfigResolver;
   readonly #streaming: boolean;
@@ -76,7 +77,7 @@ export class Run {
     options: ExecutionOptions,
   ) {
     this.#resolveRunConfig = options.resolveRunConfig;
-    this.#agent = agent;
+    this.#tools = agent.tools;
     this.#context = context;
     this.#streaming = options.streaming;
     this.content = options.content;
@@ -135,7 +136,7 @@ export class Run {
       const { model } = config;
       const client = model.client;
       const budget = checkPendingInput(
-        this.#agent, config, [
+        { tools: this.#tools }, config, [
           ...this.#context.pendingInput(),
           ...messages.map(content => ({
             role: 'user' as const, content
@@ -341,7 +342,7 @@ export class Run {
 
   #buildRequest(config: RunConfigSnapshot): ResponseCreateParams {
     const params = buildRequest(
-      this.#agent,
+      { tools: this.#tools },
       config,
       this.#prepareInput(this.#context.toInput()),
     );
@@ -415,7 +416,7 @@ export class Run {
           call: structuredClone(call),
         });
         result = await executeTool({
-          tools: this.#agent.tools,
+          tools: this.#tools,
           call,
           signal: this.signal,
         });

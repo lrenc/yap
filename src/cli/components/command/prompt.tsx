@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { PromptRepository } from '../../../app/settings/prompts.ts';
 import { promptNameSchema } from '../../../app/settings/schema.ts';
+import { formatError } from '../../format-error.ts';
 import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
 import { useLock } from '../../hooks/use-lock.ts';
@@ -28,10 +29,6 @@ export interface PromptPanelProps {
   onSelect: (name: string | null) => Promise<void>;
   onComplete: (message: string) => void;
   onClose: () => void;
-}
-
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : 'Prompt operation failed.';
 }
 
 export function PromptPanel({
@@ -73,7 +70,7 @@ export function PromptPanel({
       })
       .catch(cause => {
         if (mounted) {
-          setError(message(cause));
+          setError(formatError(cause, 'Prompt operation failed.'));
         }
       })
       .finally(() => {
@@ -98,7 +95,7 @@ export function PromptPanel({
       setActive(value);
       completed = `Prompt changed to ${name}.`;
     } catch (cause) {
-      setError(message(cause));
+      setError(formatError(cause, 'Prompt operation failed.'));
     } finally {
       saveLock.unlock();
       if (completed) {
@@ -122,7 +119,7 @@ export function PromptPanel({
         content: createDraft(content),
       });
     } catch (cause) {
-      setError(message(cause));
+      setError(formatError(cause, 'Prompt operation failed.'));
     } finally {
       setLoading(false);
     }
@@ -150,7 +147,7 @@ export function PromptPanel({
       );
       completed = `Prompt ${mode === 'add' ? 'created' : 'updated'}: ${name}`;
     } catch (cause) {
-      setError(message(cause));
+      setError(formatError(cause, 'Prompt operation failed.'));
     } finally {
       saveLock.unlock();
       if (completed) {
@@ -182,7 +179,7 @@ export function PromptPanel({
       if (deleted && active === name) {
         setActive(null);
       }
-      setError(message(cause));
+      setError(formatError(cause, 'Prompt operation failed.'));
     } finally {
       saveLock.unlock();
       if (completed) {
@@ -194,7 +191,9 @@ export function PromptPanel({
       try {
         await refresh();
       } catch (cause) {
-        setError(current => current ?? message(cause));
+        setError(current => (
+          current ?? formatError(cause, 'Prompt operation failed.')
+        ));
       }
     }
   };

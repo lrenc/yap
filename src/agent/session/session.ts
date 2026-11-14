@@ -3,6 +3,7 @@ import { checkPendingInput, selectRunConfig } from '../run/request.ts';
 import { Run } from '../run/run.ts';
 import type { AgentEvent, AgentResult, RunOptions } from '../run/types.ts';
 import type { AgentConfig, RunConfigResolver } from '../types.ts';
+import type { AgentTool } from '../../tools/types.ts';
 import type {
   WaitingState,
   ResolverOptions,
@@ -19,7 +20,7 @@ interface QueuedRun {
 
 export class Session {
   readonly #queue: QueuedRun[] = [];
-  readonly #agent: Pick<AgentConfig, 'tools'>;
+  readonly #tools: AgentTool[];
   readonly #context = new Context();
   readonly #resolveRunConfig: RunConfigResolver;
   readonly #legacy: {
@@ -41,7 +42,7 @@ export class Session {
     agent: AgentConfig | Pick<AgentConfig, 'tools'>,
     options: SessionOptions | ResolverOptions,
   ) {
-    this.#agent = agent;
+    this.#tools = agent.tools;
     if ('resolveRunConfig' in options) {
       this.#resolveRunConfig = options.resolveRunConfig;
     } else if (
@@ -116,7 +117,7 @@ export class Session {
     ) {
       throw new Error('Message must not be empty');
     }
-    const run = new Run(this.#agent, this.#context, {
+    const run = new Run({ tools: this.#tools }, this.#context, {
       ...options,
       content: messages.at(-1)!,
       resolveRunConfig: this.#resolveRunConfig,
@@ -144,7 +145,7 @@ export class Session {
         role: 'user' as const,
         content,
       })));
-      checkPendingInput(this.#agent, config, input);
+      checkPendingInput({ tools: this.#tools }, config, input);
     }
     const item: QueuedRun = {
       run,
@@ -215,7 +216,7 @@ export class Session {
           })));
           if (!item.admitted) {
             try {
-              checkPendingInput(this.#agent, config, input);
+              checkPendingInput({ tools: this.#tools }, config, input);
             } catch (error) {
               input.length = previousLength;
               this.#rejectQueued(index, error);

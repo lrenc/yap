@@ -4,34 +4,20 @@ import type { AgentModel } from '../model/types.ts';
 import { models } from './models.ts';
 import { providers } from './providers.ts';
 import type { SecretStore } from './settings/secrets.ts';
-import type { Model, Provider } from './types.ts';
 
 export class ClientFactory {
   readonly #secrets: SecretStore;
-  readonly #models: readonly Model[];
-  readonly #providers: readonly Provider[];
-  readonly #createClient: typeof createClient;
   readonly #clients = new Map<
     string,
     { key: string; client: OpenAIClient }
   >();
 
-  constructor(
-    secrets: SecretStore,
-    options: {
-      models?: readonly Model[];
-      providers?: readonly Provider[];
-      createClient?: typeof createClient;
-    } = {},
-  ) {
+  constructor(secrets: SecretStore) {
     this.#secrets = secrets;
-    this.#models = options.models ?? models;
-    this.#providers = options.providers ?? providers;
-    this.#createClient = options.createClient ?? createClient;
   }
 
   async getClient(providerId: string): Promise<OpenAIClient> {
-    const provider = this.#providers.find(item => item.id === providerId);
+    const provider = providers.find(item => item.id === providerId);
     if (!provider) {
       throw new Error('Unknown Provider; check the model configuration.');
     }
@@ -57,7 +43,7 @@ export class ClientFactory {
 
     // Existing Runs retain their captured client; new Runs must use this key.
     this.#clients.delete(provider.id);
-    const client = this.#createClient({
+    const client = createClient({
       apiKey: key,
       baseURL: provider.baseURL,
     });
@@ -66,7 +52,7 @@ export class ClientFactory {
   }
 
   async getModel(modelId: string): Promise<AgentModel> {
-    const model = this.#models.find(item => item.id === modelId);
+    const model = models.find(item => item.id === modelId);
     if (!model) {
       throw new Error('Unknown model; select a model with /model.');
     }

@@ -56,7 +56,6 @@ export interface AppOptions {
   settings?: SettingsStore;
   secrets?: FileSecretStore;
   prompts?: PromptRepository;
-  clientFactory?: Pick<ClientFactory, 'getModel'>;
   tools?: AgentTool[];
 }
 
@@ -65,11 +64,12 @@ export class App {
   readonly settings: SettingsStore;
   readonly secrets: FileSecretStore;
   readonly prompts: PromptRepository;
-  readonly #clients: Pick<ClientFactory, 'getModel'>;
+  readonly #clients: ClientFactory;
   readonly #tools: AgentTool[];
   readonly #queue: string[] = [];
   readonly #listeners = new Set<(event: AppEvent) => void>();
   readonly #idleWaiters = new Set<() => void>();
+  readonly #runTasks = new Set<Promise<void>>();
   readonly #warnings = new Set<string>();
 
   #errors: InitError[] = [];
@@ -79,10 +79,6 @@ export class App {
   #sessionId: number | null = null;
   #nextSessionId = 0;
   #nextRunId = 0;
-  #active: {
-    controller: AbortController;
-    stream: AsyncIterableIterator<AgentEvent>;
-  } | null = null;
 
   #panel: AppPanel | null = null;
   #panelSaves = 0;
@@ -96,7 +92,7 @@ export class App {
     this.secrets = options.secrets ?? new FileSecretStore();
     this.settings = options.settings ?? new SettingsStore();
     this.prompts = options.prompts ?? new PromptRepository();
-    this.#clients = options.clientFactory ?? new ClientFactory(this.secrets);
+    this.#clients = new ClientFactory(this.secrets);
     this.#tools = options.tools
       ? [...options.tools]
       : [
@@ -110,7 +106,7 @@ export class App {
   }
 
   get running(): boolean {
-    return this.#active !== null;
+    return this.#runTasks.size > 0;
   }
 
   get pendingCount(): number {
@@ -206,7 +202,6 @@ export class App {
   cancel(): void {
     this.#generation += 1;
     this.#queue.length = 0;
-    this.#active?.controller.abort();
     this.#session?.cancel();
     this.closePanel();
     this.#emitQueue();
@@ -219,7 +214,6 @@ export class App {
     }
     this.#disposed = true;
     this.cancel();
-    void this.#active?.stream.return?.().catch(() => {});
     this.#listeners.clear();
     this.#settleIdle();
   }
@@ -294,16 +288,14 @@ export class App {
         }
         if (isCommand(input)) {
           this.#emitQueue();
+          const generation = this.#generation;
+          await this.#waitForRuns();
+          if (this.#disposed || generation !== this.#generation) {
+            break;
+          }
           await this.#command(input);
         } else {
-          const messages = [input];
-          while (
-            this.#queue[0] !== undefined
-            && !isCommand(this.#queue[0])
-          ) {
-            messages.push(this.#queue.shift()!);
-          }
-          await this.#run(messages);
+          this.#startRun(input);
         }
       }
     } catch (error) {
@@ -357,32 +349,52 @@ export class App {
     }
   }
 
-  async #run(messages: string[]): Promise<void> {
+  #startRun(input: string): void {
     this.#session ??= new Session({ tools: this.#tools }, {
       resolveRunConfig: signal => this.#resolveConfig(signal),
     });
     this.#sessionId ??= ++this.#nextSessionId;
     const sessionId = this.#sessionId;
     const runId = ++this.#nextRunId;
-    const controller = new AbortController();
-    const stream = this.#session.runStream(messages, {
-      signal: controller.signal,
-    });
-    this.#active = { controller, stream };
+    const stream = this.#session.runStream(input);
+    const task = this.#consumeRun(stream, input, runId, sessionId)
+      .finally(() => {
+        this.#runTasks.delete(task);
+        this.#emitQueue();
+        this.#settleIdle();
+      });
+    this.#runTasks.add(task);
+    this.#emitQueue();
+    void task.catch(() => {});
+  }
+
+  async #consumeRun(
+    stream: AsyncIterableIterator<AgentEvent>,
+    input: string,
+    runId: number,
+    sessionId: number,
+  ): Promise<void> {
     try {
-      for (const content of messages) {
-        this.#emit({
-          type: 'user_message',
-          content, runId, sessionId,
-        });
-      }
-      this.#emitQueue();
+      this.#emit({
+        type: 'user_message',
+        content: input,
+        runId,
+        sessionId,
+      });
       for await (const event of stream) {
         this.#emit({ ...event, runId, sessionId });
       }
-    } finally {
-      this.#active = null;
-      this.#emitQueue();
+    } catch (error) {
+      this.notice(
+        error instanceof Error ? error.message : 'Cannot run the conversation.',
+        'error',
+      );
+    }
+  }
+
+  async #waitForRuns(): Promise<void> {
+    while (this.#runTasks.size > 0) {
+      await Promise.allSettled([...this.#runTasks]);
     }
   }
 
@@ -460,6 +472,7 @@ export class App {
     return this.#disposed || (
       !this.#draining
       && !this.#queue.length
+      && !this.#runTasks.size
       && !this.#panel
       && !this.#panelSaves
     );

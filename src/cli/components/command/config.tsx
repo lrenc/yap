@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { Model } from '../../../app/types.ts';
+import { formatError } from '../../format-error.ts';
 import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
 import { useLock } from '../../hooks/use-lock.ts';
@@ -26,10 +27,6 @@ export interface ConfigPanelProps {
   onSaveEffort: (effort: string | undefined) => Promise<void>;
   onComplete: (message: string) => void;
   onClose: () => void;
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Save failed.';
 }
 
 export function ConfigPanel({
@@ -140,7 +137,7 @@ export function ConfigPanel({
     } catch (error) {
       setStatus(current => ({
         ...current,
-        reasoningEffort: errorMessage(error),
+        reasoningEffort: formatError(error, 'Save failed.'),
       }));
     } finally {
       saveLock.unlock();
