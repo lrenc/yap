@@ -151,27 +151,6 @@ Type `/` to open the command palette and filter commands by prefix.
 | `Esc` | Close a panel or go back. |
 | `Ctrl+C` | Exit YAP. |
 
-## Local Data
-
-YAP stores its state in a `.yap` directory under your home directory:
-
-```text
-~/.yap/
-├── config.json
-├── secrets.json
-└── prompts/
-    ├── concise.md
-    └── reviewer.md
-```
-
-On POSIX systems, YAP attempts to keep the directory private (`0700`) and its
-files readable only by the current user (`0600`).
-
-> [!WARNING]
-> API keys are stored in `secrets.json` as plain text. YAP does not currently
-> use an OS keychain or encrypt the file. Protect your home directory and do not
-> commit this file to version control.
-
 ## Development
 
 Run the full checks before submitting changes:
