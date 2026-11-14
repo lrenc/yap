@@ -11,7 +11,7 @@ describe('Suggestions', () => {
   });
 
   test('shows the command catalog for a slash', async () => {
-    rendered = render(<Suggestions input='/' />);
+    rendered = render(<Suggestions input='/' selectedIndex={0} />);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     const frame = rendered.lastFrame() ?? '';
@@ -22,7 +22,7 @@ describe('Suggestions', () => {
   });
 
   test('filters the catalog as the command name grows', async () => {
-    rendered = render(<Suggestions input='/co' />);
+    rendered = render(<Suggestions input='/co' selectedIndex={0} />);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     const frame = rendered.lastFrame() ?? '';
@@ -32,7 +32,7 @@ describe('Suggestions', () => {
   });
 
   test('reports when no command matches', async () => {
-    rendered = render(<Suggestions input='/missing' />);
+    rendered = render(<Suggestions input='/missing' selectedIndex={0} />);
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(rendered.lastFrame()).toContain('No matching commands');

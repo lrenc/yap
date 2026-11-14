@@ -72,7 +72,7 @@ export function ModelPanel({
 
   return (
     <Panel
-      footer='↑/↓ move · Enter select · Esc close'
+      footer='↑/↓ move · Enter select'
     >
       <SelectList
         items={models.map(model => ({

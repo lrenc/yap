@@ -22,7 +22,7 @@ import {
   moveVerticalCursor,
   type InputLayout,
 } from '../../state/input.ts';
-import type { Draft } from '../../types.ts';
+import type { Draft, DraftChangeReason } from '../../types.ts';
 
 const DEFAULT_MAX_ROWS = 8;
 const EMPTY_LAYOUT: InputLayout = {
@@ -36,8 +36,9 @@ export interface InputProps {
   focus: boolean;
   placeholder: string;
   maxRows?: number;
-  onDraftChange?: (draft: Draft) => void;
+  onDraftChange?: (draft: Draft, reason: DraftChangeReason) => void;
   onEscape?: () => void;
+  onNavigate?: (direction: 'up' | 'down') => boolean;
   onSubmit?: (value: string) => void;
 }
 
@@ -48,6 +49,7 @@ export function Input({
   maxRows = DEFAULT_MAX_ROWS,
   onDraftChange,
   onEscape,
+  onNavigate,
   onSubmit,
 }: InputProps) {
   const { value, cursor } = draft;
@@ -86,14 +88,17 @@ export function Input({
   );
   const activeLine = rows[activeRow];
 
-  const changeDraft = (change: (current: Draft) => Draft): void => {
+  const changeDraft = (
+    change: (current: Draft) => Draft,
+    reason: DraftChangeReason = 'input',
+  ): void => {
     const current = draftRef.current;
     const next = change(current);
     if (next === current) {
       return;
     }
     draftRef.current = next;
-    onDraftChange?.(next);
+    onDraftChange?.(next, reason);
   };
 
   const submitDraft = (): void => {
@@ -102,7 +107,7 @@ export function Input({
       return;
     }
     const value = draftRef.current.value;
-    changeDraft(() => createDraft(''));
+    changeDraft(() => createDraft(''), 'submit');
     submit(value);
   };
 
@@ -115,6 +120,9 @@ export function Input({
       return;
     }
     if (key.upArrow || key.downArrow) {
+      if (onNavigate?.(key.upArrow ? 'up' : 'down')) {
+        return;
+      }
       changeDraft(current => {
         const currentLayout = canLayout
           ? layoutInput(current.value, current.cursor, width)

@@ -226,7 +226,7 @@ export function ConfigPanel({
     <Panel
       footer={
         view.type === 'fields'
-          ? '↑/↓ move · Enter edit · c clear key · Esc close'
+          ? '↑/↓ move · Enter edit · c clear key'
           : view.type === 'api-key'
             ? 'Enter save · Esc cancel'
             : view.type === 'effort'

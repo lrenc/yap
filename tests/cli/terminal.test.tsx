@@ -102,6 +102,57 @@ describe('Terminal', () => {
     ));
   });
 
+  test('navigates command suggestions while keeping input editable', async () => {
+    const app = await createApp();
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
+
+    rendered.stdin.write('/');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› /model') === true
+    ));
+    await flush();
+    rendered.stdin.write('\x1b[B');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› /config') === true
+    ));
+    rendered.stdin.write('m');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› /model') === true
+      && rendered?.lastFrame()?.includes('/config') === false
+    ));
+    rendered.stdin.write('o\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes(
+        '↑/↓ move · Enter select'
+      ) === true
+    ));
+  });
+
+  test('runs the command selected with arrow keys', async () => {
+    const app = await createApp();
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
+
+    rendered.stdin.write('/');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› /model') === true
+    ));
+    await flush();
+    rendered.stdin.write('\x1b[B');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› /config') === true
+    ));
+    rendered.stdin.write('\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('not configured') === true
+    ));
+  });
+
   test('keeps the Composer fixed while command matches change', async () => {
     const app = await createApp();
     rendered = render(<Terminal app={app} />);
@@ -144,7 +195,7 @@ describe('Terminal', () => {
     rendered.stdin.write('/model\r');
     await waitFor(() => (
       rendered?.lastFrame()?.includes(
-        '↑/↓ move · Enter select · Esc close'
+        '↑/↓ move · Enter select'
       ) === true
     ));
     const frame = rendered.lastFrame()!;
@@ -229,7 +280,7 @@ describe('Terminal', () => {
     rendered.stdin.write('/prompt\r');
     await waitFor(() => (
       rendered?.lastFrame()?.includes(
-        '↑/↓ move · Enter use · a add'
+        '↑/↓ move · a add'
       ) === true
     ));
     await flush();
@@ -237,13 +288,28 @@ describe('Terminal', () => {
     await waitFor(() => (
       rendered?.lastFrame()?.includes('New Prompt name') === true
     ));
-    rendered.stdin.write('reviewer\r');
+    rendered.stdin.write('r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› r') === true
+    ));
+    rendered.stdin.write('eviewer');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› reviewer') === true
+    ));
+    rendered.stdin.write('\r');
     await waitFor(() => (
       rendered?.lastFrame()?.includes('Edit Prompt') === false
       && rendered?.lastFrame()?.includes('New Prompt · reviewer') === true
     ));
-    await flush();
-    rendered.stdin.write('Review carefully\r');
+    rendered.stdin.write('R');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› R') === true
+    ));
+    rendered.stdin.write('eview carefully');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› Review carefully') === true
+    ));
+    rendered.stdin.write('\r');
     await waitFor(() => (
       rendered?.lastFrame()?.includes('Prompt created: reviewer') === true
     ));

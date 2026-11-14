@@ -1,10 +1,17 @@
-import { Box, Text } from 'ink';
+import { Text } from 'ink';
 import { suggestCommands } from '../../../app/commands.ts';
 import { Panel } from './panel.tsx';
+import { SelectList } from '../select-list.tsx';
 
 const VISIBLE_COMMANDS = 5;
 
-export function Suggestions({ input }: { input: string }) {
+export function Suggestions({
+  input,
+  selectedIndex,
+}: {
+  input: string;
+  selectedIndex: number;
+}) {
   if (!input.startsWith('/') || /\s/u.test(input)) {
     return null;
   }
@@ -14,18 +21,18 @@ export function Suggestions({ input }: { input: string }) {
   return (
     <Panel
       height={VISIBLE_COMMANDS}
-      paddingX={3}
     >
-      {suggestions.length > 0 ? suggestions.map(command => (
-        <Box key={command.name} height={1} flexShrink={0}>
-          <Box width={12} flexShrink={0}>
-            <Text color='#61AFEF'>{command.name}</Text>
-          </Box>
-          <Text color='#B4B5BC' wrap='truncate-end'>
-            {command.description}
-          </Text>
-        </Box>
-      )) : (
+      {suggestions.length > 0 ? (
+        <SelectList
+          labelWidth={12}
+          items={suggestions.map(command => ({
+            key: command.name,
+            label: command.name,
+            detail: command.description,
+          }))}
+          selectedIndex={selectedIndex}
+        />
+      ) : (
         <Text color='#7F848E'>No matching commands</Text>
       )}
       {Array.from(

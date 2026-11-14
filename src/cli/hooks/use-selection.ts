@@ -11,8 +11,8 @@ export function useSelection(
   const [index, setIndex] = useState(() => clamp(initialIndex, count));
   const indexRef = useRef(index);
 
-  const select = (next: number, total = count) => {
-    const value = clamp(next, total);
+  const select = (next: number) => {
+    const value = clamp(next, count);
     indexRef.current = value;
     setIndex(value);
   };

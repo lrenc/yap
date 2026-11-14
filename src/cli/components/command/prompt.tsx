@@ -253,7 +253,7 @@ export function PromptPanel({
     <Panel
       footer={
         view.type === 'list'
-          ? '↑/↓ move · Enter use · a add · e edit · d delete · Esc close'
+          ? '↑/↓ move · a add · e edit · d delete'
           : view.type === 'name'
             ? 'Enter continue · Esc back'
             : view.type === 'editor'

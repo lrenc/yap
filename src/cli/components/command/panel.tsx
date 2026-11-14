@@ -5,18 +5,16 @@ export function Panel({
   children,
   footer,
   height,
-  paddingX = 1,
 }: {
   children: ReactNode;
   footer?: string;
   height?: number;
-  paddingX?: number;
 }) {
   return (
     <Box
       flexDirection='column'
       marginTop={1}
-      paddingX={paddingX}
+      paddingX={1}
       flexShrink={0}
       {...(height === undefined ? {} : { height })}
     >

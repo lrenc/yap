@@ -10,19 +10,28 @@ export interface SelectListItem {
 export function SelectList({
   items,
   selectedIndex,
+  labelWidth,
 }: {
   items: readonly SelectListItem[];
   selectedIndex: number;
+  labelWidth?: number;
 }) {
   return (
     <Box flexDirection='column'>
       {items.map((item, index) => {
         const selected = index === selectedIndex;
+        const label = (
+          <Text color={selected ? '#61AFEF' : '#C6C7CD'}>
+            {selected ? '›' : ' '} {item.label}
+          </Text>
+        );
         return (
           <Box key={item.key} height={1} flexShrink={0}>
-            <Text color={selected ? '#61AFEF' : '#C6C7CD'}>
-              {selected ? '›' : ' '} {item.label}
-            </Text>
+            {labelWidth === undefined ? label : (
+              <Box width={labelWidth} flexShrink={0}>
+                {label}
+              </Box>
+            )}
             {item.detail !== undefined ? (
               <Text color='#7F848E'>  {item.detail}</Text>
             ) : null}

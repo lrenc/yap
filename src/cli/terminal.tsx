@@ -3,7 +3,7 @@ import { Static, Box, Text } from 'ink';
 import { homedir } from 'node:os';
 import { sep } from 'node:path';
 import { App } from '../app/app.ts';
-import { isCommand } from '../app/commands.ts';
+import { isCommand, suggestCommands } from '../app/commands.ts';
 import { models } from '../app/models.ts';
 import { ConfigPanel } from './components/command/config.tsx';
 import { Feedback } from './components/command/feedback.tsx';
@@ -14,6 +14,7 @@ import { Suggestions } from './components/command/suggestions.tsx';
 import { Composer } from './components/input/composer.tsx';
 import { StartUp } from './components/startup.tsx';
 import { useApp } from './hooks/use-app.ts';
+import { useSelection } from './hooks/use-selection.ts';
 
 const startupItems: 'startup'[] = ['startup'];
 
@@ -33,6 +34,8 @@ export interface TerminalProps {
 export function Terminal({ app }: TerminalProps = {}) {
   const [runtime] = useState(() => app ?? new App());
   const [draft, setDraft] = useState('');
+  const commands = suggestCommands(draft);
+  const commandSelection = useSelection(commands.length);
   const state = useApp(runtime);
   const config = (() => {
     try {
@@ -62,6 +65,14 @@ export function Terminal({ app }: TerminalProps = {}) {
     if (!value.trim()) {
       return;
     }
+    const matches = suggestCommands(value);
+    const selected = matches[
+      Math.min(commandSelection.current(), matches.length - 1)
+    ];
+    if (selected) {
+      runtime.submit(selected.name);
+      return;
+    }
     if (isCommand(value)) {
       runtime.submit(value);
     } else {
@@ -71,6 +82,26 @@ export function Terminal({ app }: TerminalProps = {}) {
         'info',
       );
     }
+  };
+
+  const changeDraft = (
+    value: string,
+    reason: 'input' | 'submit',
+  ) => {
+    setDraft(value);
+    if (reason === 'input') {
+      commandSelection.select(0);
+    }
+  };
+
+  const navigateSuggestions = (direction: 'up' | 'down'): boolean => {
+    if (state.panel || !commands.length) {
+      return false;
+    }
+    direction === 'up'
+      ? commandSelection.previous()
+      : commandSelection.next();
+    return true;
   };
 
   const completePanel = (message: string) => {
@@ -99,9 +130,7 @@ export function Terminal({ app }: TerminalProps = {}) {
       const model = models.find(item => item.id === panel.modelId);
       if (!model) {
         return (
-          <Panel
-            footer='Esc close'
-          >
+          <Panel>
             <Text color='#E06C75'>Unknown configured model.</Text>
           </Panel>
         );
@@ -164,7 +193,8 @@ export function Terminal({ app }: TerminalProps = {}) {
       ))}
       <Composer
         focus={state.panel === null}
-        onDraftChange={setDraft}
+        onDraftChange={changeDraft}
+        onNavigate={navigateSuggestions}
         placeholder={
           state.ready
             ? 'Ask anything...'
@@ -180,7 +210,12 @@ export function Terminal({ app }: TerminalProps = {}) {
         </Box>
       ) : null}
       {renderPanel()}
-      {state.panel ? null : <Suggestions input={draft} />}
+      {state.panel ? null : (
+        <Suggestions
+          input={draft}
+          selectedIndex={commandSelection.index}
+        />
+      )}
     </>
   );
 }

@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Box, Text, useWindowSize } from 'ink';
 import { Input } from './input.tsx';
 import { createDraft } from '../../state/input.ts';
-import type { Draft } from '../../types.ts';
+import type { Draft, DraftChangeReason } from '../../types.ts';
 
 export interface ComposerProps {
   focus?: boolean;
   initialValue?: string;
-  onDraftChange?: (value: string) => void;
+  onDraftChange?: (value: string, reason: DraftChangeReason) => void;
+  onNavigate?: (direction: 'up' | 'down') => boolean;
   placeholder?: string;
   onSubmit?: (value: string) => void;
 }
@@ -16,6 +17,7 @@ export function Composer({
   focus = true,
   initialValue = '',
   onDraftChange,
+  onNavigate,
   placeholder = 'Ask anything...',
   onSubmit,
 }: ComposerProps) {
@@ -49,9 +51,10 @@ export function Composer({
           maxRows={maxRows}
           placeholder={placeholder}
           {...(onSubmit ? { onSubmit } : {})}
-          onDraftChange={next => {
+          {...(onNavigate ? { onNavigate } : {})}
+          onDraftChange={(next, reason) => {
             setDraft(next);
-            onDraftChange?.(next.value);
+            onDraftChange?.(next.value, reason);
           }}
         />
       </Box>
