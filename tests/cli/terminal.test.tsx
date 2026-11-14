@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import fs from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { join, sep } from 'node:path';
 import { render } from 'ink-testing-library';
 import { App } from '../../src/app/app.ts';
 import { FileSecretStore } from '../../src/app/settings/secrets.ts';
@@ -12,6 +12,11 @@ import { Terminal } from '../../src/cli/terminal.tsx';
 describe('Terminal', () => {
   let rendered: ReturnType<typeof render> | undefined;
   let root: string | undefined;
+  const home = homedir();
+  const cwd = process.cwd();
+  const displayCwd = cwd.startsWith(`${home}${sep}`)
+    ? `~${cwd.slice(home.length)}`
+    : cwd;
 
   afterEach(async () => {
     rendered?.unmount();
@@ -43,16 +48,21 @@ describe('Terminal', () => {
 
   async function flush(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
   }
 
   test('renders the startup screen and prompt input', async () => {
     const app = await createApp();
     rendered = render(<Terminal app={app} />);
-    await waitFor(() => rendered?.lastFrame()?.includes('/model') === true);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
 
     const frame = rendered.lastFrame() ?? '';
     expect(frame).toContain('YAP');
-    expect(frame).toContain('/model');
+    expect(frame).toContain('Ask anything...');
+    expect(frame).toContain('DeepSeek Flash · high');
+    expect(frame).toContain(displayCwd);
   });
 
   test('keeps ordinary messages out of the model conversation', async () => {
@@ -60,7 +70,9 @@ describe('Terminal', () => {
     const events: string[] = [];
     app.subscribe(event => events.push(event.type));
     rendered = render(<Terminal app={app} />);
-    await waitFor(() => rendered?.lastFrame()?.includes('/model') === true);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
 
     rendered.stdin.write('hello\r');
     await waitFor(() => (
@@ -74,7 +86,9 @@ describe('Terminal', () => {
   test('shows and filters the slash command list while typing', async () => {
     const app = await createApp();
     rendered = render(<Terminal app={app} />);
-    await waitFor(() => rendered?.lastFrame()?.includes('/model') === true);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
 
     rendered.stdin.write('/');
     await waitFor(() => (
@@ -91,7 +105,9 @@ describe('Terminal', () => {
   test('keeps the Composer fixed while command matches change', async () => {
     const app = await createApp();
     rendered = render(<Terminal app={app} />);
-    await waitFor(() => rendered?.lastFrame()?.includes('/model') === true);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
     const promptRow = () => rendered!.lastFrame()!.split('\n')
       .findIndex(line => line.includes('›'));
 
@@ -121,11 +137,15 @@ describe('Terminal', () => {
   test('opens the model panel and saves a selection', async () => {
     const app = await createApp();
     rendered = render(<Terminal app={app} />);
-    await waitFor(() => rendered?.lastFrame()?.includes('/model') === true);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
 
     rendered.stdin.write('/model\r');
     await waitFor(() => (
-      rendered?.lastFrame()?.includes('DeepSeek Flash') === true
+      rendered?.lastFrame()?.includes(
+        '↑/↓ move · Enter select · Esc close'
+      ) === true
     ));
     const frame = rendered.lastFrame()!;
     expect(frame).not.toContain('╭');
@@ -140,12 +160,15 @@ describe('Terminal', () => {
     await waitFor(() => app.settings.config.activeModelId === 'deepseek-v4-pro');
 
     expect(rendered.lastFrame()).not.toContain('DeepSeek Flash');
+    expect(rendered.lastFrame()).toContain('DeepSeek Pro · high');
   });
 
   test('keeps an API Key visible while editing', async () => {
     const app = await createApp();
     rendered = render(<Terminal app={app} />);
-    await waitFor(() => rendered?.lastFrame()?.includes('/model') === true);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
 
     rendered.stdin.write('/config\r');
     await waitFor(() => (
@@ -169,8 +192,15 @@ describe('Terminal', () => {
       rendered?.lastFrame()?.includes('API Key saved') === true
     ));
 
+    expect(rendered.lastFrame()).not.toContain('API Key for');
     expect(await app.secrets.getApiKey('deepseek')).toBe('sk-test-secret');
 
+    await flush();
+    rendered.stdin.write('/config\r');
+    await flush();
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('configured') === true
+    ));
     await flush();
     rendered.stdin.write('\x1b[B');
     rendered.stdin.write('\r');
@@ -186,15 +216,22 @@ describe('Terminal', () => {
     await waitFor(() => (
       rendered?.lastFrame()?.includes('none saved') === true
     ));
+    expect(rendered.lastFrame()).toContain('DeepSeek Flash · none');
   });
 
   test('creates a Prompt from the Prompt panel', async () => {
     const app = await createApp();
     rendered = render(<Terminal app={app} />);
-    await waitFor(() => rendered?.lastFrame()?.includes('/model') === true);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
 
     rendered.stdin.write('/prompt\r');
-    await waitFor(() => rendered?.lastFrame()?.includes('default') === true);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes(
+        '↑/↓ move · Enter use · a add'
+      ) === true
+    ));
     await flush();
     rendered.stdin.write('a');
     await waitFor(() => (
@@ -205,11 +242,21 @@ describe('Terminal', () => {
       rendered?.lastFrame()?.includes('Edit Prompt') === false
       && rendered?.lastFrame()?.includes('New Prompt · reviewer') === true
     ));
+    await flush();
     rendered.stdin.write('Review carefully\r');
     await waitFor(() => (
-      rendered?.lastFrame()?.includes('› reviewer') === true
+      rendered?.lastFrame()?.includes('Prompt created: reviewer') === true
     ));
 
+    expect(rendered.lastFrame()).not.toContain('New Prompt');
     expect(await app.prompts.read('reviewer')).toBe('Review carefully');
+
+    await flush();
+    rendered.stdin.write('/prompt reviewer\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes(
+        'reviewer · DeepSeek Flash · high'
+      ) === true
+    ));
   });
 });

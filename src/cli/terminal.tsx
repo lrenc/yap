@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Static, Box, Text } from 'ink';
+import { homedir } from 'node:os';
+import { sep } from 'node:path';
 import { App } from '../app/app.ts';
 import { isCommand } from '../app/commands.ts';
 import { models } from '../app/models.ts';
@@ -14,6 +16,15 @@ import { StartUp } from './components/startup.tsx';
 import { useApp } from './hooks/use-app.ts';
 
 const startupItems: 'startup'[] = ['startup'];
+
+function displayPath(path: string): string {
+  const home = homedir();
+  return path === home
+    ? '~'
+    : path.startsWith(`${home}${sep}`)
+      ? `~${path.slice(home.length)}`
+      : path;
+}
 
 export interface TerminalProps {
   app?: App;
@@ -30,6 +41,22 @@ export function Terminal({ app }: TerminalProps = {}) {
       return null;
     }
   })();
+  const currentModel = config
+    ? models.find(model => model.id === config.activeModelId)
+    : undefined;
+  const reasoningEffort = currentModel
+    ? config?.modelSettings[currentModel.id]?.reasoningEffort
+      ?? currentModel.params.reasoning?.effort
+      ?? 'default'
+    : undefined;
+  const status = currentModel
+    ? [
+      ...(config?.activePrompt ? [config.activePrompt] : []),
+      currentModel.name,
+      reasoningEffort,
+      displayPath(runtime.cwd),
+    ].join(' · ')
+    : null;
 
   const submit = (value: string) => {
     if (!value.trim()) {
@@ -44,6 +71,11 @@ export function Terminal({ app }: TerminalProps = {}) {
         'info',
       );
     }
+  };
+
+  const completePanel = (message: string) => {
+    runtime.notice(message);
+    runtime.closePanel();
   };
 
   const renderPanel = () => {
@@ -92,6 +124,7 @@ export function Terminal({ app }: TerminalProps = {}) {
           onSaveEffort={value => runtime.trackPanelSave(
             runtime.settings.setReasoningEffort(model.id, value)
           )}
+          onComplete={completePanel}
           onClose={() => runtime.closePanel()}
         />
       );
@@ -102,6 +135,7 @@ export function Terminal({ app }: TerminalProps = {}) {
         activePrompt={config?.activePrompt ?? null}
         trackSave={save => runtime.trackPanelSave(save)}
         onSelect={name => runtime.settings.setActivePrompt(name)}
+        onComplete={completePanel}
         onClose={() => runtime.closePanel()}
       />
     );
@@ -133,11 +167,18 @@ export function Terminal({ app }: TerminalProps = {}) {
         onDraftChange={setDraft}
         placeholder={
           state.ready
-            ? 'Use /model, /config or /prompt'
+            ? 'Ask anything...'
             : 'Loading configuration...'
         }
         onSubmit={submit}
       />
+      {currentModel ? (
+        <Box paddingX={1}>
+          <Text color='#7F848E' wrap='truncate-end'>
+            {status}
+          </Text>
+        </Box>
+      ) : null}
       {renderPanel()}
       {state.panel ? null : <Suggestions input={draft} />}
     </>

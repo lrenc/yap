@@ -82,7 +82,7 @@ export function ModelPanel({
         }))}
         selectedIndex={selection.index}
       />
-      {saveLock.locked ? <Text color='#7F848E'>Saving…</Text> : null}
+      {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
       {error ? <Text color='#E06C75'>{error}</Text> : null}
     </Panel>
   );

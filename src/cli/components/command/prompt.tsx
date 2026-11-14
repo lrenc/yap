@@ -26,6 +26,7 @@ export interface PromptPanelProps {
   activePrompt: string | null;
   trackSave: <T>(save: Promise<T>) => Promise<T>;
   onSelect: (name: string | null) => Promise<void>;
+  onComplete: (message: string) => void;
   onClose: () => void;
 }
 
@@ -38,6 +39,7 @@ export function PromptPanel({
   activePrompt,
   trackSave,
   onSelect,
+  onComplete,
   onClose,
 }: PromptPanelProps) {
   const [view, setView] = useState<View>({ type: 'list' });
@@ -89,18 +91,18 @@ export function PromptPanel({
       return;
     }
     setError(null);
-    let selected = false;
+    let completed: string | undefined;
     try {
       const value = name === 'default' ? null : name;
       await trackSave(onSelect(value));
       setActive(value);
-      selected = true;
+      completed = `Prompt changed to ${name}.`;
     } catch (cause) {
       setError(message(cause));
     } finally {
       saveLock.unlock();
-      if (selected) {
-        onClose();
+      if (completed) {
+        onComplete(completed);
       }
     }
   };
@@ -139,19 +141,21 @@ export function PromptPanel({
       return;
     }
     setError(null);
+    let completed: string | undefined;
     try {
       await trackSave(
         mode === 'add'
           ? prompts.create(name, contentValue.value)
           : prompts.update(name, contentValue.value)
       );
-      const next = await refresh();
-      list.select(next.indexOf(name) + 1, next.length + 1);
-      changeView({ type: 'list' });
+      completed = `Prompt ${mode === 'add' ? 'created' : 'updated'}: ${name}`;
     } catch (cause) {
       setError(message(cause));
     } finally {
       saveLock.unlock();
+      if (completed) {
+        onComplete(completed);
+      }
     }
   };
 
@@ -161,6 +165,7 @@ export function PromptPanel({
     }
     setError(null);
     let deleted = false;
+    let completed: string | undefined;
     try {
       await trackSave((async () => {
         await prompts.delete(name);
@@ -172,12 +177,18 @@ export function PromptPanel({
       if (active === name) {
         setActive(null);
       }
+      completed = `Prompt deleted: ${name}`;
     } catch (cause) {
       if (deleted && active === name) {
         setActive(null);
       }
       setError(message(cause));
     } finally {
+      saveLock.unlock();
+      if (completed) {
+        onComplete(completed);
+        return;
+      }
       list.select(0);
       changeView({ type: 'list' });
       try {
@@ -185,7 +196,6 @@ export function PromptPanel({
       } catch (cause) {
         setError(current => current ?? message(cause));
       }
-      saveLock.unlock();
     }
   };
 
@@ -253,7 +263,7 @@ export function PromptPanel({
     >
       {view.type === 'list' ? (
         <Box flexDirection='column'>
-          {loading ? <Text color='#7F848E'>Loading Prompts…</Text> : null}
+          {loading ? <Text color='#7F848E'>Loading Prompts...</Text> : null}
           <SelectList
             items={entries.map(entry => ({
               key: entry,
@@ -330,7 +340,7 @@ export function PromptPanel({
         </Text>
       ) : null}
 
-      {saveLock.locked ? <Text color='#7F848E'>Saving…</Text> : null}
+      {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
       {error ? <Text color='#E06C75'>{error}</Text> : null}
     </Panel>
   );

@@ -47,12 +47,12 @@ export function Composer({
           draft={draft}
           focus={focus}
           maxRows={maxRows}
+          placeholder={placeholder}
+          {...(onSubmit ? { onSubmit } : {})}
           onDraftChange={next => {
             setDraft(next);
             onDraftChange?.(next.value);
           }}
-          placeholder={placeholder}
-          {...(onSubmit ? { onSubmit } : {})}
         />
       </Box>
     </Box>

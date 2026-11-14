@@ -24,6 +24,7 @@ export interface ConfigPanelProps {
   onSaveApiKey: (apiKey: string) => Promise<void>;
   onClearApiKey: () => Promise<void>;
   onSaveEffort: (effort: string | undefined) => Promise<void>;
+  onComplete: (message: string) => void;
   onClose: () => void;
 }
 
@@ -38,12 +39,13 @@ export function ConfigPanel({
   onSaveApiKey,
   onClearApiKey,
   onSaveEffort,
+  onComplete,
   onClose,
 }: ConfigPanelProps) {
   const [view, setView] = useState<View>({ type: 'fields' });
   const viewRef = useRef<View>(view);
   const [configured, setConfigured] = useState<boolean | null>(null);
-  const [effort, setEffort] = useState(currentEffort);
+  const effort = currentEffort;
   const saveLock = useLock();
   const [status, setStatus] = useState<Partial<Record<Field, string>>>({});
   const efforts = ['default', ...(model.reasoningEfforts ?? [])];
@@ -88,15 +90,10 @@ export function ConfigPanel({
     if (!saveLock.tryLock()) {
       return;
     }
+    let completed: string | undefined;
     try {
       await onSaveApiKey(value);
-      setConfigured(true);
-      setStatus(current => ({
-        ...current,
-        apiKey: 'API Key saved; applies from the next run.',
-      }));
-      fields.select(0);
-      changeView({ type: 'fields' });
+      completed = 'API Key saved; applies from the next run.';
     } catch {
       setStatus(current => ({
         ...current,
@@ -104,6 +101,9 @@ export function ConfigPanel({
       }));
     } finally {
       saveLock.unlock();
+      if (completed) {
+        onComplete(completed);
+      }
     }
   };
 
@@ -111,15 +111,10 @@ export function ConfigPanel({
     if (!saveLock.tryLock()) {
       return;
     }
+    let completed: string | undefined;
     try {
       await onClearApiKey();
-      setConfigured(false);
-      setStatus(current => ({
-        ...current,
-        apiKey: 'API Key cleared.',
-      }));
-      fields.select(0);
-      changeView({ type: 'fields' });
+      completed = 'API Key cleared.';
     } catch {
       setStatus(current => ({
         ...current,
@@ -127,6 +122,9 @@ export function ConfigPanel({
       }));
     } finally {
       saveLock.unlock();
+      if (completed) {
+        onComplete(completed);
+      }
     }
   };
 
@@ -134,16 +132,11 @@ export function ConfigPanel({
     if (!saveLock.tryLock()) {
       return;
     }
+    let completed: string | undefined;
     try {
       const value = option === 'default' ? undefined : option;
       await onSaveEffort(value);
-      setEffort(value);
-      setStatus(current => ({
-        ...current,
-        reasoningEffort: `${option} saved; applies from the next run.`,
-      }));
-      fields.select(1);
-      changeView({ type: 'fields' });
+      completed = `${option} saved; applies from the next run.`;
     } catch (error) {
       setStatus(current => ({
         ...current,
@@ -151,6 +144,9 @@ export function ConfigPanel({
       }));
     } finally {
       saveLock.unlock();
+      if (completed) {
+        onComplete(completed);
+      }
     }
   };
 
@@ -246,7 +242,7 @@ export function ConfigPanel({
                 key: 'api-key',
                 label: 'API Key',
                 detail: configured === null
-                  ? 'checking…'
+                  ? 'checking...'
                   : configured ? 'configured' : 'not configured',
               },
               {
@@ -285,7 +281,7 @@ export function ConfigPanel({
             onSubmit={value => void saveApiKey(value)}
             placeholder='Enter API Key'
           />
-          {saveLock.locked ? <Text color='#7F848E'>Saving…</Text> : null}
+          {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
         </Box>
       ) : null}
 
@@ -299,7 +295,7 @@ export function ConfigPanel({
             }))}
             selectedIndex={effortOptions.index}
           />
-          {saveLock.locked ? <Text color='#7F848E'>Saving…</Text> : null}
+          {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
         </Box>
       ) : null}
 

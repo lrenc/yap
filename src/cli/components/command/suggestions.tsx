@@ -30,7 +30,9 @@ export function Suggestions({ input }: { input: string }) {
       )}
       {Array.from(
         { length: VISIBLE_COMMANDS - visibleRows },
-        (_value, index) => <Text key={`padding-${index}`}> </Text>,
+        (_value, index) => (
+          <Text key={`padding-${index}`}> </Text>
+        ),
       )}
     </Panel>
   );

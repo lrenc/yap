@@ -23,6 +23,7 @@ describe('PromptPanel', () => {
     root = await fs.mkdtemp(join(tmpdir(), 'yap-prompt-panel-'));
     const prompts = new PromptRepository(root);
     await prompts.create('reviewer', 'Review carefully');
+    let completed = 0;
     rendered = render(
       <PromptPanel
         prompts={prompts}
@@ -30,6 +31,9 @@ describe('PromptPanel', () => {
         trackSave={save => save}
         onSelect={async () => {
           throw new Error('config write failed');
+        }}
+        onComplete={() => {
+          completed += 1;
         }}
         onClose={() => {}}
       />,
@@ -50,6 +54,7 @@ describe('PromptPanel', () => {
     expect(await prompts.read('reviewer')).toBeUndefined();
     expect(rendered.lastFrame()).not.toContain('Delete');
     expect(rendered.lastFrame()).toContain('› default');
+    expect(completed).toBe(0);
   });
 });
 
