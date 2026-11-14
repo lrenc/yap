@@ -13,7 +13,36 @@ type Dependencies = {
   prompts: Pick<PromptRepository, 'read'>;
 };
 
-const HELP = 'Commands: /model [id], /config, /prompt [name|default], /new.';
+export interface CommandInfo {
+  readonly name: string;
+  readonly usage: string;
+  readonly description: string;
+}
+
+export const COMMANDS: readonly CommandInfo[] = [
+  {
+    name: '/model',
+    usage: '/model [id]',
+    description: 'Select a model',
+  },
+  {
+    name: '/config',
+    usage: '/config',
+    description: 'Configure credentials and reasoning effort',
+  },
+  {
+    name: '/prompt',
+    usage: '/prompt [name|default]',
+    description: 'Select or manage Prompts',
+  },
+  {
+    name: '/new',
+    usage: '/new',
+    description: 'Start a new conversation',
+  },
+];
+
+const HELP = `Commands: ${COMMANDS.map(command => command.usage).join(', ')}.`;
 
 function failure(message: string): CommandResult {
   return {
@@ -25,6 +54,13 @@ function failure(message: string): CommandResult {
 
 export function isCommand(input: string): boolean {
   return input.startsWith('/');
+}
+
+export function suggestCommands(input: string): readonly CommandInfo[] {
+  if (!isCommand(input) || /\s/u.test(input)) {
+    return [];
+  }
+  return COMMANDS.filter(command => command.name.startsWith(input));
 }
 
 export async function executeCommand(

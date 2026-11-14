@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { render } from 'ink-testing-library';
-import { Composer } from '../../../src/cli/components/composer.tsx';
+import { Composer } from '../../../../src/cli/components/input/composer.tsx';
 
 async function waitForRender(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 0));

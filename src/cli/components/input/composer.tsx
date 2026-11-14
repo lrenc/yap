@@ -1,16 +1,22 @@
 import { useState } from 'react';
 import { Box, Text, useWindowSize } from 'ink';
 import { Input } from './input.tsx';
-import { createDraft } from '../state/input.ts';
-import type { Draft } from '../types.ts';
+import { createDraft } from '../../state/input.ts';
+import type { Draft } from '../../types.ts';
 
-interface ComposerProps {
+export interface ComposerProps {
+  focus?: boolean;
   initialValue?: string;
+  onDraftChange?: (value: string) => void;
+  placeholder?: string;
   onSubmit?: (value: string) => void;
 }
 
 export function Composer({
+  focus = true,
   initialValue = '',
+  onDraftChange,
+  placeholder = 'Ask anything...',
   onSubmit,
 }: ComposerProps) {
   const [draft, setDraft] = useState<Draft>(
@@ -39,10 +45,13 @@ export function Composer({
         </Box>
         <Input
           draft={draft}
-          focus={true}
+          focus={focus}
           maxRows={maxRows}
-          onDraftChange={setDraft}
-          placeholder='Ask anything...'
+          onDraftChange={next => {
+            setDraft(next);
+            onDraftChange?.(next.value);
+          }}
+          placeholder={placeholder}
           {...(onSubmit ? { onSubmit } : {})}
         />
       </Box>

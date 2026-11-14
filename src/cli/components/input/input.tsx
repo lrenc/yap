@@ -21,8 +21,8 @@ import {
   layoutInput,
   moveVerticalCursor,
   type InputLayout,
-} from '../state/input.ts';
-import type { Draft } from '../types.ts';
+} from '../../state/input.ts';
+import type { Draft } from '../../types.ts';
 
 const DEFAULT_MAX_ROWS = 8;
 const EMPTY_LAYOUT: InputLayout = {
@@ -37,6 +37,7 @@ export interface InputProps {
   placeholder: string;
   maxRows?: number;
   onDraftChange?: (draft: Draft) => void;
+  onEscape?: () => void;
   onSubmit?: (value: string) => void;
 }
 
@@ -46,6 +47,7 @@ export function Input({
   placeholder,
   maxRows = DEFAULT_MAX_ROWS,
   onDraftChange,
+  onEscape,
   onSubmit,
 }: InputProps) {
   const { value, cursor } = draft;
@@ -106,6 +108,10 @@ export function Input({
 
   useInkInput((input, key) => {
     if (key.eventType === 'release') {
+      return;
+    }
+    if (key.escape) {
+      onEscape?.();
       return;
     }
     if (key.upArrow || key.downArrow) {

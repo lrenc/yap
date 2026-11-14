@@ -2,9 +2,9 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { useState } from 'react';
 import { Box } from 'ink';
 import { render } from 'ink-testing-library';
-import { Input } from '../../../src/cli/components/input.tsx';
-import { createDraft } from '../../../src/cli/state/input.ts';
-import type { Draft } from '../../../src/cli/types.ts';
+import { Input } from '../../../../src/cli/components/input/input.tsx';
+import { createDraft } from '../../../../src/cli/state/input.ts';
+import type { Draft } from '../../../../src/cli/types.ts';
 
 async function waitForRender(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 0));
@@ -414,5 +414,27 @@ describe('Input', () => {
     await waitForRender();
 
     expect(rendered.lastFrame()).not.toContain('hidden');
+  });
+
+  test('reports escape as cancellation', async () => {
+    let escaped = 0;
+    rendered = render(
+      <Box width={20}>
+        <Input
+          draft={createDraft('hello')}
+          focus
+          onEscape={() => {
+            escaped += 1;
+          }}
+          placeholder=''
+        />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('\x1b[27u');
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    expect(escaped).toBe(1);
   });
 });

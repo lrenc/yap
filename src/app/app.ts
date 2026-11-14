@@ -53,6 +53,9 @@ export type AppEvent =
 
 export interface AppOptions {
   cwd?: string;
+  settings?: SettingsStore;
+  secrets?: FileSecretStore;
+  prompts?: PromptRepository;
   clientFactory?: Pick<ClientFactory, 'getModel'>;
   tools?: AgentTool[];
 }
@@ -90,9 +93,9 @@ export class App {
 
   constructor(options: AppOptions = {}) {
     this.cwd = resolve(options.cwd ?? process.cwd());
-    this.secrets = new FileSecretStore();
-    this.settings = new SettingsStore();
-    this.prompts = new PromptRepository();
+    this.secrets = options.secrets ?? new FileSecretStore();
+    this.settings = options.settings ?? new SettingsStore();
+    this.prompts = options.prompts ?? new PromptRepository();
     this.#clients = options.clientFactory ?? new ClientFactory(this.secrets);
     this.#tools = options.tools
       ? [...options.tools]
