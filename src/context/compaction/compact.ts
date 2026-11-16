@@ -3,7 +3,6 @@ import type {
   ResponseCreateParams,
   ResponseInputItem,
 } from '../../model/provider/openai/types.ts';
-import { isUndefined } from '../../utils/guards.ts';
 import type { Context } from '../context.ts';
 import { summaryMessages } from '../history.ts';
 import { estimateText, estimateTokens } from '../tokens.ts';
@@ -62,7 +61,7 @@ export async function compact({
       summary: plan.summary,
       margin: budget.margin,
       signal,
-      ...(isUndefined(requestConfig)
+      ...(requestConfig === undefined
         ? {}
         : { requestConfig }),
     });

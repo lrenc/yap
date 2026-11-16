@@ -4,7 +4,6 @@ import { summaryMessages } from '../../context/history.ts';
 import { estimateTokens } from '../../context/tokens.ts';
 import { getModel } from '../../model/lookup.ts';
 import { buildModelParams } from '../../model/params.ts';
-import { isUndefined } from '../../utils/guards.ts';
 import type { CompactionBudget, RequestInfo } from '../../context/types.ts';
 import type {
   ResponseCreateParams,
@@ -20,7 +19,7 @@ export function selectRunConfig(
   return {
     model: getModel(agent.models, selection.modelId),
     instructions: agent.instructions,
-    ...(isUndefined(selection.reasoningEffort) ? {} : {
+    ...(selection.reasoningEffort === undefined ? {} : {
       reasoningEffort: selection.reasoningEffort,
     }),
   };
@@ -68,7 +67,7 @@ export function buildRequest(
   const params: ResponseCreateParams = {
     ...buildModelParams(
       model,
-      isUndefined(reasoningEffort) ? {} : { reasoningEffort },
+      reasoningEffort === undefined ? {} : { reasoningEffort },
     ),
     model: model.id,
     instructions,
@@ -109,7 +108,7 @@ export function captureRequest(params: ResponseCreateParams, {
     contextStart,
     hasExtraInput,
   };
-  if (!isUndefined(endpoint)) {
+  if (endpoint !== undefined) {
     request.endpoint = endpoint;
   }
   return {

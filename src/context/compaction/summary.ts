@@ -3,7 +3,6 @@ import type {
   OpenAIClient,
   ResponseCreateParams,
 } from '../../model/provider/openai/types.ts';
-import { isUndefined } from '../../utils/guards.ts';
 import { estimateTokens } from '../tokens.ts';
 
 const INSTRUCTIONS = `
@@ -65,7 +64,7 @@ export async function summarize({
   }
   const source = JSON.stringify({ summary, messages });
   const request: ResponseCreateParams = {
-    ...(isUndefined(requestConfig)
+    ...(requestConfig === undefined
       ? {}
       : structuredClone({
         instructions: requestConfig.instructions,
@@ -74,11 +73,11 @@ export async function summarize({
       })
     ),
     model: modelId,
-    ...(isUndefined(requestConfig)
+    ...(requestConfig === undefined
       ? { instructions: INSTRUCTIONS }
       : {}
     ),
-    input: isUndefined(requestConfig) ? source : [
+    input: requestConfig === undefined ? source : [
       {
         role: 'developer',
         content: INSTRUCTIONS,
