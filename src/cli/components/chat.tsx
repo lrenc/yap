@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Box, Text } from 'ink';
 import type {
   ActiveResponse,
@@ -19,29 +20,60 @@ export function Chat({
 }) {
   return (
     <>
-      {chat.active?.text ? (
-        <ActiveMessage active={chat.active} />
+      {chat.active ? (
+        <Box paddingX={1} marginBottom={1}>
+          <ActiveMessage active={chat.active} />
+        </Box>
       ) : null}
       {chat.activity ? (
-        <Activity activity={chat.activity} />
+        <Box paddingX={1}>
+          <Activity activity={chat.activity} />
+        </Box>
       ) : null}
     </>
   );
 }
 
-export function ChatEntryView({ item }: { item: ChatEntry }) {
+function ActiveMessage({ active }: { active: ActiveResponse }) {
+  return (
+    <Text
+      {...(active.refusal ? { color: '#E5C07B' } : {})}
+      wrap='wrap'
+    >
+      {active.text}
+      <Text color='#61AFEF'>▌</Text>
+    </Text>
+  );
+}
+
+export const ChatEntryView = memo(function ChatEntryView({
+  item,
+}: {
+  item: ChatEntry;
+}) {
   if (item.type === 'user') {
     return (
-      <Box paddingX={1} marginBottom={1} flexDirection='column'>
-        <Text bold color='#61AFEF'>You</Text>
-        <Text wrap='wrap'>{item.content}</Text>
+      <Box
+        width='100%'
+        backgroundColor='#373B43'
+        paddingX={1}
+        paddingY={1}
+        marginBottom={1}
+      >
+        <Text color='#E6E6E6' wrap='wrap'>{item.content}</Text>
       </Box>
     );
   }
   if (item.type === 'assistant') {
+    const hasGap = item.streamPart === undefined
+      || item.streamPart === 'end'
+      || item.streamPart === 'only';
     return (
-      <Box paddingX={1} marginBottom={1} flexDirection='column'>
-        <Text bold color='#98C379'>YAP</Text>
+      <Box
+        paddingX={1}
+        marginBottom={hasGap ? 1 : 0}
+        flexDirection='column'
+      >
         <Text
           {...(item.refusal ? { color: '#E5C07B' } : {})}
           wrap='wrap'
@@ -79,22 +111,17 @@ export function ChatEntryView({ item }: { item: ChatEntry }) {
       <Text color='#7F848E'>──── {item.label} ────</Text>
     </Box>
   );
-}
+});
 
-function ActiveMessage({ active }: { active: ActiveResponse }) {
-  return (
-    <Box paddingX={1} marginBottom={1} flexDirection='column'>
-      <Text bold color='#98C379'>YAP</Text>
-      <Text
-        {...(active.refusal ? { color: '#E5C07B' } : {})}
-        wrap='wrap'
-      >
-        {active.text}
-        <Text color='#61AFEF'>▌</Text>
-      </Text>
-    </Box>
-  );
-}
+export const CompletedTranscript = memo(function CompletedTranscript({
+  items,
+}: {
+  items: readonly ChatEntry[];
+}) {
+  return items.map(item => (
+    <ChatEntryView key={item.id} item={item} />
+  ));
+});
 
 function Activity({ activity }: { activity: ChatActivity }) {
   const text = activity.type === 'thinking'
@@ -105,8 +132,6 @@ function Activity({ activity }: { activity: ChatActivity }) {
         ? `Waiting for ${activity.modelId}...`
         : `Running ${activity.name}...`;
   return (
-    <Box paddingX={1}>
-      <Text color='#7F848E'>{text}</Text>
-    </Box>
+    <Text color='#7F848E'>{text}</Text>
   );
 }

@@ -17,7 +17,12 @@ export function Feedback({
   paused: boolean;
 }) {
   return (
-    <Box flexDirection='column' paddingX={1} minHeight={1}>
+    <Box
+      flexDirection='column'
+      flexShrink={0}
+      paddingX={1}
+      minHeight={1}
+    >
       {feedback.map(item => (
         <Text key={item.id} color={COLORS[item.level]} wrap='wrap'>
           {item.message}

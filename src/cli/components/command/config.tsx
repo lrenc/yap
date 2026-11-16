@@ -25,7 +25,7 @@ export interface ConfigPanelProps {
   onSaveApiKey: (apiKey: string) => Promise<void>;
   onClearApiKey: () => Promise<void>;
   onSaveEffort: (effort: string | undefined) => Promise<void>;
-  onComplete: (message: string) => void;
+  onComplete: () => void;
   onClose: () => void;
 }
 
@@ -62,12 +62,12 @@ export function ConfigPanel({
           setConfigured(value);
         }
       })
-      .catch(() => {
+      .catch(cause => {
         if (active) {
           setConfigured(false);
           setStatus(current => ({
             ...current,
-            apiKey: 'Cannot read API Key status.',
+            apiKey: formatError(cause, 'Cannot read API Key status.'),
           }));
         }
       });
@@ -87,19 +87,19 @@ export function ConfigPanel({
     if (!saveLock.tryLock()) {
       return;
     }
-    let completed: string | undefined;
+    let succeeded = false;
     try {
       await onSaveApiKey(value);
-      completed = 'API Key saved; applies from the next run.';
-    } catch {
+      succeeded = true;
+    } catch (error) {
       setStatus(current => ({
         ...current,
-        apiKey: 'Cannot save API Key.',
+        apiKey: formatError(error, 'Cannot save API Key.'),
       }));
     } finally {
       saveLock.unlock();
-      if (completed) {
-        onComplete(completed);
+      if (succeeded) {
+        onComplete();
       }
     }
   };
@@ -108,19 +108,19 @@ export function ConfigPanel({
     if (!saveLock.tryLock()) {
       return;
     }
-    let completed: string | undefined;
+    let succeeded = false;
     try {
       await onClearApiKey();
-      completed = 'API Key cleared.';
-    } catch {
+      succeeded = true;
+    } catch (error) {
       setStatus(current => ({
         ...current,
-        apiKey: 'Cannot clear API Key.',
+        apiKey: formatError(error, 'Cannot clear API Key.'),
       }));
     } finally {
       saveLock.unlock();
-      if (completed) {
-        onComplete(completed);
+      if (succeeded) {
+        onComplete();
       }
     }
   };
@@ -129,11 +129,11 @@ export function ConfigPanel({
     if (!saveLock.tryLock()) {
       return;
     }
-    let completed: string | undefined;
+    let succeeded = false;
     try {
       const value = option === 'default' ? undefined : option;
       await onSaveEffort(value);
-      completed = `${option} saved; applies from the next run.`;
+      succeeded = true;
     } catch (error) {
       setStatus(current => ({
         ...current,
@@ -141,8 +141,8 @@ export function ConfigPanel({
       }));
     } finally {
       saveLock.unlock();
-      if (completed) {
-        onComplete(completed);
+      if (succeeded) {
+        onComplete();
       }
     }
   };
@@ -251,12 +251,12 @@ export function ConfigPanel({
             selectedIndex={fields.index}
           />
           {apiStatus ? (
-            <Text color='#7F848E'>
+            <Text color='#E06C75'>
               API Key: {apiStatus}
             </Text>
           ) : null}
           {effortStatus ? (
-            <Text color='#7F848E'>
+            <Text color='#E06C75'>
               Reasoning Effort: {effortStatus}
             </Text>
           ) : null}
@@ -279,6 +279,9 @@ export function ConfigPanel({
             placeholder='Enter API Key'
           />
           {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
+          {apiStatus ? (
+            <Text color='#E06C75'>{apiStatus}</Text>
+          ) : null}
         </Box>
       ) : null}
 
@@ -293,13 +296,21 @@ export function ConfigPanel({
             selectedIndex={effortOptions.index}
           />
           {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
+          {effortStatus ? (
+            <Text color='#E06C75'>{effortStatus}</Text>
+          ) : null}
         </Box>
       ) : null}
 
       {view.type === 'confirm-clear' ? (
-        <Text color='#E5C07B'>
-          Clear the stored API Key? Press Enter to confirm.
-        </Text>
+        <>
+          <Text color='#E5C07B'>
+            Clear the stored API Key? Press Enter to confirm.
+          </Text>
+          {apiStatus ? (
+            <Text color='#E06C75'>{apiStatus}</Text>
+          ) : null}
+        </>
       ) : null}
     </Panel>
   );

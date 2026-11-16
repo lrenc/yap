@@ -34,6 +34,17 @@ describe('Composer', () => {
     expect(rendered.lastFrame()).toContain('› hello');
   });
 
+  test('renders a blue down arrow for unseen output', async () => {
+    rendered = render(
+      <Composer newOutput />,
+    );
+    await waitForRender();
+
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('↓ Ask anything...');
+    expect(frame).not.toContain('›');
+  });
+
   test('grows with multiline content', async () => {
     rendered = render(
       <Composer initialValue={'one\ntwo\nthree\nfour'} />,

@@ -3,7 +3,7 @@ import type { PromptRepository } from './settings/prompts.ts';
 import type { SettingsStore } from './settings/store.ts';
 
 export type CommandResult =
-  | { type: 'notice'; level: 'info' | 'error'; message: string }
+  | { type: 'notice'; level: 'error'; message: string }
   | { type: 'panel_request'; panel: 'model' | 'config' | 'prompt' }
   | { type: 'new_session' }
   | { type: 'noop' };
@@ -90,11 +90,7 @@ export async function executeCommand(
           );
         }
         await settings.setModel(argument);
-        return {
-          type: 'notice',
-          level: 'info',
-          message: `Model changed to ${argument}; applies from the next run.`,
-        };
+        return { type: 'noop' };
       }
       case '/config': {
         if (args.length > 0) {
@@ -126,11 +122,7 @@ export async function executeCommand(
         await settings.setActivePrompt(
           argument === 'default' ? undefined : argument
         );
-        return {
-          type: 'notice',
-          level: 'info',
-          message: `Prompt changed to ${argument}; applies from the next run.`,
-        };
+        return { type: 'noop' };
       }
       case '/new': {
         if (args.length > 0) {

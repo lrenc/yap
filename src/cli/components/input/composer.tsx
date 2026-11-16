@@ -7,6 +7,7 @@ import type { Draft, DraftChangeReason } from '../../types.ts';
 export interface ComposerProps {
   focus?: boolean;
   initialValue?: string;
+  newOutput?: boolean;
   onDraftChange?: (value: string, reason: DraftChangeReason) => void;
   onNavigate?: (direction: 'up' | 'down') => boolean;
   placeholder?: string;
@@ -17,6 +18,7 @@ export interface ComposerProps {
 export function Composer({
   focus = true,
   initialValue = '',
+  newOutput = false,
   onDraftChange,
   onNavigate,
   placeholder = 'Ask anything...',
@@ -37,6 +39,7 @@ export function Composer({
       width='100%'
       backgroundColor='#373B43'
       flexDirection='column'
+      flexShrink={0}
     >
       <Box
         paddingX={1}
@@ -45,7 +48,9 @@ export function Composer({
         flexDirection='row'
       >
         <Box width={2} flexShrink={0}>
-          <Text color='#B4B5BC'>› </Text>
+          <Text color={newOutput ? '#61AFEF' : '#B4B5BC'}>
+            {newOutput ? '↓ ' : '› '}
+          </Text>
         </Box>
         <Input
           draft={draft}

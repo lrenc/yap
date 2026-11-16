@@ -27,7 +27,7 @@ export interface PromptPanelProps {
   activePrompt: string | undefined;
   trackSave: <T>(save: Promise<T>) => Promise<T>;
   onSelect: (name: string | undefined) => Promise<void>;
-  onComplete: (message: string) => void;
+  onComplete: () => void;
   onClose: () => void;
 }
 
@@ -88,18 +88,18 @@ export function PromptPanel({
       return;
     }
     setError(undefined);
-    let completed: string | undefined;
+    let succeeded = false;
     try {
       const value = name === 'default' ? undefined : name;
       await trackSave(onSelect(value));
       setActive(value);
-      completed = `Prompt changed to ${name}.`;
+      succeeded = true;
     } catch (cause) {
       setError(formatError(cause, 'Prompt operation failed.'));
     } finally {
       saveLock.unlock();
-      if (completed) {
-        onComplete(completed);
+      if (succeeded) {
+        onComplete();
       }
     }
   };
@@ -138,20 +138,20 @@ export function PromptPanel({
       return;
     }
     setError(undefined);
-    let completed: string | undefined;
+    let succeeded = false;
     try {
       await trackSave(
         mode === 'add'
           ? prompts.create(name, contentValue.value)
           : prompts.update(name, contentValue.value)
       );
-      completed = `Prompt ${mode === 'add' ? 'created' : 'updated'}: ${name}`;
+      succeeded = true;
     } catch (cause) {
       setError(formatError(cause, 'Prompt operation failed.'));
     } finally {
       saveLock.unlock();
-      if (completed) {
-        onComplete(completed);
+      if (succeeded) {
+        onComplete();
       }
     }
   };
@@ -162,7 +162,7 @@ export function PromptPanel({
     }
     setError(undefined);
     let deleted = false;
-    let completed: string | undefined;
+    let succeeded = false;
     try {
       await trackSave((async () => {
         await prompts.delete(name);
@@ -174,7 +174,7 @@ export function PromptPanel({
       if (active === name) {
         setActive(undefined);
       }
-      completed = `Prompt deleted: ${name}`;
+      succeeded = true;
     } catch (cause) {
       if (deleted && active === name) {
         setActive(undefined);
@@ -182,8 +182,8 @@ export function PromptPanel({
       setError(formatError(cause, 'Prompt operation failed.'));
     } finally {
       saveLock.unlock();
-      if (completed) {
-        onComplete(completed);
+      if (succeeded) {
+        onComplete();
         return;
       }
       list.select(0);

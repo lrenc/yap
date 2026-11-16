@@ -17,7 +17,6 @@ export interface AppUiState {
   feedback: AppFeedback[];
   chat: ChatState;
   pending: number;
-  running: boolean;
   paused: boolean;
   ready: boolean;
   initErrors: readonly InitError[];
@@ -32,13 +31,12 @@ const INITIAL_STATE: AppUiState = {
   feedback: [],
   chat: INITIAL_CHAT_STATE,
   pending: 0,
-  running: false,
   paused: false,
   ready: false,
   initErrors: [],
 };
 
-export function reduceAppState(
+function reduceAppState(
   state: AppUiState,
   action: Action,
 ): AppUiState {
@@ -86,7 +84,6 @@ export function reduceAppState(
       return {
         ...state,
         pending: event.pending,
-        running: event.running,
         paused: event.paused,
       };
     }

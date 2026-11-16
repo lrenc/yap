@@ -4,7 +4,10 @@ import {
   Chat,
   ChatEntryView,
 } from '../../../src/cli/components/chat.tsx';
-import type { ChatState } from '../../../src/cli/state/chat.ts';
+import type {
+  ChatEntry,
+  ChatState,
+} from '../../../src/cli/state/chat.ts';
 
 describe('Chat', () => {
   let rendered: ReturnType<typeof render> | null = null;
@@ -39,6 +42,7 @@ describe('Chat', () => {
         turn: 2,
         text: 'streaming',
         refusal: false,
+        parts: 0,
       },
       activity: null,
     };
@@ -51,12 +55,15 @@ describe('Chat', () => {
       </>,
     );
     await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     const frame = rendered.lastFrame() ?? '';
     expect(frame).toContain('question');
     expect(frame).toContain('answer');
     expect(frame).toContain('read_file');
     expect(frame).not.toContain('⚙');
+    expect(frame).not.toContain('You');
+    expect(frame).not.toContain('YAP');
     expect(frame).toContain('streaming▌');
   });
 
@@ -73,5 +80,57 @@ describe('Chat', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(rendered.lastFrame()).toContain('Compacting context...');
+  });
+
+  test('continues a streamed response in order', async () => {
+    const items: ChatEntry[] = [
+      {
+        id: 'assistant:1:1:1:part:0',
+        type: 'assistant',
+        content: 'first line',
+        refusal: false,
+        streamPart: 'start',
+      },
+      {
+        id: 'assistant:1:1:1:part:1',
+        type: 'assistant',
+        content: 'second line',
+        refusal: false,
+        streamPart: 'continue',
+      },
+    ];
+    rendered = render(
+      <>
+        {items.map(item => (
+          <ChatEntryView key={item.id} item={item} />
+        ))}
+        <Chat
+          chat={{
+            completed: items,
+            active: {
+              id: 'assistant:1:1:1',
+              runId: 1,
+              sessionId: 1,
+              turn: 1,
+              text: 'latest line',
+              refusal: false,
+              parts: 2,
+            },
+            activity: null,
+          }}
+        />
+      </>,
+    );
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).not.toContain('YAP');
+    expect(frame.indexOf('first line')).toBeLessThan(
+      frame.indexOf('second line'),
+    );
+    expect(frame.indexOf('second line')).toBeLessThan(
+      frame.indexOf('latest line'),
+    );
   });
 });

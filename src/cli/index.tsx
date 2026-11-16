@@ -1,5 +1,13 @@
 import { render } from 'ink';
+import {
+  createMouseInput,
+  DISABLE_MOUSE,
+  ENABLE_MOUSE,
+} from './input/mouse.ts';
 import { Terminal } from './terminal.tsx';
+
+const ENTER_ALTERNATE_SCREEN = '\x1b[?1049h\x1b[H';
+const EXIT_ALTERNATE_SCREEN = '\x1b[?1049l';
 
 if (!process.stdin.isTTY || !process.stdout.isTTY) {
   console.error('Please run Yap in an interactive terminal.');
@@ -16,16 +24,17 @@ if (!process.stdin.isTTY || !process.stdout.isTTY) {
 }
 
 async function start() {
-  // 清屏
-  if (process.env.TERM !== 'dumb') {
-    process.stdout.write('\x1b[2J\x1b[H\x1b[3J');
-  }
   process.stdin.setRawMode(true);
+  const mouse = createMouseInput(process.stdin);
+  process.stdout.write(ENABLE_MOUSE);
+  process.stdout.write(ENTER_ALTERNATE_SCREEN);
   try {
     const ui = render(
-      <Terminal />, {
+      <Terminal wheelEvents={mouse.events} />, {
+        stdin: mouse.stdin,
         interactive: true,
         kittyKeyboard: { mode: 'auto' },
+        maxFps: process.env.SSH_TTY === undefined ? 60 : 30,
       }
     );
     const stop = () => {
@@ -42,6 +51,9 @@ async function start() {
       process.off('SIGHUP', stop);
     }
   } finally {
+    process.stdout.write(DISABLE_MOUSE);
+    process.stdout.write(EXIT_ALTERNATE_SCREEN);
+    mouse.dispose();
     process.stdin.setRawMode(false);
   }
 }

@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { Static, Box, Text } from 'ink';
+import type { EventEmitter } from 'node:events';
+import {
+  Box,
+  Text,
+  useWindowSize,
+} from 'ink';
 import { homedir } from 'node:os';
 import { sep } from 'node:path';
 import { App } from '../app/app.ts';
@@ -13,12 +18,18 @@ import { PromptPanel } from './components/command/prompt.tsx';
 import { Suggestions } from './components/command/suggestions.tsx';
 import {
   Chat,
-  ChatEntryView,
+  CompletedTranscript,
 } from './components/chat.tsx';
 import { Composer } from './components/input/composer.tsx';
+import {
+  Scroller,
+} from './components/scroller.tsx';
 import { StartUp } from './components/startup.tsx';
 import { useApp } from './hooks/use-app.ts';
 import { useSelection } from './hooks/use-selection.ts';
+
+const MAX_SUGGESTION_FOOTER_ROWS = 7;
+const MAX_FOOTER_ROWS = 16;
 
 function displayPath(path: string): string {
   const home = homedir();
@@ -31,18 +42,21 @@ function displayPath(path: string): string {
 
 export interface TerminalProps {
   app?: App;
+  wheelEvents?: EventEmitter;
 }
 
-export function Terminal({ app }: TerminalProps = {}) {
+export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
   const [runtime] = useState(() => app ?? new App());
   const [draft, setDraft] = useState('');
+  const [hasNewOutput, setHasNewOutput] = useState(false);
   const commands = suggestCommands(draft);
   const commandSelection = useSelection(commands.length);
   const state = useApp(runtime);
-  const staticItems = [
-    { id: 'startup', type: 'startup' as const },
-    ...state.chat.completed,
-  ];
+  const { rows } = useWindowSize();
+  const liveRows = Math.max(1, rows);
+  const maxFooterRows = state.panel
+    ? Math.max(1, Math.min(MAX_FOOTER_ROWS, liveRows - 4))
+    : Math.max(1, Math.min(MAX_SUGGESTION_FOOTER_ROWS, liveRows - 4));
   const config = (() => {
     try {
       return runtime.settings.config;
@@ -66,7 +80,6 @@ export function Terminal({ app }: TerminalProps = {}) {
       displayPath(runtime.cwd),
     ].join(' · ')
     : undefined;
-
   const submit = (value: string) => {
     if (!value.trim()) {
       return;
@@ -102,10 +115,7 @@ export function Terminal({ app }: TerminalProps = {}) {
     return true;
   };
 
-  const completePanel = (message: string) => {
-    runtime.notice(message);
-    runtime.closePanel();
-  };
+  const completePanel = () => runtime.closePanel();
 
   const renderPanel = () => {
     const panel = state.panel;
@@ -173,17 +183,23 @@ export function Terminal({ app }: TerminalProps = {}) {
   };
 
   return (
-    <>
-      <Static items={staticItems}>
-        {item => item.type === 'startup' ? (
-          <Box key={item.id} flexDirection='column' marginBottom={1}>
-            <StartUp />
-          </Box>
-        ) : (
-          <ChatEntryView key={item.id} item={item} />
-        )}
-      </Static>
-      <Chat chat={state.chat} />
+    <Box
+      maxHeight={liveRows}
+      flexDirection='column'
+      overflow='hidden'
+    >
+      <Scroller
+        maxHeight={liveRows}
+        onNewOutputChange={setHasNewOutput}
+        scrollActive={state.panel === null}
+        {...(wheelEvents === undefined ? {} : { wheelEvents })}
+      >
+        <Box flexDirection='column' marginBottom={1}>
+          <StartUp />
+        </Box>
+        <CompletedTranscript items={state.chat.completed} />
+        <Chat chat={state.chat} />
+      </Scroller>
       <Feedback
         feedback={state.feedback}
         pending={state.pending}
@@ -198,32 +214,38 @@ export function Terminal({ app }: TerminalProps = {}) {
       ))}
       <Composer
         focus={state.panel === null}
+        newOutput={hasNewOutput && state.panel === null}
         onDraftChange={changeDraft}
         onNavigate={navigateSuggestions}
         placeholder={
           !state.ready
             ? 'Loading configuration...'
-            : state.running
-              ? 'Type a follow-up...'
-              : 'Ask anything...'
+            : 'Ask anything...'
         }
         onEscape={() => runtime.cancel()}
         onSubmit={submit}
       />
-      {currentModel ? (
-        <Box paddingX={1}>
-          <Text color='#7F848E' wrap='truncate-end'>
-            {status}
-          </Text>
-        </Box>
-      ) : null}
-      {renderPanel()}
-      {state.panel ? null : (
-        <Suggestions
-          input={draft}
-          selectedIndex={commandSelection.index}
-        />
-      )}
-    </>
+      <Box
+        maxHeight={maxFooterRows}
+        flexDirection='column'
+        flexShrink={0}
+        overflow='hidden'
+      >
+        {currentModel ? (
+          <Box paddingX={1}>
+            <Text color='#7F848E' wrap='truncate-end'>
+              {status}
+            </Text>
+          </Box>
+        ) : null}
+        {renderPanel()}
+        {state.panel ? null : (
+          <Suggestions
+            input={draft}
+            selectedIndex={commandSelection.index}
+          />
+        )}
+      </Box>
+    </Box>
   );
 }

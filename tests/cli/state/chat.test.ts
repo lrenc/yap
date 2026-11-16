@@ -68,6 +68,193 @@ describe('chat state', () => {
     });
   });
 
+  test('uses the final response text when deltas are incomplete', () => {
+    const state = apply([
+      {
+        type: 'text_delta',
+        turn: 1,
+        delta: 'hel',
+        runId: 1,
+        sessionId: 1,
+      },
+      {
+        type: 'text_done',
+        turn: 1,
+        text: 'hello',
+        parts: [{ type: 'output_text', text: 'hello' }],
+        runId: 1,
+        sessionId: 1,
+      },
+    ]);
+
+    expect(state.completed.at(-1)).toMatchObject({
+      type: 'assistant',
+      content: 'hello',
+      refusal: false,
+    });
+  });
+
+  test('rebuilds multiline output from the final response text', () => {
+    const state = apply([
+      {
+        type: 'text_delta',
+        turn: 1,
+        delta: 'first\nsec',
+        runId: 1,
+        sessionId: 1,
+      },
+      {
+        type: 'text_done',
+        turn: 1,
+        text: 'first\nsecond\nthird',
+        parts: [{ type: 'output_text', text: 'first\nsecond\nthird' }],
+        runId: 1,
+        sessionId: 1,
+      },
+    ]);
+
+    expect(state.completed).toHaveLength(1);
+    expect(state.completed[0]).toMatchObject({
+      type: 'assistant',
+      content: 'first\nsecond\nthird',
+      refusal: false,
+    });
+  });
+
+  test('moves completed lines into static transcript parts', () => {
+    const streaming = apply([
+      {
+        type: 'text_delta',
+        turn: 1,
+        delta: 'first line\nsecond',
+        runId: 1,
+        sessionId: 1,
+      },
+    ]);
+
+    expect(streaming.completed).toEqual([{
+      id: 'assistant:1:1:1:part:0',
+      type: 'assistant',
+      content: 'first line',
+      refusal: false,
+      streamPart: 'start',
+    }]);
+    expect(streaming.active?.text).toBe('second');
+
+    const completed = applyChatEvent(streaming, {
+      type: 'text_done',
+      turn: 1,
+      text: 'first line\nsecond',
+      parts: [{ type: 'output_text', text: 'first line\nsecond' }],
+      runId: 1,
+      sessionId: 1,
+    });
+    expect(completed.active).toBeNull();
+    expect(completed.completed).toEqual([{
+      id: 'assistant:1:1:1:part:0',
+      type: 'assistant',
+      content: 'first line\nsecond',
+      refusal: false,
+      streamPart: 'only',
+    }]);
+  });
+
+  test('preserves refusal styling when the first delta contains a newline', () => {
+    const state = apply([{
+      type: 'refusal_delta',
+      turn: 1,
+      delta: 'blocked\nrest',
+      runId: 1,
+      sessionId: 1,
+    }]);
+
+    expect(state.active?.refusal).toBe(true);
+    expect(state.completed).toEqual([{
+      id: 'assistant:1:1:1:part:0',
+      type: 'assistant',
+      content: 'blocked',
+      refusal: true,
+      streamPart: 'start',
+    }]);
+
+    const completed = applyChatEvent(state, {
+      type: 'text_done',
+      turn: 1,
+      text: 'blocked\nrest',
+      parts: [{ type: 'output_text', text: 'blocked\nrest' }],
+      runId: 1,
+      sessionId: 1,
+    });
+    expect(completed.completed.at(-1)).toEqual({
+      id: 'assistant:1:1:1:part:0',
+      type: 'assistant',
+      content: 'blocked\nrest',
+      refusal: true,
+      streamPart: 'only',
+    });
+  });
+
+  test('removes CRLF from completed transcript lines', () => {
+    const state = apply([{
+      type: 'text_delta',
+      turn: 1,
+      delta: 'first\r\nsecond',
+      runId: 1,
+      sessionId: 1,
+    }]);
+
+    expect(state.completed[0]).toEqual({
+      id: 'assistant:1:1:1:part:0',
+      type: 'assistant',
+      content: 'first',
+      refusal: false,
+      streamPart: 'start',
+    });
+    expect(state.active?.text).toBe('second');
+  });
+
+  test('does not merge streamed parts with different refusal styles', () => {
+    let state = apply([{
+      type: 'text_delta',
+      turn: 1,
+      delta: 'normal\n',
+      runId: 1,
+      sessionId: 1,
+    }]);
+    state = applyChatEvent(state, {
+      type: 'refusal_delta',
+      turn: 1,
+      delta: 'refused',
+      runId: 1,
+      sessionId: 1,
+    });
+    state = applyChatEvent(state, {
+      type: 'text_done',
+      turn: 1,
+      text: 'normal\nrefused',
+      parts: [{ type: 'refusal', refusal: 'refused' }],
+      runId: 1,
+      sessionId: 1,
+    });
+
+    expect(state.completed).toEqual([
+      {
+        id: 'assistant:1:1:1:part:0',
+        type: 'assistant',
+        content: 'normal',
+        refusal: false,
+        streamPart: 'start',
+      },
+      {
+        id: 'assistant:1:1:1:part:1',
+        type: 'assistant',
+        content: 'refused',
+        refusal: true,
+        streamPart: 'end',
+      },
+    ]);
+  });
+
   test('tracks tool activity and preserves failed output', () => {
     const call = {
       type: 'function_call' as const,
@@ -143,6 +330,34 @@ describe('chat state', () => {
         message: 'provider failed',
       },
     ]);
+  });
+
+  test('keeps completed lines when a run fails before text_done', () => {
+    const state = apply([
+      {
+        type: 'text_delta',
+        turn: 1,
+        delta: 'first line\npartial',
+        runId: 1,
+        sessionId: 1,
+      },
+      {
+        type: 'done',
+        result: {
+          stopReason: 'error',
+          response: null,
+          turns: 1,
+          error: new Error('provider failed'),
+        },
+        runId: 1,
+        sessionId: 1,
+      },
+    ]);
+
+    expect(state.completed[0]).toMatchObject({
+      type: 'assistant',
+      content: 'first line\npartial',
+    });
   });
 
   test('does not report follow-up interruption as an error', () => {

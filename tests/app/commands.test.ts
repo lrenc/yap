@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { suggestCommands } from '../../src/app/commands.ts';
+import {
+  executeCommand,
+  suggestCommands,
+} from '../../src/app/commands.ts';
+import { models } from '../../src/app/models.ts';
 
 describe('command suggestions', () => {
   test('lists every command after a slash', () => {
@@ -24,5 +28,31 @@ describe('command suggestions', () => {
     expect(suggestCommands('model')).toEqual([]);
     expect(suggestCommands('/model ')).toEqual([]);
     expect(suggestCommands('/unknown')).toEqual([]);
+  });
+
+  test('applies configuration commands without emitting notices', async () => {
+    const modelId = models[0]!.id;
+    let selectedModel: string | undefined;
+    let selectedPrompt: string | undefined;
+    const dependencies = {
+      settings: {
+        setModel: async (id: string) => {
+          selectedModel = id;
+        },
+        setActivePrompt: async (name: string | undefined) => {
+          selectedPrompt = name;
+        },
+      },
+      prompts: {
+        read: async () => 'Prompt',
+      },
+    };
+
+    expect(await executeCommand(`/model ${modelId}`, dependencies))
+      .toEqual({ type: 'noop' });
+    expect(await executeCommand('/prompt reviewer', dependencies))
+      .toEqual({ type: 'noop' });
+    expect(selectedModel).toBe(modelId);
+    expect(selectedPrompt).toBe('reviewer');
   });
 });

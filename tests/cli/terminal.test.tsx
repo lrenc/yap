@@ -8,6 +8,7 @@ import { FileSecretStore } from '../../src/app/settings/secrets.ts';
 import { PromptRepository } from '../../src/app/settings/prompts.ts';
 import { SettingsStore } from '../../src/app/settings/store.ts';
 import { Terminal } from '../../src/cli/terminal.tsx';
+import { sseEvent } from '../helpers/streams.ts';
 
 describe('Terminal', () => {
   let rendered: ReturnType<typeof render> | null = null;
@@ -63,6 +64,11 @@ describe('Terminal', () => {
     expect(frame).toContain('Ask anything...');
     expect(frame).toContain('DeepSeek Flash · high');
     expect(frame).toContain(displayCwd);
+    expect(frame).not.toContain('PgUp/PgDn scroll');
+    expect(frame.indexOf('YAP')).toBeLessThan(
+      frame.indexOf('Ask anything...'),
+    );
+    expect(frame.split('\n').length).toBeLessThanOrEqual(16);
   });
 
   test('submits ordinary messages to the conversation', async () => {
@@ -81,7 +87,7 @@ describe('Terminal', () => {
 
     expect(events).toContain('user_message');
     expect(events).toContain('done');
-    expect(rendered.lastFrame()).toContain('You');
+    expect(rendered.lastFrame()).not.toContain('You');
     expect(rendered.lastFrame()).toContain('hello');
   });
 
@@ -129,9 +135,155 @@ describe('Terminal', () => {
         rendered?.lastFrame()?.includes('Hello world') === true
       ));
 
-      expect(rendered.lastFrame()).toContain('You');
+      expect(rendered.lastFrame()).not.toContain('You');
       expect(rendered.lastFrame()).toContain('hello');
       expect(rendered.lastFrame()?.match(/Hello world/g)).toHaveLength(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('renders multiline streamed content only once', async () => {
+    const text = 'first line\nsecond line\nthird line';
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response([
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: 'first line\n',
+      },
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: 'second line\n',
+      },
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: 'third line',
+      },
+      {
+        type: 'response.completed',
+        response: {
+          id: 'response_1',
+          status: 'completed',
+          output: [{
+            type: 'message',
+            id: 'message_1',
+            role: 'assistant',
+            content: [{ type: 'output_text', text }],
+          }],
+        },
+      },
+    ].map(sseEvent).join(''), {
+      headers: { 'content-type': 'text/event-stream' },
+    });
+    try {
+      const app = await createApp();
+      rendered = render(<Terminal app={app} />);
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('Ask anything...') === true
+      ));
+      await app.secrets.setApiKey('deepseek', 'test-key');
+
+      rendered.stdin.write('hello\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('third line') === true
+      ));
+
+      const frame = rendered.lastFrame() ?? '';
+      expect(frame.match(/first line/g)).toHaveLength(1);
+      expect(frame.match(/second line/g)).toHaveLength(1);
+      expect(frame.match(/third line/g)).toHaveLength(1);
+      expect(frame.match(/YAP/g)).toHaveLength(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('keeps the Composer fixed while scrolling a long transcript', async () => {
+    const text = Array.from(
+      { length: 40 },
+      (_value, index) => `line ${index + 1}`,
+    ).join('\n');
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response([
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: text,
+      },
+      {
+        type: 'response.completed',
+        response: {
+          id: 'response_1',
+          status: 'completed',
+          output: [{
+            type: 'message',
+            id: 'message_1',
+            role: 'assistant',
+            content: [{ type: 'output_text', text }],
+          }],
+        },
+      },
+    ].map(sseEvent).join(''), {
+      headers: { 'content-type': 'text/event-stream' },
+    });
+    try {
+      const app = await createApp();
+      rendered = render(<Terminal app={app} />);
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('Ask anything...') === true
+      ));
+      await app.secrets.setApiKey('deepseek', 'test-key');
+
+      rendered.stdin.write('hello\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('line 40') === true
+      ));
+
+      const promptRow = () => rendered!.lastFrame()!.split('\n')
+        .findIndex(line => line.includes('›'));
+      const before = promptRow();
+      rendered.stdin.write('\x1b[5~');
+      await flush();
+
+      expect(rendered.lastFrame()).not.toContain('line 40');
+      expect(rendered.lastFrame()).not.toContain('scrolled up');
+      expect(rendered.lastFrame()).not.toContain('Ctrl+End to follow');
+      expect(promptRow()).toBe(before);
+
+      rendered.stdin.write('/model\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes(
+          '↑/↓ move · Enter select'
+        ) === true
+      ));
+      rendered.stdin.write('\x1b');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes(
+          '↑/↓ move · Enter select'
+        ) === false
+      ));
+
+      rendered.stdin.write('\x1b[1;5F');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('line 40') === true
+      ));
+
+      Object.defineProperty(rendered.stdout, 'columns', {
+        configurable: true,
+        value: 48,
+      });
+      rendered.stdout.emit('resize');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('line 40') === true
+      ));
+      expect(promptRow()).toBeGreaterThan(-1);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -294,10 +446,11 @@ describe('Terminal', () => {
     expect(rendered.lastFrame()).toContain('sk-test-secret');
     rendered.stdin.write('\r');
     await waitFor(() => (
-      rendered?.lastFrame()?.includes('API Key saved') === true
+      rendered?.lastFrame()?.includes('API Key for') === false
     ));
 
-    expect(rendered.lastFrame()).not.toContain('API Key for');
+    expect(rendered.lastFrame()).not.toContain('API Key saved');
+    expect(rendered.lastFrame()).not.toContain('applies from the next run');
     expect(await app.secrets.getApiKey('deepseek')).toBe('sk-test-secret');
 
     await flush();
@@ -319,9 +472,10 @@ describe('Terminal', () => {
       === 'none'
     ));
     await waitFor(() => (
-      rendered?.lastFrame()?.includes('none saved') === true
+      rendered?.lastFrame()?.includes('DeepSeek Flash · none') === true
     ));
-    expect(rendered.lastFrame()).toContain('DeepSeek Flash · none');
+    expect(rendered.lastFrame()).not.toContain('none saved');
+    expect(rendered.lastFrame()).not.toContain('applies from the next run');
   });
 
   test('creates a Prompt from the Prompt panel', async () => {
@@ -365,10 +519,10 @@ describe('Terminal', () => {
     ));
     rendered.stdin.write('\r');
     await waitFor(() => (
-      rendered?.lastFrame()?.includes('Prompt created: reviewer') === true
+      rendered?.lastFrame()?.includes('New Prompt') === false
     ));
 
-    expect(rendered.lastFrame()).not.toContain('New Prompt');
+    expect(rendered.lastFrame()).not.toContain('Prompt created: reviewer');
     expect(await app.prompts.read('reviewer')).toBe('Review carefully');
 
     await flush();
@@ -378,5 +532,6 @@ describe('Terminal', () => {
         'reviewer · DeepSeek Flash · high'
       ) === true
     ));
+    expect(rendered.lastFrame()).not.toContain('Prompt changed');
   });
 });

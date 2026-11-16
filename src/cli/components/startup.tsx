@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, memo } from 'react';
 import { Box, Text, useWindowSize } from 'ink';
 import info from '../../../package.json' with { type: 'json' };
 import { isMacOS, isWindows } from '../../utils/env.ts';
@@ -18,7 +18,7 @@ const logoRows: readonly [string, string][] = [
   ['.WWRRWW.', '..G..G..'],
 ];
 
-export function StartUp() {
+export const StartUp = memo(function StartUp() {
   const { columns } = useWindowSize();
   const isLimited = process.env.TERM_PROGRAM === 'Apple_Terminal'
     || process.env.TERM === 'dumb';
@@ -49,7 +49,7 @@ export function StartUp() {
       )}
     </Box>
   );
-}
+});
 
 function getTerminals(): string {
   if (isMacOS()) {

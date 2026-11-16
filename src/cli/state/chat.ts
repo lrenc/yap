@@ -5,6 +5,8 @@ import type {
   ToolOutcome,
 } from '../../agent/run/types.ts';
 
+const MAX_STREAM_PART_CHARS = 4_096;
+
 export type ChatEvent =
   | {
     type: 'user_message';
@@ -32,6 +34,7 @@ export type ChatEntry =
     type: 'assistant';
     content: string;
     refusal: boolean;
+    streamPart?: 'start' | 'continue' | 'end' | 'only';
   }
   | {
     id: string;
@@ -59,6 +62,7 @@ export interface ActiveResponse {
   turn: number;
   text: string;
   refusal: boolean;
+  parts: number;
 }
 
 export type ChatActivity =
@@ -198,13 +202,37 @@ function updateActive(
       turn: event.turn,
       text: '',
       refusal: false,
+      parts: 0,
     };
+  const text = active.text + event.delta;
+  const boundary = text.lastIndexOf('\n');
+  if (boundary >= 0) {
+    const content = text.slice(0, boundary + 1);
+    const nextRefusal = active.refusal || refusal;
+    const part = assistantPart(
+      { ...active, refusal: nextRefusal },
+      content,
+      active.parts,
+      false,
+    );
+    return {
+      ...state,
+      completed: appendAssistantPart(state.completed, part, active.id),
+      activity: null,
+      active: {
+        ...active,
+        text: text.slice(boundary + 1),
+        refusal: nextRefusal,
+        parts: active.parts + 1,
+      },
+    };
+  }
   return {
     ...state,
     activity: null,
     active: {
       ...active,
-      text: active.text + event.delta,
+      text,
       refusal: active.refusal || refusal,
     },
   };
@@ -217,20 +245,20 @@ function finishText(
   const sameTurn = state.active?.runId === event.runId
     && state.active.turn === event.turn;
   const active = sameTurn ? state.active : null;
-  const refusal = event.parts?.some(part => part.type === 'refusal')
-    ?? active?.refusal
-    ?? false;
-  const item: ChatEntry | null = event.text
-    ? {
-      id: assistantId(event.sessionId, event.runId, event.turn),
-      type: 'assistant',
-      content: event.text,
-      refusal,
-    }
-    : null;
+  const refusal = Boolean(active?.refusal)
+    || (event.parts?.some(part => part.type === 'refusal') ?? false);
+  const completed = active
+    ? finalizeAssistant(state.completed, active, event.text, refusal)
+    : event.text
+      ? [...state.completed, {
+        id: assistantId(event.sessionId, event.runId, event.turn),
+        type: 'assistant' as const,
+        content: event.text,
+        refusal,
+      }]
+      : state.completed;
   return {
-    ...state,
-    completed: item ? [...state.completed, item] : state.completed,
+    completed,
     active: sameTurn ? null : state.active,
     activity: null,
   };
@@ -242,13 +270,13 @@ function finishRun(
 ): ChatState {
   const sameRun = state.active?.runId === event.runId;
   const active = sameRun ? state.active : null;
-  const completed = active?.text
-    ? [...state.completed, {
-      id: active.id,
-      type: 'assistant' as const,
-      content: active.text,
-      refusal: active.refusal,
-    }]
+  const completed = active
+    ? finalizeAssistant(
+      state.completed,
+      active,
+      streamedAssistantText(state.completed, active),
+      active.refusal,
+    )
     : state.completed;
   const notice = resultNotice(event.result, event.sessionId, event.runId);
   return {
@@ -307,6 +335,166 @@ function assistantId(
   turn: number,
 ): string {
   return `assistant:${sessionId}:${runId}:${turn}`;
+}
+
+function finalizeAssistant(
+  entries: readonly ChatEntry[],
+  active: ActiveResponse,
+  fallbackText: string,
+  refusal: boolean,
+): ChatEntry[] {
+  const text = fallbackText || active.text;
+  if (text !== streamedAssistantText(entries, active)) {
+    return replaceAssistantText(entries, active, text, refusal);
+  }
+  if (active.parts === 0) {
+    const content = active.text || text;
+    return content
+      ? [...entries, {
+        id: active.id,
+        type: 'assistant',
+        content,
+        refusal,
+      }]
+      : [...entries];
+  }
+  const part = assistantPart(
+    { ...active, refusal },
+    active.text,
+    active.parts,
+    true,
+  );
+  return appendAssistantPart(entries, part, active.id, true);
+}
+
+function streamedAssistantText(
+  entries: readonly ChatEntry[],
+  active: ActiveResponse,
+): string {
+  const parts: string[] = [];
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const item = entries[index];
+    if (
+      item?.type !== 'assistant'
+      || !item.id.startsWith(`${active.id}:part:`)
+    ) {
+      break;
+    }
+    parts.unshift(item.content);
+  }
+  return parts.length > 0
+    ? `${parts.join('\n')}\n${active.text}`
+    : active.text;
+}
+
+function replaceAssistantText(
+  entries: readonly ChatEntry[],
+  active: ActiveResponse,
+  text: string,
+  refusal: boolean,
+): ChatEntry[] {
+  let end = entries.length;
+  while (end > 0) {
+    const item = entries[end - 1];
+    if (
+      item?.type !== 'assistant'
+      || !item.id.startsWith(`${active.id}:part:`)
+    ) {
+      break;
+    }
+    end -= 1;
+  }
+  if (!text) {
+    return entries.slice(0, end);
+  }
+
+  const source = { ...active, refusal };
+  let completed = entries.slice(0, end);
+  let start = 0;
+  let partIndex = 0;
+  while (true) {
+    const boundary = text.indexOf('\n', start);
+    if (boundary < 0) {
+      break;
+    }
+    completed = appendAssistantPart(
+      completed,
+      assistantPart(
+        source,
+        text.slice(start, boundary + 1),
+        partIndex,
+        false,
+      ),
+      active.id,
+    );
+    start = boundary + 1;
+    partIndex += 1;
+  }
+  return appendAssistantPart(
+    completed,
+    assistantPart(source, text.slice(start), partIndex, true),
+    active.id,
+    true,
+  );
+}
+
+function assistantPart(
+  active: ActiveResponse,
+  content: string,
+  index: number,
+  final: boolean,
+): ChatEntry {
+  return {
+    id: `${active.id}:part:${index}`,
+    type: 'assistant',
+    content: final ? content : removeLineBreak(content),
+    refusal: active.refusal,
+    streamPart: final ? 'end' : index === 0 ? 'start' : 'continue',
+  };
+}
+
+function removeLineBreak(content: string): string {
+  return content.replace(/\r\n$|\r$|\n$/u, '');
+}
+
+function appendAssistantPart(
+  entries: readonly ChatEntry[],
+  part: ChatEntry,
+  activeId: string,
+  final = false,
+): ChatEntry[] {
+  if (part.type !== 'assistant') {
+    return [...entries, part];
+  }
+  const previous = entries.at(-1);
+  if (
+    !previous
+    || previous.type !== 'assistant'
+    || previous.streamPart === 'end'
+    || previous.refusal !== part.refusal
+    || !previous.id.startsWith(`${activeId}:part:`)
+    || previous.content.length + part.content.length
+      + (previous.content ? 1 : 0) > MAX_STREAM_PART_CHARS
+  ) {
+    return [...entries, part];
+  }
+  const content = previous.content
+    ? part.content
+      ? `${previous.content}\n${part.content}`
+      : previous.content
+    : part.content;
+  return [
+    ...entries.slice(0, -1),
+    {
+      ...previous,
+      content,
+      ...(final ? {
+        streamPart: previous.streamPart === 'start'
+          ? 'only' as const
+          : 'end' as const,
+      } : {}),
+    },
+  ];
 }
 
 function appendItem(

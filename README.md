@@ -53,7 +53,12 @@ new line. Follow-up messages can be entered while a run is active; Escape
 cancels queued and running conversation work without exiting YAP. Ctrl+C exits.
 
 The transcript shows streamed responses, tool activity, compaction, and errors.
-Use `/new` to start a fresh conversation context.
+Use the mouse wheel or Page Up/Page Down to review earlier output. New output
+continues to follow the bottom until you scroll away. Use `/new` to start a
+fresh conversation context.
+
+YAP uses the terminal's alternate screen for its transcript. Exiting restores
+the previous terminal contents; use the transcript while YAP is open.
 
 ## Models
 
@@ -78,6 +83,13 @@ bun test
 
 For coverage, run `bun run test:coverage`.
 
+### TODO
+
+- [ ] Virtualize the transcript and preserve the reader's resize position with
+  a stable message key plus row offset. Invalidate wrapped item heights when
+  the terminal width changes; do not anchor to DOM child indexes.
+
 ## License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE). See [third-party notices](./THIRD_PARTY_NOTICES.md) for
+adapted terminal UI code.
