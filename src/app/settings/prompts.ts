@@ -92,15 +92,15 @@ export class PromptRepository {
     });
   }
 
-  loadSelected(activePrompt: string | null): Promise<{
+  loadSelected(activePrompt: string | undefined): Promise<{
     content: string;
-    missingPrompt: string | null;
+    missingPrompt: string | undefined;
   }> {
     return this.#enqueue(async () => {
-      if (activePrompt === null) {
+      if (activePrompt === undefined) {
         return {
           content: DEFAULT_PROMPT,
-          missingPrompt: null,
+          missingPrompt: undefined,
         };
       }
       const content = await this.#readContent(activePrompt);
@@ -111,7 +111,7 @@ export class PromptRepository {
         }
         : {
           content,
-          missingPrompt: null,
+          missingPrompt: undefined,
         };
     });
   }

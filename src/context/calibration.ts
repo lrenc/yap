@@ -19,7 +19,7 @@ export function calibrateTokens({ history, contextStart, request }: {
     const entry = history[i];
     if (
       entry?.type !== 'response'
-      || !isCompatible(entry.request, request)
+      || !isCompatible(entry.request ?? null, request)
     ) {
       continue;
     }
@@ -41,7 +41,7 @@ export function calibrateTokens({ history, contextStart, request }: {
 
 
 function isCompatible(
-  prev: RequestInfo | undefined,
+  prev: RequestInfo | null,
   request: RequestInfo,
 ): boolean {
   const { model, endpoint, signature, contextStart } = request;

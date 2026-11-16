@@ -4,11 +4,11 @@ import { Editor } from '../../../../src/cli/components/input/editor.tsx';
 import { createDraft } from '../../../../src/cli/state/input.ts';
 
 describe('Editor', () => {
-  let rendered: ReturnType<typeof render> | undefined;
+  let rendered: ReturnType<typeof render> | null = null;
 
   afterEach(() => {
     rendered?.unmount();
-    rendered = undefined;
+    rendered = null;
   });
 
   test('renders the prompt marker and value', async () => {

@@ -41,7 +41,7 @@ export function ConfigPanel({
 }: ConfigPanelProps) {
   const [view, setView] = useState<View>({ type: 'fields' });
   const viewRef = useRef<View>(view);
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [configured, setConfigured] = useState<boolean | undefined>();
   const effort = currentEffort;
   const saveLock = useLock();
   const [status, setStatus] = useState<Partial<Record<Field, string>>>({});
@@ -238,7 +238,7 @@ export function ConfigPanel({
               {
                 key: 'api-key',
                 label: 'API Key',
-                detail: configured === null
+                detail: configured === undefined
                   ? 'checking...'
                   : configured ? 'configured' : 'not configured',
               },

@@ -37,7 +37,7 @@ function loadError(path: string, error: unknown): Error {
 export class SettingsStore {
   readonly filePath: string;
 
-  #current: AppConfig | undefined;
+  #current: AppConfig | null = null;
   #warningMessages: string[] = [];
   #pending: Promise<void> = Promise.resolve();
 
@@ -55,7 +55,7 @@ export class SettingsStore {
 
   load(): Promise<void> {
     return this.#enqueue(async () => {
-      this.#current = undefined;
+      this.#current = null;
       this.#warningMessages = [];
       this.#warningMessages = [
         await repairPermissions(this.rootDirectory, 0o700),
@@ -114,10 +114,10 @@ export class SettingsStore {
     });
   }
 
-  setActivePrompt(name: string | null): Promise<void> {
+  setActivePrompt(name: string | undefined): Promise<void> {
     return this.#enqueue(async () => {
       const config = this.#requireConfig();
-      if (name !== null && !promptNameSchema.safeParse(name).success) {
+      if (name !== undefined && !promptNameSchema.safeParse(name).success) {
         throw new Error('Invalid Prompt name');
       }
       await this.#save({

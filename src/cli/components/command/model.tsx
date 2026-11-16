@@ -25,14 +25,14 @@ export function ModelPanel({
   );
   const selection = useSelection(models.length, initial);
   const saveLock = useLock();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>();
 
   const select = async () => {
     const model = models[selection.current()];
     if (!model || !saveLock.tryLock()) {
       return;
     }
-    setError(null);
+    setError(undefined);
     let saved = false;
     try {
       await onSave(model.id);

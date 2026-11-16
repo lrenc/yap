@@ -24,9 +24,9 @@ type View =
 
 export interface PromptPanelProps {
   prompts: PromptRepository;
-  activePrompt: string | null;
+  activePrompt: string | undefined;
   trackSave: <T>(save: Promise<T>) => Promise<T>;
-  onSelect: (name: string | null) => Promise<void>;
+  onSelect: (name: string | undefined) => Promise<void>;
   onComplete: (message: string) => void;
   onClose: () => void;
 }
@@ -42,10 +42,10 @@ export function PromptPanel({
   const [view, setView] = useState<View>({ type: 'list' });
   const viewRef = useRef<View>(view);
   const [names, setNames] = useState<string[]>([]);
-  const [active, setActive] = useState(activePrompt);
+  const [active, setActive] = useState<string | undefined>(activePrompt);
   const saveLock = useLock();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>();
   const entries = ['default', ...names];
   const list = useSelection(entries.length);
 
@@ -87,10 +87,10 @@ export function PromptPanel({
     if (!saveLock.tryLock()) {
       return;
     }
-    setError(null);
+    setError(undefined);
     let completed: string | undefined;
     try {
-      const value = name === 'default' ? null : name;
+      const value = name === 'default' ? undefined : name;
       await trackSave(onSelect(value));
       setActive(value);
       completed = `Prompt changed to ${name}.`;
@@ -106,7 +106,7 @@ export function PromptPanel({
 
   const edit = async (name: string) => {
     setLoading(true);
-    setError(null);
+    setError(undefined);
     try {
       const content = await prompts.read(name);
       if (content === undefined) {
@@ -137,7 +137,7 @@ export function PromptPanel({
     if (!saveLock.tryLock()) {
       return;
     }
-    setError(null);
+    setError(undefined);
     let completed: string | undefined;
     try {
       await trackSave(
@@ -160,7 +160,7 @@ export function PromptPanel({
     if (!saveLock.tryLock()) {
       return;
     }
-    setError(null);
+    setError(undefined);
     let deleted = false;
     let completed: string | undefined;
     try {
@@ -168,16 +168,16 @@ export function PromptPanel({
         await prompts.delete(name);
         deleted = true;
         if (active === name) {
-          await onSelect(null);
+          await onSelect(undefined);
         }
       })());
       if (active === name) {
-        setActive(null);
+        setActive(undefined);
       }
       completed = `Prompt deleted: ${name}`;
     } catch (cause) {
       if (deleted && active === name) {
-        setActive(null);
+        setActive(undefined);
       }
       setError(formatError(cause, 'Prompt operation failed.'));
     } finally {
@@ -232,7 +232,7 @@ export function PromptPanel({
       return;
     }
     if (input === 'a') {
-      setError(null);
+      setError(undefined);
       changeView({ type: 'name', value: createDraft('') });
       return;
     }
@@ -241,7 +241,7 @@ export function PromptPanel({
       return;
     }
     if (input === 'd' && selected && selected !== 'default') {
-      setError(null);
+      setError(undefined);
       changeView({ type: 'confirm-delete', name: selected });
     }
   }, {
@@ -293,7 +293,7 @@ export function PromptPanel({
                 );
                 return;
               }
-              setError(null);
+              setError(undefined);
               changeView({
                 type: 'editor',
                 mode: 'add',

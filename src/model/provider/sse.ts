@@ -19,7 +19,7 @@ export function readSSE(
 
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let closed = false;
-  let cleanup: Promise<void> | undefined;
+  let cleanup: Promise<void> | null = null;
 
   function cancel(): Promise<void> {
     closed = true;
@@ -47,7 +47,7 @@ export function readSSE(
       return reader.read();
     }
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     try {
       return await Promise.race([
         reader.read(),
@@ -58,7 +58,9 @@ export function readSSE(
         }),
       ]);
     } finally {
-      clearTimeout(timer);
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
     }
   }
 

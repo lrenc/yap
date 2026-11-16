@@ -93,7 +93,7 @@ export class Run {
     });
   }
 
-  notifyQueue(waitingFor: string | null): void {
+  notifyQueue(waitingFor: string | undefined): void {
     this.#emit({ type: 'queue', waitingFor });
   }
 
@@ -289,7 +289,7 @@ export class Run {
   async #requestModel(
     client: OpenAIClient,
     params: ResponseCreateParams,
-  ): Promise<OpenAIResponse | undefined> {
+  ): Promise<OpenAIResponse | null> {
     return this.#withRequest(async signal => {
       try {
         signal.throwIfAborted();
@@ -305,6 +305,7 @@ export class Run {
         if (!signal.aborted) {
           throw error;
         }
+        return null;
       }
     });
   }
@@ -313,9 +314,9 @@ export class Run {
     client: OpenAIClient,
     params: ResponseCreateParams,
     signal: AbortSignal,
-  ): Promise<OpenAIResponse | undefined> {
+  ): Promise<OpenAIResponse | null> {
     const stream = await client.stream(params, { signal });
-    let response: OpenAIResponse | undefined;
+    let response: OpenAIResponse | null = null;
     for await (const event of stream) {
       if (signal.aborted) {
         break;

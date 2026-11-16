@@ -12,7 +12,7 @@ export interface SecretStore {
 
 export class FileSecretStore implements SecretStore {
   readonly filePath: string;
-  #current: ProviderSecrets | undefined;
+  #current: ProviderSecrets | null = null;
   #warningMessages: string[] = [];
   #pending: Promise<void> = Promise.resolve();
 
@@ -26,7 +26,7 @@ export class FileSecretStore implements SecretStore {
 
   load(): Promise<void> {
     return this.#enqueue(async () => {
-      this.#current = undefined;
+      this.#current = null;
       this.#warningMessages = [];
       this.#warningMessages = [
         await repairPermissions(this.rootDirectory, 0o700),

@@ -7,11 +7,11 @@ async function waitForRender(): Promise<void> {
 }
 
 describe('Composer', () => {
-  let rendered: ReturnType<typeof render> | undefined;
+  let rendered: ReturnType<typeof render> | null = null;
 
   afterEach(() => {
     rendered?.unmount();
-    rendered = undefined;
+    rendered = null;
   });
 
   test('renders one prompt symbol before the input', async () => {

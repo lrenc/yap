@@ -3,11 +3,11 @@ import { render } from 'ink-testing-library';
 import { Suggestions } from '../../../../src/cli/components/command/suggestions.tsx';
 
 describe('Suggestions', () => {
-  let rendered: ReturnType<typeof render> | undefined;
+  let rendered: ReturnType<typeof render> | null = null;
 
   afterEach(() => {
     rendered?.unmount();
-    rendered = undefined;
+    rendered = null;
   });
 
   test('shows the command catalog for a slash', async () => {

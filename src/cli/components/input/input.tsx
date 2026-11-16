@@ -58,7 +58,7 @@ export function Input({
   const { setCursorPosition } = useCursor();
   const [origin, setOrigin] = useState({ x: 0, y: 0 });
   const draftRef = useRef(draft);
-  const preferredColumn = useRef<number | null>(null);
+  const preferredColumn = useRef<number | undefined>(undefined);
 
   useLayoutEffect(() => {
     draftRef.current = draft;
@@ -142,7 +142,7 @@ export function Input({
       });
       return;
     }
-    preferredColumn.current = null;
+    preferredColumn.current = undefined;
     if (key.return) {
       if (key.shift || key.meta) {
         changeDraft(current => editInput(current, '\n'));
@@ -169,7 +169,7 @@ export function Input({
   }, { isActive: focus });
 
   usePaste(text => {
-    preferredColumn.current = null;
+    preferredColumn.current = undefined;
     changeDraft(current => editInput(current, text));
   }, { isActive: focus });
 

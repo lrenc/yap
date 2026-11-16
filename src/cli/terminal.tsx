@@ -45,8 +45,8 @@ export function Terminal({ app }: TerminalProps = {}) {
     }
   })();
   const currentModel = config
-    ? models.find(model => model.id === config.activeModelId)
-    : undefined;
+    ? models.find(model => model.id === config.activeModelId) ?? null
+    : null;
   const reasoningEffort = currentModel
     ? config?.modelSettings[currentModel.id]?.reasoningEffort
       ?? currentModel.params.reasoning?.effort
@@ -59,7 +59,7 @@ export function Terminal({ app }: TerminalProps = {}) {
       reasoningEffort,
       displayPath(runtime.cwd),
     ].join(' · ')
-    : null;
+    : undefined;
 
   const submit = (value: string) => {
     if (!value.trim()) {
@@ -161,7 +161,7 @@ export function Terminal({ app }: TerminalProps = {}) {
     return (
       <PromptPanel
         prompts={runtime.prompts}
-        activePrompt={config?.activePrompt ?? null}
+        activePrompt={config?.activePrompt}
         trackSave={save => runtime.trackPanelSave(save)}
         onSelect={name => runtime.settings.setActivePrompt(name)}
         onComplete={completePanel}

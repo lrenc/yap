@@ -10,7 +10,7 @@ import { SettingsStore } from '../../src/app/settings/store.ts';
 import { Terminal } from '../../src/cli/terminal.tsx';
 
 describe('Terminal', () => {
-  let rendered: ReturnType<typeof render> | undefined;
+  let rendered: ReturnType<typeof render> | null = null;
   let root: string | undefined;
   const home = homedir();
   const cwd = process.cwd();
@@ -20,7 +20,7 @@ describe('Terminal', () => {
 
   afterEach(async () => {
     rendered?.unmount();
-    rendered = undefined;
+    rendered = null;
     if (root) {
       await fs.rm(root, { recursive: true, force: true });
       root = undefined;

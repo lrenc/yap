@@ -14,7 +14,7 @@ interface QueuedRun {
   run: Run;
   messages: string[];
   admitted: boolean;
-  waitingFor: string | null;
+  waitingFor: string | undefined;
   onAbort: () => void;
 }
 
@@ -26,7 +26,7 @@ export class Session {
   readonly #legacy: {
     agent: AgentConfig;
     options: SessionOptions;
-  } | undefined;
+  } | null = null;
 
   #cancelling = false;
   #active: Run | null = null;
@@ -93,7 +93,7 @@ export class Session {
   get waiting(): WaitingState | null {
     const index = this.#queue.findIndex(item => !item.admitted);
     const waitingFor = this.#queue[index]?.waitingFor;
-    return waitingFor === undefined || waitingFor === null
+    return waitingFor === undefined
       ? null
       : {
         modelId: waitingFor,
@@ -151,7 +151,7 @@ export class Session {
       run,
       messages,
       admitted: false,
-      waitingFor: null,
+      waitingFor: undefined,
       onAbort: () => this.#cancelQueued(item),
     };
     this.#queue.push(item);
@@ -228,7 +228,7 @@ export class Session {
         if (item.admitted) {
           count += 1;
         }
-        const waitingFor = item.admitted ? null : modelId;
+        const waitingFor = item.admitted ? undefined : modelId;
         if (item.waitingFor !== waitingFor) {
           item.waitingFor = waitingFor;
           item.run.notifyQueue(waitingFor);

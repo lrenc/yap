@@ -21,7 +21,7 @@ export type AgentTextPart =
 export type AgentEvent =
   | {
     type: 'queue';
-    waitingFor: string | null;
+    waitingFor: string | undefined;
   }
   | {
     type: 'compaction_start';

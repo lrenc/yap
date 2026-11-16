@@ -29,7 +29,10 @@ export const appConfigSchema = z.strictObject({
   version: z.literal(1).default(1),
   activeModelId: z.string().default(DEFAULT_MODEL_ID),
   modelSettings: z.record(z.string(), modelSettingsSchema).default({}),
-  activePrompt: promptNameSchema.nullable().default(null),
+  activePrompt: promptNameSchema
+    .nullable()
+    .transform(value => value ?? undefined)
+    .optional(),
 });
 
 export const providerSecretsSchema = z.strictObject({

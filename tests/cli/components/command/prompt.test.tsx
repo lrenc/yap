@@ -7,12 +7,12 @@ import { PromptRepository } from '../../../../src/app/settings/prompts.ts';
 import { PromptPanel } from '../../../../src/cli/components/command/prompt.tsx';
 
 describe('PromptPanel', () => {
-  let rendered: ReturnType<typeof render> | undefined;
+  let rendered: ReturnType<typeof render> | null = null;
   let root: string | undefined;
 
   afterEach(async () => {
     rendered?.unmount();
-    rendered = undefined;
+    rendered = null;
     if (root) {
       await fs.rm(root, { recursive: true, force: true });
       root = undefined;

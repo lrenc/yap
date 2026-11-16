@@ -4,13 +4,13 @@ import { StartUp } from '../../src/cli/components/startup.tsx';
 import { isMacOS } from '../../src/utils/env.ts';
 
 describe('StartUp', () => {
-  let rendered: ReturnType<typeof render> | undefined;
+  let rendered: ReturnType<typeof render> | null = null;
   const originalTermProgram = process.env.TERM_PROGRAM;
   const originalTerm = process.env.TERM;
 
   afterEach(() => {
     rendered?.unmount();
-    rendered = undefined;
+    rendered = null;
 
     if (originalTermProgram === undefined) {
       delete process.env.TERM_PROGRAM;

@@ -24,12 +24,12 @@ export async function checkDependencies(
   const results = await Promise.all(
     programs.map(program => checkProgram(program, directory)),
   );
-  return results.filter(issue => issue !== undefined);
+  return results.filter(issue => issue !== null);
 }
 
 function checkProgram(
   program: Issue['program'], directory: string
-): Promise<Issue | undefined> {
+): Promise<Issue | null> {
   let executable: string = program;
   if (program === 'bash') {
     executable = getBashPath();
@@ -49,7 +49,7 @@ function checkProgram(
       windowsHide: true,
     }, error => {
       if (!error) {
-        finish(undefined);
+        finish(null);
         return;
       }
       let reason: Issue['reason'] = 'unavailable';

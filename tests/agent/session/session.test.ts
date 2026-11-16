@@ -385,8 +385,8 @@ describe('Session', () => {
 
   test('keeps a run completed when the next message follows text_done', async () => {
     const session = createSession(immediateClient());
-    let second: Promise<AgentResult> | undefined;
-    let firstDone: AgentEvent & { type: 'done' } | undefined;
+    let second: Promise<AgentResult> | null = null;
+    let firstDone: AgentEvent & { type: 'done' } | null = null;
 
     for await (const event of session.runStream('first')) {
       if (event.type === 'text_done') {

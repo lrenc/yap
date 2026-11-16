@@ -3,11 +3,11 @@ import { render } from 'ink-testing-library';
 import { SelectList } from '../../../src/cli/components/select-list.tsx';
 
 describe('SelectList', () => {
-  let rendered: ReturnType<typeof render> | undefined;
+  let rendered: ReturnType<typeof render> | null = null;
 
   afterEach(() => {
     rendered?.unmount();
-    rendered = undefined;
+    rendered = null;
   });
 
   test('renders selection, details and checked state consistently', async () => {

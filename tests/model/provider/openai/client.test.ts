@@ -123,13 +123,13 @@ describe('createClient', () => {
   });
 
   test('create sends an authenticated non-streaming request', async () => {
-    let captured: Request | undefined;
+    const captured: { request: Request | null } = { request: null };
     const payload = responseWith();
     const client = createClient({
       apiKey: 'secret',
       baseURL: 'https://example.test/v1/',
       fetch: async (input, init) => {
-        captured = new Request(input, init);
+        captured.request = new Request(input, init);
         return new Response(JSON.stringify(payload), {
           headers: { 'content-type': 'application/json' },
         });
@@ -143,11 +143,16 @@ describe('createClient', () => {
     });
 
     expect(result).toEqual(payload);
-    expect(captured?.url).toBe('https://example.test/v1/responses');
-    expect(captured?.headers.get('authorization')).toBe('Bearer secret');
-    expect(captured?.headers.get('accept')).toBe('application/json');
-    expect(captured?.headers.get('content-type')).toBe('application/json');
-    expect(await captured?.json()).toEqual({
+    expect(captured.request?.url).toBe(
+      'https://example.test/v1/responses',
+    );
+    expect(captured.request?.headers.get('authorization'))
+      .toBe('Bearer secret');
+    expect(captured.request?.headers.get('accept'))
+      .toBe('application/json');
+    expect(captured.request?.headers.get('content-type'))
+      .toBe('application/json');
+    expect(await captured.request?.json()).toEqual({
       model: 'test-model',
       input: 'hello',
       instructions: 'Be concise',
@@ -333,13 +338,13 @@ describe('createClient', () => {
 
 describe('OpenAI Responses streaming', () => {
   test('stream sends an SSE request', async () => {
-    let captured: Request | undefined;
+    const captured: { request: Request | null } = { request: null };
     const payload = responseWith();
     const client = createClient({
       apiKey: 'secret',
       baseURL: 'https://example.test/v1',
       fetch: async (input, init) => {
-        captured = new Request(input, init);
+        captured.request = new Request(input, init);
         return new Response(byteStream([
           sseEvent({ type: 'response.completed', response: payload }),
         ]), {
@@ -353,9 +358,11 @@ describe('OpenAI Responses streaming', () => {
       input: 'hello',
     }));
 
-    expect(captured?.headers.get('authorization')).toBe('Bearer secret');
-    expect(captured?.headers.get('accept')).toBe('text/event-stream');
-    expect(await captured?.json()).toEqual({
+    expect(captured.request?.headers.get('authorization'))
+      .toBe('Bearer secret');
+    expect(captured.request?.headers.get('accept'))
+      .toBe('text/event-stream');
+    expect(await captured.request?.json()).toEqual({
       model: 'test-model',
       input: 'hello',
       stream: true,

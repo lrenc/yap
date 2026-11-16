@@ -124,7 +124,7 @@ export async function executeCommand(
           );
         }
         await settings.setActivePrompt(
-          argument === 'default' ? null : argument
+          argument === 'default' ? undefined : argument
         );
         return {
           type: 'notice',

@@ -40,11 +40,11 @@ function ControlledInput({
 }
 
 describe('Input', () => {
-  let rendered: ReturnType<typeof render> | undefined;
+  let rendered: ReturnType<typeof render> | null = null;
 
   afterEach(() => {
     rendered?.unmount();
-    rendered = undefined;
+    rendered = null;
   });
 
   test('renders the placeholder when the input is empty', async () => {
@@ -376,12 +376,12 @@ describe('Input', () => {
 
   test('inserts pasted line breaks and tabs literally', async () => {
     let submitted = false;
-    let draft: Draft | undefined;
+    const captured: { draft: Draft | null } = { draft: null };
     rendered = render(
       <Box width={20}>
         <ControlledInput
           onChange={next => {
-            draft = next;
+            captured.draft = next;
           }}
           onSubmit={() => {
             submitted = true;
@@ -398,7 +398,7 @@ describe('Input', () => {
     expect(frame).toContain('a');
     expect(frame).toContain('b');
     expect(frame).toContain('c');
-    expect(draft?.value).toBe('a\rb\tc');
+    expect(captured.draft?.value).toBe('a\rb\tc');
     expect(submitted).toBe(false);
   });
 

@@ -19,9 +19,9 @@ async function captureError(action: () => Promise<unknown>): Promise<Error> {
 
 describe('postJson', () => {
   test('sends a JSON POST request with default headers', async () => {
-    let captured: Request | undefined;
+    const captured: { request: Request | null } = { request: null };
     const fetchImpl: typeof fetch = async (input, init) => {
-      captured = new Request(input, init);
+      captured.request = new Request(input, init);
       return new Response('{"ok":true}', {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -35,16 +35,18 @@ describe('postJson', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(captured?.method).toBe('POST');
-    expect(captured?.headers.get('content-type')).toBe('application/json');
-    expect(captured?.headers.get('accept')).toBe('application/json');
-    expect(await captured?.json()).toEqual({ value: 42 });
+    expect(captured.request?.method).toBe('POST');
+    expect(captured.request?.headers.get('content-type'))
+      .toBe('application/json');
+    expect(captured.request?.headers.get('accept'))
+      .toBe('application/json');
+    expect(await captured.request?.json()).toEqual({ value: 42 });
   });
 
   test('preserves caller headers that overlap defaults', async () => {
-    let captured: Request | undefined;
+    const captured: { request: Request | null } = { request: null };
     const fetchImpl: typeof fetch = async (input, init) => {
-      captured = new Request(input, init);
+      captured.request = new Request(input, init);
       return new Response('{}');
     };
 
@@ -57,11 +59,13 @@ describe('postJson', () => {
       },
     });
 
-    expect(captured?.headers.get('accept')).toBe('text/event-stream');
-    expect(captured?.headers.get('content-type')).toBe(
+    expect(captured.request?.headers.get('accept')).toBe(
+      'text/event-stream',
+    );
+    expect(captured.request?.headers.get('content-type')).toBe(
       'application/custom+json',
     );
-    expect(captured?.headers.get('x-request-id')).toBe('request-1');
+    expect(captured.request?.headers.get('x-request-id')).toBe('request-1');
   });
 
   test('throws HttpError for a non-success response', async () => {
@@ -174,9 +178,9 @@ describe('postJson', () => {
   });
 
   test('passes a null signal when no timeout or caller signal is supplied', async () => {
-    let capturedSignal: AbortSignal | null | undefined;
+    let capturedSignal: AbortSignal | null = null;
     const fetchImpl: typeof fetch = async (_input, init) => {
-      capturedSignal = init?.signal;
+      capturedSignal = init?.signal ?? null;
       return new Response('{}');
     };
 

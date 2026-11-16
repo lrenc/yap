@@ -76,13 +76,13 @@ export class App {
   #initialized = false;
   #initializing: Promise<void> | null = null;
   #session: Session | null = null;
-  #sessionId: number | null = null;
+  #sessionId: number | undefined;
   #nextSessionId = 0;
   #nextRunId = 0;
 
   #panel: AppPanel | null = null;
   #panelSaves = 0;
-  #missingPrompt: string | null = null;
+  #missingPrompt: string | undefined;
   #draining = false;
   #disposed = false;
   #generation = 0;
@@ -101,7 +101,7 @@ export class App {
       ];
   }
 
-  get sessionId(): number | null {
+  get sessionId(): number | undefined {
     return this.#sessionId;
   }
 
@@ -320,10 +320,10 @@ export class App {
     this.reportPromptWarnings();
     if (result.type === 'notice') {
       this.#emit(result);
-    } else if (result.type === 'new_session' && this.#sessionId !== null) {
+    } else if (result.type === 'new_session' && this.#sessionId !== undefined) {
       const sessionId = this.#sessionId;
       this.#session = null;
-      this.#sessionId = null;
+      this.#sessionId = undefined;
       this.#emit({
         type: 'session_boundary', sessionId,
       });
@@ -415,7 +415,7 @@ export class App {
     };
   }
 
-  async #loadPrompt(name: string | null, signal?: AbortSignal) {
+  async #loadPrompt(name: string | undefined, signal?: AbortSignal) {
     try {
       const prompt = await this.prompts.loadSelected(name);
       signal?.throwIfAborted();

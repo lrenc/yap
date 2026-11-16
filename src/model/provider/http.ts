@@ -31,8 +31,8 @@ export interface PostJsonOptions {
 
 function withTimeout(
   timeout: number | undefined,
-  signal: AbortSignal | undefined,
-): { signal: AbortSignal | undefined; dispose: () => void } {
+  signal: AbortSignal | null,
+): { signal: AbortSignal | null; dispose: () => void } {
   if (timeout === undefined) {
     return { signal, dispose: () => {} };
   }
@@ -62,7 +62,7 @@ export async function postJson(
     headers.set('Accept', 'application/json');
   }
 
-  const combined = withTimeout(options.timeout, options.signal ?? undefined);
+  const combined = withTimeout(options.timeout, options.signal ?? null);
   let response: Response;
 
   try {
@@ -70,7 +70,7 @@ export async function postJson(
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      signal: combined.signal ?? null,
+      signal: combined.signal,
     });
   } catch (error) {
     const reason = combined.signal?.reason;
