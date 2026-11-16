@@ -10,6 +10,7 @@ export interface ComposerProps {
   onDraftChange?: (value: string, reason: DraftChangeReason) => void;
   onNavigate?: (direction: 'up' | 'down') => boolean;
   placeholder?: string;
+  onEscape?: () => void;
   onSubmit?: (value: string) => void;
 }
 
@@ -19,6 +20,7 @@ export function Composer({
   onDraftChange,
   onNavigate,
   placeholder = 'Ask anything...',
+  onEscape,
   onSubmit,
 }: ComposerProps) {
   const [draft, setDraft] = useState<Draft>(
@@ -52,6 +54,7 @@ export function Composer({
           placeholder={placeholder}
           {...(onSubmit ? { onSubmit } : {})}
           {...(onNavigate ? { onNavigate } : {})}
+          {...(onEscape ? { onEscape } : {})}
           onDraftChange={(next, reason) => {
             setDraft(next);
             onDraftChange?.(next.value, reason);

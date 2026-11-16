@@ -65,7 +65,7 @@ describe('Terminal', () => {
     expect(frame).toContain(displayCwd);
   });
 
-  test('keeps ordinary messages out of the model conversation', async () => {
+  test('submits ordinary messages to the conversation', async () => {
     const app = await createApp();
     const events: string[] = [];
     app.subscribe(event => events.push(event.type));
@@ -76,11 +76,65 @@ describe('Terminal', () => {
 
     rendered.stdin.write('hello\r');
     await waitFor(() => (
-      rendered?.lastFrame()?.includes('Conversation is not available') === true
+      rendered?.lastFrame()?.includes('Missing API Key') === true
     ));
 
-    expect(events).toContain('notice');
-    expect(events).not.toContain('user_message');
+    expect(events).toContain('user_message');
+    expect(events).toContain('done');
+    expect(rendered.lastFrame()).toContain('You');
+    expect(rendered.lastFrame()).toContain('hello');
+  });
+
+  test('renders a streamed model response', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response([
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: 'Hello',
+      },
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: ' world',
+      },
+      {
+        type: 'response.completed',
+        response: {
+          id: 'response_1',
+          status: 'completed',
+          output: [{
+            type: 'message',
+            id: 'message_1',
+            role: 'assistant',
+            content: [{ type: 'output_text', text: 'Hello world' }],
+          }],
+        },
+      },
+    ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), {
+      headers: { 'content-type': 'text/event-stream' },
+    });
+    try {
+      const app = await createApp();
+      rendered = render(<Terminal app={app} />);
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('Ask anything...') === true
+      ));
+      await app.secrets.setApiKey('deepseek', 'test-key');
+
+      rendered.stdin.write('hello\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('Hello world') === true
+      ));
+
+      expect(rendered.lastFrame()).toContain('You');
+      expect(rendered.lastFrame()).toContain('hello');
+      expect(rendered.lastFrame()?.match(/Hello world/g)).toHaveLength(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test('shows and filters the slash command list while typing', async () => {

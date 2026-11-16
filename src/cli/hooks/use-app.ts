@@ -1,5 +1,10 @@
 import { useEffect, useReducer } from 'react';
 import type { App, AppEvent, AppPanel, InitError } from '../../app/app.ts';
+import {
+  applyChatEvent,
+  INITIAL_CHAT_STATE,
+  type ChatState,
+} from '../state/chat.ts';
 
 export interface AppFeedback {
   id: number;
@@ -10,7 +15,9 @@ export interface AppFeedback {
 export interface AppUiState {
   panel: AppPanel | null;
   feedback: AppFeedback[];
+  chat: ChatState;
   pending: number;
+  running: boolean;
   paused: boolean;
   ready: boolean;
   initErrors: readonly InitError[];
@@ -23,13 +30,18 @@ type Action =
 const INITIAL_STATE: AppUiState = {
   panel: null,
   feedback: [],
+  chat: INITIAL_CHAT_STATE,
   pending: 0,
+  running: false,
   paused: false,
   ready: false,
   initErrors: [],
 };
 
-function reducer(state: AppUiState, action: Action): AppUiState {
+export function reduceAppState(
+  state: AppUiState,
+  action: Action,
+): AppUiState {
   if (action.type === 'ready') {
     return {
       ...state,
@@ -38,6 +50,18 @@ function reducer(state: AppUiState, action: Action): AppUiState {
     };
   }
   const { event } = action;
+  if (
+    event.type === 'session_boundary'
+    || (event.type !== 'notice' && 'runId' in event)
+  ) {
+    return {
+      ...state,
+      chat: applyChatEvent(
+        state.chat,
+        event,
+      ),
+    };
+  }
   switch (event.type) {
     case 'notice': {
       return {
@@ -62,6 +86,7 @@ function reducer(state: AppUiState, action: Action): AppUiState {
       return {
         ...state,
         pending: event.pending,
+        running: event.running,
         paused: event.paused,
       };
     }
@@ -72,7 +97,7 @@ function reducer(state: AppUiState, action: Action): AppUiState {
 }
 
 export function useApp(app: App): AppUiState {
-  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  const [state, dispatch] = useReducer(reduceAppState, INITIAL_STATE);
 
   useEffect(() => {
     let active = true;

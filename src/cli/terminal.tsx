@@ -3,7 +3,7 @@ import { Static, Box, Text } from 'ink';
 import { homedir } from 'node:os';
 import { sep } from 'node:path';
 import { App } from '../app/app.ts';
-import { isCommand, suggestCommands } from '../app/commands.ts';
+import { suggestCommands } from '../app/commands.ts';
 import { models } from '../app/models.ts';
 import { ConfigPanel } from './components/command/config.tsx';
 import { Feedback } from './components/command/feedback.tsx';
@@ -11,12 +11,14 @@ import { ModelPanel } from './components/command/model.tsx';
 import { Panel } from './components/command/panel.tsx';
 import { PromptPanel } from './components/command/prompt.tsx';
 import { Suggestions } from './components/command/suggestions.tsx';
+import {
+  Chat,
+  ChatEntryView,
+} from './components/chat.tsx';
 import { Composer } from './components/input/composer.tsx';
 import { StartUp } from './components/startup.tsx';
 import { useApp } from './hooks/use-app.ts';
 import { useSelection } from './hooks/use-selection.ts';
-
-const startupItems: 'startup'[] = ['startup'];
 
 function displayPath(path: string): string {
   const home = homedir();
@@ -37,6 +39,10 @@ export function Terminal({ app }: TerminalProps = {}) {
   const commands = suggestCommands(draft);
   const commandSelection = useSelection(commands.length);
   const state = useApp(runtime);
+  const staticItems = [
+    { id: 'startup', type: 'startup' as const },
+    ...state.chat.completed,
+  ];
   const config = (() => {
     try {
       return runtime.settings.config;
@@ -73,14 +79,7 @@ export function Terminal({ app }: TerminalProps = {}) {
       runtime.submit(selected.name);
       return;
     }
-    if (isCommand(value)) {
-      runtime.submit(value);
-    } else {
-      runtime.notice(
-        'Conversation is not available yet. Use /model, /config or /prompt.',
-        'info',
-      );
-    }
+    runtime.submit(value);
   };
 
   const changeDraft = (
@@ -175,13 +174,16 @@ export function Terminal({ app }: TerminalProps = {}) {
 
   return (
     <>
-      <Static items={startupItems}>
-        {() => (
-          <Box key='startup' flexDirection='column' marginBottom={1}>
+      <Static items={staticItems}>
+        {item => item.type === 'startup' ? (
+          <Box key={item.id} flexDirection='column' marginBottom={1}>
             <StartUp />
           </Box>
+        ) : (
+          <ChatEntryView key={item.id} item={item} />
         )}
       </Static>
+      <Chat chat={state.chat} />
       <Feedback
         feedback={state.feedback}
         pending={state.pending}
@@ -199,10 +201,13 @@ export function Terminal({ app }: TerminalProps = {}) {
         onDraftChange={changeDraft}
         onNavigate={navigateSuggestions}
         placeholder={
-          state.ready
-            ? 'Ask anything...'
-            : 'Loading configuration...'
+          !state.ready
+            ? 'Loading configuration...'
+            : state.running
+              ? 'Type a follow-up...'
+              : 'Ask anything...'
         }
+        onEscape={() => runtime.cancel()}
         onSubmit={submit}
       />
       {currentModel ? (

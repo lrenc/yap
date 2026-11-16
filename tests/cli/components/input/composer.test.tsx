@@ -47,4 +47,18 @@ describe('Composer', () => {
     expect(frame).toContain('four');
   });
 
+  test('forwards escape to cancel active work', async () => {
+    let escapes = 0;
+    rendered = render(
+      <Composer onEscape={() => {
+        escapes += 1;
+      }} />,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('\x1b[27u');
+    await waitForRender();
+
+    expect(escapes).toBe(1);
+  });
 });

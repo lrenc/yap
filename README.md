@@ -19,8 +19,8 @@ interruptible agent runtime, reusable prompts, and simple controls for models
 and credentials.
 
 > [!NOTE]
-> YAP is still in early development. Conversation submission, transcript
-> rendering, session persistence, and standalone packaging are not complete.
+> YAP is still in early development. Session persistence and standalone
+> packaging are not complete.
 
 ## Quick Start
 
@@ -45,6 +45,15 @@ Inside YAP, use `/config` to set the API key and `/model` to choose a model.
 | `/new` | Start a new conversation. |
 
 Type `/` to open the command palette.
+
+## Conversation
+
+Type a message and press Enter to send it. Use Shift+Enter or Alt+Enter for a
+new line. Follow-up messages can be entered while a run is active; Escape
+cancels queued and running conversation work without exiting YAP. Ctrl+C exits.
+
+The transcript shows streamed responses, tool activity, compaction, and errors.
+Use `/new` to start a fresh conversation context.
 
 ## Models
 

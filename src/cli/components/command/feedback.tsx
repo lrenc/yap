@@ -25,7 +25,7 @@ export function Feedback({
       ))}
       {pending > 0 ? (
         <Text color='#7F848E'>
-          {pending} command{pending === 1 ? '' : 's'} queued
+          {pending} input{pending === 1 ? '' : 's'} queued
           {paused ? ' · waiting for panel' : ''}
         </Text>
       ) : null}
