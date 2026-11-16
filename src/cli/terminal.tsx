@@ -77,8 +77,7 @@ export function Terminal({ app }: TerminalProps = {}) {
       runtime.submit(value);
     } else {
       runtime.notice(
-        'Conversation is not available yet. '
-        + 'Use /model, /config or /prompt.',
+        'Conversation is not available yet. Use /model, /config or /prompt.',
         'info',
       );
     }

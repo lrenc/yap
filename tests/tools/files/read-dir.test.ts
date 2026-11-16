@@ -75,8 +75,7 @@ describe('readDirectoryTool', () => {
       path: '.',
       limit: 2,
     }, new AbortController().signal)).toBe(
-      'a.txt\nb.txt\n\n'
-      + '[2 entries limit reached. Use limit=4 for more]',
+      'a.txt\nb.txt\n\n[2 entries limit reached. Use limit=4 for more]',
     );
   });
 

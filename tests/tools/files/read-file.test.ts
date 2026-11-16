@@ -42,8 +42,7 @@ describe('readFileTool', () => {
     }, new AbortController().signal) as ToolResult;
 
     expect(result.output).toBe(
-      'one\ntwo\n\n'
-      + '[Showing lines 1-2 of 3. Use offset=3 to continue.]',
+      'one\ntwo\n\n[Showing lines 1-2 of 3. Use offset=3 to continue.]',
     );
     expect(result.details).toEqual({
       offset: 1,
