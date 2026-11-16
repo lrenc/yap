@@ -121,7 +121,9 @@ export function Terminal({ app }: TerminalProps = {}) {
           onSave={modelId => runtime.trackPanelSave(
             runtime.settings.setModel(modelId)
           )}
-          onClose={() => runtime.closePanel()}
+          onClose={() => {
+            runtime.closePanel()}
+          }
         />
       );
     }
@@ -139,7 +141,9 @@ export function Terminal({ app }: TerminalProps = {}) {
       return (
         <ConfigPanel
           model={model}
-          {...(effort === undefined ? {} : { currentEffort: effort })}
+          {...(effort === undefined ? {} : {
+            currentEffort: effort,
+          })}
           hasApiKey={async () => Boolean(
             await runtime.secrets.getApiKey(panel.providerId)
           )}
