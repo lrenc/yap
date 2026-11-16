@@ -17,9 +17,30 @@ function firstModelId(catalog: readonly Model[]): string {
   return model.id;
 }
 
-export const promptNameSchema = z.string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u, 'Invalid Prompt name')
-  .refine(name => name !== 'default', 'The Prompt name "default" is reserved');
+const invalidFileNameChars = /[<>:"/\\|?*\p{Cc}]/u;
+const windowsReservedName =
+  /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
+
+function isValidPromptName(name: string): boolean {
+  const length = Array.from(name).length;
+
+  return (
+    length >= 1
+    && length <= 16
+    && name !== 'default'
+    && name !== '.'
+    && name !== '..'
+    && !name.endsWith('.')
+    && !name.endsWith(' ')
+    && !invalidFileNameChars.test(name)
+    && !windowsReservedName.test(name)
+  );
+}
+
+export const promptNameSchema = z.string().refine(
+  isValidPromptName,
+  'Invalid Prompt name',
+);
 
 const modelSettingsSchema = z.looseObject({
   reasoningEffort: z.string().optional(),
@@ -77,7 +98,9 @@ export function validateReasoningEffort(
 ): void {
   const model = models.find(model => model.id === modelId);
   if (!model) {
-    throw new Error(`Unknown model ID: ${modelId}`);
+    throw new Error(
+      `Unknown model ID: ${modelId}`
+    );
   }
   if (
     effort !== undefined

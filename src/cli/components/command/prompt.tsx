@@ -278,7 +278,7 @@ export function PromptPanel({
         <Box flexDirection='column'>
           <Text>New Prompt name</Text>
           <Text color='#7F848E'>
-            Letters, numbers, hyphens and underscores.
+            Up to 16 characters; must be a valid file name.
           </Text>
           <Editor
             draft={view.value}
@@ -289,7 +289,7 @@ export function PromptPanel({
             onSubmit={name => {
               if (!promptNameSchema.safeParse(name).success) {
                 setError(
-                  'Invalid Prompt name or reserved name "default".'
+                  'Use a valid file name up to 16 characters; "default" is reserved.'
                 );
                 return;
               }
