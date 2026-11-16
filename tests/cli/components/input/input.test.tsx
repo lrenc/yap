@@ -293,6 +293,28 @@ describe('Input', () => {
     expect(submitted).toBe(false);
   });
 
+  test('preserves and displays consecutive newlines', async () => {
+    const captured: { draft: Draft | null } = { draft: null };
+    rendered = render(
+      <Box width={20}>
+        <ControlledInput
+          onChange={next => {
+            captured.draft = next;
+          }}
+        />
+      </Box>,
+    );
+    await waitForRender();
+
+    rendered.stdin.write('a');
+    rendered.stdin.write('\x1b[13;2u'.repeat(3));
+    rendered.stdin.write('x');
+    await waitForRender();
+
+    expect(captured.draft?.value).toBe('a\n\n\nx');
+    expect(rendered.lastFrame()).toBe('a\n\n\nx');
+  });
+
   test('moves vertically between input lines', async () => {
     rendered = render(
       <Box width={20}>

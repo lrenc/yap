@@ -182,15 +182,18 @@ export function Input({
 
   return (
     <Box ref={ref} flexDirection='column' flexGrow={1} flexBasis={0} minWidth={0}>
-      {rows.slice(start, start + maxRows).map((line, index) => (
-        <Text
-          key={index}
-          color={value ? '#E6E6E6' : '#B4B5BC'}
-          wrap='truncate-end'
-        >
-          {line.text}
-        </Text>
-      ))}
+      {rows.slice(start, start + maxRows).map((line, index) => {
+        const text = line.text || ' ';
+        return (
+          <Text
+            key={index}
+            color={value ? '#E6E6E6' : '#B4B5BC'}
+            wrap='truncate-end'
+          >
+            {text}
+          </Text>
+        );
+      })}
     </Box>
   );
 }
