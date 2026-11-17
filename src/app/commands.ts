@@ -1,6 +1,5 @@
 import { models } from './models.ts';
 import type { PromptRepository } from './settings/prompts.ts';
-import type { SettingsStore } from './settings/store.ts';
 
 export type CommandResult =
   | { type: 'notice'; level: 'error'; message: string }
@@ -9,7 +8,10 @@ export type CommandResult =
   | { type: 'noop' };
 
 type Dependencies = {
-  settings: Pick<SettingsStore, 'setModel' | 'setActivePrompt'>;
+  settings: {
+    setModel(modelId: string): Promise<void>;
+    setActivePrompt(name: string | undefined): Promise<void>;
+  };
   prompts: Pick<PromptRepository, 'read'>;
 };
 

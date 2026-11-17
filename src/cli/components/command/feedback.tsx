@@ -4,12 +4,8 @@ import { useTheme } from '../../theme/index.ts';
 
 export function Feedback({
   feedback,
-  pending,
-  paused,
 }: {
   feedback: readonly AppFeedback[];
-  pending: number;
-  paused: boolean;
 }) {
   const theme = useTheme();
   return (
@@ -28,12 +24,6 @@ export function Feedback({
           {item.message}
         </Text>
       ))}
-      {pending > 0 ? (
-        <Text color={theme.colors.text.muted}>
-          {pending} input{pending === 1 ? '' : 's'} queued
-          {paused ? ' · waiting for panel' : ''}
-        </Text>
-      ) : null}
     </Box>
   );
 }

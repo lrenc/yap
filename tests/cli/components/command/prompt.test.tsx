@@ -29,6 +29,9 @@ describe('PromptPanel', () => {
         prompts={prompts}
         activePrompt='reviewer'
         trackSave={save => save}
+        onCreate={(name, content) => prompts.create(name, content)}
+        onUpdate={(name, content) => prompts.update(name, content)}
+        onDelete={name => prompts.delete(name)}
         onSelect={async () => {
           throw new Error('config write failed');
         }}

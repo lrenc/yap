@@ -58,20 +58,29 @@ describe('Terminal', () => {
     await waitFor(() => (
       rendered?.lastFrame()?.includes('Ask anything...') === true
     ));
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === true
+    ));
 
     const frame = rendered.lastFrame() ?? '';
     expect(frame).toContain('YAP');
     expect(frame).toContain('Ask anything...');
+    expect(frame).toContain(
+      'API key is not configured. Run /config to set it.',
+    );
     expect(frame).toContain('DeepSeek Flash · high');
     expect(frame).toContain(displayCwd);
     expect(frame).not.toContain('PgUp/PgDn scroll');
     expect(frame.indexOf('YAP')).toBeLessThan(
       frame.indexOf('Ask anything...'),
     );
+    expect(frame.indexOf('API key is not configured')).toBeLessThan(
+      frame.indexOf('Ask anything...'),
+    );
     expect(frame.split('\n').length).toBeLessThanOrEqual(16);
   });
 
-  test('submits ordinary messages to the conversation', async () => {
+  test('queues ordinary messages while the API key is missing', async () => {
     const app = await createApp();
     const events: string[] = [];
     app.subscribe(event => events.push(event.type));
@@ -79,16 +88,125 @@ describe('Terminal', () => {
     await waitFor(() => (
       rendered?.lastFrame()?.includes('Ask anything...') === true
     ));
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === true
+    ));
 
     rendered.stdin.write('hello\r');
     await waitFor(() => (
-      rendered?.lastFrame()?.includes('Missing API Key') === true
+      rendered?.lastFrame()?.includes(
+        '1 input queued · waiting for API key'
+      ) === true
     ));
 
-    expect(events).toContain('user_message');
-    expect(events).toContain('done');
-    expect(rendered.lastFrame()).not.toContain('You');
-    expect(rendered.lastFrame()).toContain('hello');
+    expect(app.pendingCount).toBe(1);
+    expect(events).not.toContain('user_message');
+    expect(events).not.toContain('done');
+    expect(rendered.lastFrame()).not.toContain('Missing API Key');
+    expect(rendered.lastFrame()).toContain('API key is not configured');
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame.indexOf('1 input queued')).toBeGreaterThan(
+      frame.indexOf('DeepSeek Flash · high'),
+    );
+  });
+
+  test('sends a queued message after configuring the API key', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response([
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: 'Queued response',
+      },
+      {
+        type: 'response.completed',
+        response: {
+          id: 'response_1',
+          status: 'completed',
+          output: [{
+            type: 'message',
+            id: 'message_1',
+            role: 'assistant',
+            content: [{ type: 'output_text', text: 'Queued response' }],
+          }],
+        },
+      },
+    ].map(sseEvent).join(''), {
+      headers: { 'content-type': 'text/event-stream' },
+    });
+    try {
+      const app = await createApp();
+      const events: string[] = [];
+      const notices: string[] = [];
+      app.subscribe(event => {
+        events.push(event.type);
+        if (event.type === 'notice') {
+          notices.push(event.message);
+        }
+      });
+      rendered = render(<Terminal app={app} />);
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('API key is not configured') === true
+      ));
+
+      rendered.stdin.write('hello\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes(
+          '1 input queued · waiting for API key'
+        ) === true
+      ));
+
+      rendered.stdin.write('/config\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('› API Key') === true
+      ));
+      await flush();
+      rendered.stdin.write('\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('Enter API Key') === true
+      ));
+      rendered.stdin.write('test-key\r');
+
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('Queued response') === true
+      ));
+
+      expect(events.filter(type => type === 'user_message')).toHaveLength(1);
+      expect(notices).not.toContain(
+        'Missing API Key for DeepSeek. Set it with /config.',
+      );
+      expect(app.pendingCount).toBe(0);
+      expect(rendered.lastFrame()).not.toContain('API key is not configured');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('hides the key notice when the current provider is configured', async () => {
+    const app = await createApp();
+    await app.initialize();
+    await app.setApiKey('deepseek', 'test-key');
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
+    await flush();
+
+    expect(rendered.lastFrame()).not.toContain('API key is not configured');
+  });
+
+  test('refreshes the key notice after a configuration event', async () => {
+    const app = await createApp();
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === true
+    ));
+
+    await app.setApiKey('deepseek', 'test-key');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === false
+    ));
   });
 
   test('renders a streamed model response', async () => {
@@ -128,7 +246,7 @@ describe('Terminal', () => {
       await waitFor(() => (
         rendered?.lastFrame()?.includes('Ask anything...') === true
       ));
-      await app.secrets.setApiKey('deepseek', 'test-key');
+      await app.setApiKey('deepseek', 'test-key');
 
       rendered.stdin.write('hello\r');
       await waitFor(() => (
@@ -181,7 +299,7 @@ describe('Terminal', () => {
       await waitFor(() => (
         rendered?.lastFrame()?.includes('Ask anything...') === true
       ));
-      await app.secrets.setApiKey('deepseek', 'test-key');
+      await app.setApiKey('deepseek', 'test-key');
 
       rendered.stdin.write('hello\r');
       await waitFor(() => (
@@ -242,7 +360,7 @@ describe('Terminal', () => {
       await waitFor(() => (
         rendered?.lastFrame()?.includes('Ask anything...') === true
       ));
-      await app.secrets.setApiKey('deepseek', 'test-key');
+      await app.setApiKey('deepseek', 'test-key');
 
       rendered.stdin.write('hello\r');
       await waitFor(() => (
@@ -294,7 +412,7 @@ describe('Terminal', () => {
       await waitFor(() => (
         rendered?.lastFrame()?.includes('Ask anything...') === true
       ));
-      await app.secrets.setApiKey('deepseek', 'test-key');
+      await app.setApiKey('deepseek', 'test-key');
 
       rendered.stdin.write('hello\r');
       await waitFor(() => (
@@ -359,7 +477,7 @@ describe('Terminal', () => {
     rendered.stdin.write('m');
     await waitFor(() => (
       rendered?.lastFrame()?.includes('Select a model') === true
-      && rendered?.lastFrame()?.includes('/config') === false
+      && rendered?.lastFrame()?.includes('› /config') === false
     ));
   });
 
@@ -382,7 +500,7 @@ describe('Terminal', () => {
     rendered.stdin.write('m');
     await waitFor(() => (
       rendered?.lastFrame()?.includes('› /model') === true
-      && rendered?.lastFrame()?.includes('/config') === false
+      && rendered?.lastFrame()?.includes('› /config') === false
     ));
     rendered.stdin.write('o\r');
     await waitFor(() => (
@@ -419,6 +537,9 @@ describe('Terminal', () => {
     rendered = render(<Terminal app={app} />);
     await waitFor(() => (
       rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === true
     ));
     const promptRow = () => rendered!.lastFrame()!.split('\n')
       .findIndex(line => line.includes('›'));
@@ -473,6 +594,9 @@ describe('Terminal', () => {
 
     expect(rendered.lastFrame()).not.toContain('DeepSeek Flash');
     expect(rendered.lastFrame()).toContain('DeepSeek Pro · high');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === true
+    ));
   });
 
   test('keeps an API Key visible while editing', async () => {
@@ -507,6 +631,9 @@ describe('Terminal', () => {
     expect(rendered.lastFrame()).not.toContain('API Key saved');
     expect(rendered.lastFrame()).not.toContain('applies from the next run');
     expect(await app.secrets.getApiKey('deepseek')).toBe('sk-test-secret');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === false
+    ));
 
     await flush();
     rendered.stdin.write('/config\r');
@@ -531,6 +658,35 @@ describe('Terminal', () => {
     ));
     expect(rendered.lastFrame()).not.toContain('none saved');
     expect(rendered.lastFrame()).not.toContain('applies from the next run');
+  });
+
+  test('shows the key notice again after clearing the key', async () => {
+    const app = await createApp();
+    await app.initialize();
+    await app.setApiKey('deepseek', 'test-key');
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
+    await flush();
+    expect(rendered.lastFrame()).not.toContain('API key is not configured');
+
+    rendered.stdin.write('/config\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('configured') === true
+    ));
+    rendered.stdin.write('c');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes(
+        'Clear the stored API Key? Press Enter to confirm.'
+      ) === true
+    ));
+    rendered.stdin.write('\r');
+
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === true
+    ));
+    expect(await app.secrets.getApiKey('deepseek')).toBeUndefined();
   });
 
   test('creates a Prompt from the Prompt panel', async () => {

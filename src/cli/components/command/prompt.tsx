@@ -24,9 +24,12 @@ type View =
   | { type: 'confirm-delete'; name: string };
 
 export interface PromptPanelProps {
-  prompts: PromptRepository;
+  prompts: Pick<PromptRepository, 'list' | 'read'>;
   activePrompt: string | undefined;
   trackSave: <T>(save: Promise<T>) => Promise<T>;
+  onCreate: (name: string, content: string) => Promise<void>;
+  onUpdate: (name: string, content: string) => Promise<void>;
+  onDelete: (name: string) => Promise<void>;
   onSelect: (name: string | undefined) => Promise<void>;
   onComplete: () => void;
   onClose: () => void;
@@ -36,6 +39,9 @@ export function PromptPanel({
   prompts,
   activePrompt,
   trackSave,
+  onCreate,
+  onUpdate,
+  onDelete,
   onSelect,
   onComplete,
   onClose,
@@ -131,8 +137,8 @@ export function PromptPanel({
     const succeeded = await saveLock.run(async () => {
       await trackSave(
         mode === 'add'
-          ? prompts.create(name, contentValue.value)
-          : prompts.update(name, contentValue.value)
+          ? onCreate(name, contentValue.value)
+          : onUpdate(name, contentValue.value)
       );
     }, cause => setError(formatError(cause, 'Prompt operation failed.')));
     if (succeeded) {
@@ -145,7 +151,7 @@ export function PromptPanel({
     let deleted = false;
     const succeeded = await saveLock.run(async () => {
       await trackSave((async () => {
-        await prompts.delete(name);
+        await onDelete(name);
         deleted = true;
         if (active === name) {
           await onSelect(undefined);

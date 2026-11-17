@@ -4,7 +4,7 @@ import { Box, Text, useWindowSize } from 'ink';
 import { homedir } from 'node:os';
 import { sep } from 'node:path';
 import { App } from '../app/app.ts';
-import { suggestCommands } from '../app/commands.ts';
+import { isCommand, suggestCommands } from '../app/commands.ts';
 import { models } from '../app/models.ts';
 import { ConfigPanel } from './components/command/config.tsx';
 import { Feedback } from './components/command/feedback.tsx';
@@ -14,9 +14,11 @@ import { PromptPanel } from './components/command/prompt.tsx';
 import { Suggestions } from './components/command/suggestions.tsx';
 import { Chat, CompletedTranscript } from './components/chat.tsx';
 import { Composer } from './components/input/composer.tsx';
+import { KeyNotice } from './components/key-notice.tsx';
 import { Scroller } from './components/scroller.tsx';
 import { StartUp } from './components/startup.tsx';
 import { useApp } from './hooks/use-app.ts';
+import { useKeyStatus } from './hooks/use-key-status.ts';
 import { useSelection } from './hooks/use-selection.ts';
 import { useTheme } from './theme/index.ts';
 
@@ -62,6 +64,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
   const currentModel = config
     ? models.find(model => model.id === config.activeModelId) ?? null
     : null;
+  const key = useKeyStatus(runtime, currentModel, state.ready);
   const reasoningEffort = currentModel
     ? config?.modelSettings[currentModel.id]?.reasoningEffort
       ?? currentModel.params.reasoning?.effort
@@ -86,6 +89,9 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
     if (selected) {
       runtime.submit(selected.name);
       return;
+    }
+    if (!isCommand(value)) {
+      key.markAttempted();
     }
     runtime.submit(value);
   };
@@ -123,7 +129,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
           models={models}
           currentModelId={config?.activeModelId ?? models[0]!.id}
           onSave={modelId => runtime.trackPanelSave(
-            runtime.settings.setModel(modelId)
+            runtime.setModel(modelId)
           )}
           onClose={() => {
             runtime.closePanel()}
@@ -154,13 +160,13 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
             await runtime.secrets.getApiKey(panel.providerId)
           )}
           onSaveApiKey={apiKey => runtime.trackPanelSave(
-            runtime.secrets.setApiKey(panel.providerId, apiKey)
+            runtime.setApiKey(panel.providerId, apiKey)
           )}
           onClearApiKey={() => runtime.trackPanelSave(
-            runtime.secrets.clearApiKey(panel.providerId)
+            runtime.clearApiKey(panel.providerId)
           )}
           onSaveEffort={value => runtime.trackPanelSave(
-            runtime.settings.setReasoningEffort(model.id, value)
+            runtime.setReasoningEffort(model.id, value)
           )}
           onComplete={completePanel}
           onClose={() => runtime.closePanel()}
@@ -172,7 +178,10 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
         prompts={runtime.prompts}
         activePrompt={config?.activePrompt}
         trackSave={save => runtime.trackPanelSave(save)}
-        onSelect={name => runtime.settings.setActivePrompt(name)}
+        onCreate={(name, content) => runtime.createPrompt(name, content)}
+        onUpdate={(name, content) => runtime.updatePrompt(name, content)}
+        onDelete={name => runtime.deletePrompt(name)}
+        onSelect={name => runtime.setActivePrompt(name)}
         onComplete={completePanel}
         onClose={() => runtime.closePanel()}
       />
@@ -191,17 +200,13 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
         scrollActive={state.panel === null}
         {...(wheelEvents === undefined ? {} : { wheelEvents })}
       >
-        <Box flexDirection='column' marginBottom={1}>
+        <Box flexDirection='column'>
           <StartUp />
         </Box>
         <CompletedTranscript items={state.chat.completed} />
         <Chat chat={state.chat} />
       </Scroller>
-      <Feedback
-        feedback={state.feedback}
-        pending={state.pending}
-        paused={state.paused}
-      />
+      <Feedback feedback={state.feedback} />
       {state.initErrors.filter(error => (
         !state.feedback.some(item => item.message === error.message)
       )).map(error => (
@@ -209,6 +214,9 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
           <Text color={theme.colors.feedback.error}>{error.message}</Text>
         </Box>
       ))}
+      {key.status === 'missing' ? (
+        <KeyNotice ignored={key.ignored} />
+      ) : null}
       <Composer
         focus={state.panel === null}
         newOutput={hasNewOutput && state.panel === null}
@@ -238,6 +246,16 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
               {pathStatus ? (
                 <Text color={theme.colors.role.path}>{pathStatus}</Text>
               ) : null}
+            </Text>
+          </Box>
+        ) : null}
+        {state.pending > 0 ? (
+          <Box paddingX={1}>
+            <Text color={theme.colors.text.muted}>
+              {state.pending} input{state.pending === 1 ? '' : 's'} queued
+              {state.blocked ? ` · ${state.blocked.message}` : state.paused
+                ? ' · waiting for panel'
+                : ''}
             </Text>
           </Box>
         ) : null}

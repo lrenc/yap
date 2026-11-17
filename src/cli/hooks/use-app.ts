@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from 'react';
 import type { App, AppEvent, AppPanel, InitError } from '../../app/app.ts';
+import type { QueueBlock } from '../../app/queue.ts';
 import {
   applyChatEvent,
   INITIAL_CHAT_STATE,
@@ -18,6 +19,7 @@ export interface AppUiState {
   chat: ChatState;
   pending: number;
   paused: boolean;
+  blocked: QueueBlock | null;
   ready: boolean;
   initErrors: readonly InitError[];
 }
@@ -32,6 +34,7 @@ const INITIAL_STATE: AppUiState = {
   chat: INITIAL_CHAT_STATE,
   pending: 0,
   paused: false,
+  blocked: null,
   ready: false,
   initErrors: [],
 };
@@ -85,6 +88,7 @@ function reduceAppState(
         ...state,
         pending: event.pending,
         paused: event.paused,
+        blocked: event.blocked,
       };
     }
     default: {
