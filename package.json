@@ -15,7 +15,7 @@
   ],
   "type": "module",
   "bin": {
-    "yap": "./dist/cli.js"
+    "yap": "dist/cli.js"
   },
   "files": [
     "dist",
