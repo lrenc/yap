@@ -35,7 +35,8 @@ and credentials.
 
 ## Quick Start
 
-You need [Node.js](https://nodejs.org/) 22 or newer and a DeepSeek API key.
+You need [Node.js](https://nodejs.org/) 22 or newer and an API key for
+DeepSeek or [Zhipu GLM](https://docs.bigmodel.cn/cn/guide/develop/responses/introduction).
 Run YAP in an interactive terminal; redirected input and output are rejected.
 The package is available on [npm](https://www.npmjs.com/package/@lrenc/yap).
 
@@ -52,9 +53,9 @@ npx @lrenc/yap
 
 On the first run:
 
-1. Enter `/config`.
-2. Select `API Key` and save your DeepSeek key.
-3. Enter `/model` if you want to choose between the available models.
+1. Enter `/model` and choose a DeepSeek or GLM model.
+2. Enter `/config`.
+3. Select `API Key` and save the key for the selected provider.
 4. Start typing a message.
 
 ## Commands
@@ -89,6 +90,11 @@ the previous terminal contents; use the transcript while YAP is open.
 Use `/model` to choose the active model. Each model provides its own defaults
 and supported reasoning settings. Use `/config` to review or change the active
 model's reasoning effort.
+
+DeepSeek models use the OpenAI Responses protocol directly. GLM uses the
+Responses adapter and the `https://open.bigmodel.cn/api/v1` endpoint. A standard
+BigModel API key is required; GLM Coding Plan keys are currently limited to the
+Chat Completions protocol by Zhipu.
 
 ## Prompts
 

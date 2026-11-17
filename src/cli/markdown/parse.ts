@@ -120,9 +120,10 @@ function list(token: Tokens.List): MarkdownBlock {
     start: token.start === '' ? 1 : token.start,
     items: token.items.map(item => {
       const blocks = normalizeBlocks(item.tokens);
-      const task = item.task
-        ? item.checked ? '[x] ' : '[ ] '
-        : '';
+      let task = '';
+      if (item.task) {
+        task = item.checked ? '[x] ' : '[ ] ';
+      }
       if (task) {
         const first = blocks[0];
         if (first?.type === 'paragraph') {

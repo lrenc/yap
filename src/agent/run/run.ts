@@ -21,6 +21,7 @@ import type { CompactionBudget, RequestInfo } from '../../context/types.ts';
 import type { AgentModel } from '../../model/types.ts';
 import type {
   AgentEvent,
+  AgentTextPart,
   RunOptions,
   AgentResult,
   ToolOutcome,
@@ -375,22 +376,30 @@ export class Run {
     if (!this.#streaming) {
       return;
     }
+    const parts: AgentTextPart[] = [];
+    for (const item of output) {
+      if (item.type !== 'message') {
+        continue;
+      }
+      for (const part of item.content) {
+        if (part.type === 'refusal') {
+          parts.push({
+            type: 'refusal',
+            refusal: part.refusal,
+          });
+        } else {
+          parts.push({
+            type: 'outputText',
+            text: part.text,
+          });
+        }
+      }
+    }
     this.#emit({
       type: 'textDone',
       turn: this.#turns,
       text: responseText(output),
-      parts: output.flatMap(item => item.type === 'message'
-        ? item.content.map(part => part.type === 'refusal'
-          ? {
-            type: 'refusal' as const,
-            refusal: part.refusal
-          }
-          : {
-            type: 'outputText' as const,
-            text: part.text
-          }
-        ) : []
-      ),
+      parts,
     });
   }
 

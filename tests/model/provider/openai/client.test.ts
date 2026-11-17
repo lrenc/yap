@@ -311,6 +311,15 @@ describe('createClient', () => {
       },
     },
     {
+      name: 'reasoning item with invalid content',
+      item: {
+        type: 'reasoning',
+        id: 'reason_1',
+        summary: [],
+        content: [{ type: 'other', text: 'reasoning' }],
+      },
+    },
+    {
       name: 'unknown output item',
       item: { type: 'web_search_call', id: 'item_1' },
     },

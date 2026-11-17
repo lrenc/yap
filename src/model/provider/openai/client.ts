@@ -2,13 +2,15 @@ import { isSafeInteger, isObject } from '../../../utils/guards.ts';
 import { postJson } from '../http.ts';
 import { readSSE } from '../sse.ts';
 import { cancellable } from '../stream.ts';
+import { getAdapter } from './adapter.ts';
 import { OpenAIError } from './errors.ts';
 import type {
+  AdapterRequest,
   OpenAIClient,
   OpenAIClientOptions,
   OpenAIResponse,
   RequestOptions,
-  ResponseCreateParams,
+  ResponsesAdapter,
   ResponseStreamEvent,
 } from './types.ts';
 
@@ -27,14 +29,13 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
   }
   const baseURL = options.baseURL.replace(/\/+$/, '');
   const endpoint = `${baseURL}/responses`;
+  const adapter = getAdapter(options.adapter ?? 'openai');
 
   function post(
-    params: ResponseCreateParams & {
-      stream: boolean,
-    },
+    params: AdapterRequest,
     requestOptions: RequestOptions = {},
   ): Promise<Response> {
-    return postJson(endpoint, params, {
+    return postJson(endpoint, adapter.encodeRequest(params), {
       fetch: options.fetch ?? globalThis.fetch,
       signal: requestOptions.signal ?? null,
       timeout: requestOptions.timeout,
@@ -54,7 +55,9 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
       const response = await post({
         ...params, stream: false,
       }, requestOptions);
-      return parseResponse(await response.json());
+      return parseResponse(
+        adapter.normalizeResponse(await response.json())
+      );
     },
 
     async stream(params, requestOptions) {
@@ -73,6 +76,7 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
       return streamResponse(
         response.body,
         idleTimeout === undefined ? {} : { idleTimeout },
+        adapter,
       );
     },
   };
@@ -81,10 +85,11 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
 function streamResponse(
   body: ReadableStream<Uint8Array>,
   options: { idleTimeout?: number },
+  adapter: ResponsesAdapter,
 ): AsyncGenerator<ResponseStreamEvent> {
   const source = readSSE(body, options);
   let closed = false;
-  return cancellable(parseEvents(source, () => closed), () => {
+  return cancellable(parseEvents(source, () => closed, adapter), () => {
     closed = true;
     return source.return(undefined);
   });
@@ -93,6 +98,7 @@ function streamResponse(
 async function* parseEvents(
   source: AsyncGenerator<{ event: string; data: string }>,
   closed: () => boolean,
+  adapter: ResponsesAdapter,
 ): AsyncGenerator<ResponseStreamEvent> {
   for await (const { data } of source) {
     if (closed()) {
@@ -101,7 +107,7 @@ async function* parseEvents(
     if (data === '[DONE]') {
       break;
     }
-    const event = parseEvent(data);
+    const event = parseEvent(data, adapter);
     if (event === null) {
       continue;
     }
@@ -117,18 +123,22 @@ async function* parseEvents(
   }
 }
 
-function parseEvent(data: string): ResponseStreamEvent | null {
-  let value: unknown;
+function parseEvent(
+  data: string,
+  adapter: ResponsesAdapter,
+): ResponseStreamEvent | null {
+  let parsed: unknown;
   try {
-    value = JSON.parse(data);
+    parsed = JSON.parse(data);
   } catch (error) {
     throw new OpenAIError('Invalid Responses event JSON', {
       cause: error,
     });
   }
-  if (!isObject(value) || typeof value.type !== 'string') {
+  if (!isObject(parsed) || typeof parsed.type !== 'string') {
     throw new OpenAIError('Invalid Responses event');
   }
+  const value = adapter.normalizeEvent(parsed);
 
   switch (value.type) {
     case 'response.output_text.delta':
@@ -268,6 +278,19 @@ function validateOutputItem(value: unknown): void {
             isObject(part)
             && part.type === 'summary_text'
             && typeof part.text === 'string'
+          )
+        )
+        && (
+          value.content === undefined
+          || (
+            Array.isArray(value.content)
+            && value.content.every(
+              part => (
+                isObject(part)
+                && part.type === 'reasoning_text'
+                && typeof part.text === 'string'
+              )
+            )
           )
         )
       ) {

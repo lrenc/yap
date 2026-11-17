@@ -25,14 +25,16 @@ export async function executeTool({ tools, call, signal }: {
       details: structuredClone(result.details),
     };
   } catch (error) {
+    let message = 'Tool failed.';
+    if (signal.aborted) {
+      message = 'Tool interrupted; may have partially completed.';
+    } else if (error instanceof Error) {
+      message = error.message;
+    }
     return {
       status: 'error',
       output: JSON.stringify({
-        error: signal.aborted
-          ? 'Tool interrupted; may have partially completed.'
-          : error instanceof Error
-            ? error.message
-            : 'Tool failed.',
+        error: message,
       }),
     };
   }

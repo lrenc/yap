@@ -31,4 +31,19 @@ export const models: readonly Model[] = [
       },
     },
   },
+  {
+    id: 'glm-5.3',
+    name: 'GLM-5.3',
+    providerId: 'zhipu',
+    contextWindow: 1_000_000,
+    reasoningEfforts: [
+      'low', 'high', 'max'
+    ],
+    params: {
+      max_output_tokens: 131_072,
+      reasoning: {
+        effort: 'max',
+      },
+    },
+  },
 ];

@@ -1,6 +1,9 @@
+export type AdapterName = 'openai' | 'glm';
+
 export interface OpenAIClientOptions {
   apiKey: string;
   baseURL: string;
+  adapter?: AdapterName;
   fetch?: typeof globalThis.fetch;
 }
 
@@ -34,6 +37,16 @@ export interface ResponseCreateParams {
   max_output_tokens?: number;
   include?: string[];
   reasoning?: { effort: string };
+}
+
+export type AdapterRequest = ResponseCreateParams & {
+  stream: boolean;
+};
+
+export interface ResponsesAdapter {
+  encodeRequest(params: AdapterRequest): unknown;
+  normalizeResponse(value: unknown): unknown;
+  normalizeEvent(value: Record<string, unknown>): Record<string, unknown>;
 }
 
 export type ResponseInputItem =
@@ -82,7 +95,7 @@ export interface OpenAIResponse {
 export interface ResponseUsage {
   input_tokens: number;
   output_tokens: number;
-  total_tokens: number;
+  total_tokens?: number;
   input_tokens_details?: {
     cached_tokens?: number;
     cache_write_tokens?: number;

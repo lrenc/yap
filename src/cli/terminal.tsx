@@ -78,6 +78,12 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
     ].join(' · ')
     : undefined;
   const pathStatus = currentModel ? displayPath(runtime.cwd) : undefined;
+  let pendingStatus = '';
+  if (state.blocked) {
+    pendingStatus = ` · ${state.blocked.message}`;
+  } else if (state.paused) {
+    pendingStatus = ' · waiting for panel';
+  }
   const submit = (value: string) => {
     if (!value.trim()) {
       return;
@@ -253,9 +259,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
           <Box paddingX={1}>
             <Text color={theme.colors.text.muted}>
               {state.pending} input{state.pending === 1 ? '' : 's'} queued
-              {state.blocked ? ` · ${state.blocked.message}` : state.paused
-                ? ' · waiting for panel'
-                : ''}
+              {pendingStatus}
             </Text>
           </Box>
         ) : null}

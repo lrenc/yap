@@ -46,6 +46,7 @@ export class ClientFactory {
     const client = createClient({
       apiKey: key,
       baseURL: provider.baseURL,
+      adapter: provider.adapter,
     });
     this.#clients.set(provider.id, { key, client });
     return client;

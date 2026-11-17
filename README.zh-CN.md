@@ -33,7 +33,9 @@ Prompt，以及简洁的模型和凭据管理。
 
 ## 快速开始
 
-需要 [Node.js](https://nodejs.org/) 22 或更高版本，以及 DeepSeek API Key。
+需要 [Node.js](https://nodejs.org/) 22 或更高版本，以及 DeepSeek 或
+[智谱 GLM](https://docs.bigmodel.cn/cn/guide/develop/responses/introduction)
+API Key。
 YAP 必须在交互式终端中运行，重定向的输入和输出会被拒绝。
 安装包已发布到 [npm](https://www.npmjs.com/package/@lrenc/yap)。
 
@@ -50,9 +52,9 @@ npx @lrenc/yap
 
 首次运行时：
 
-1. 输入 `/config`。
-2. 选择 `API Key` 并保存 DeepSeek API Key。
-3. 如需选择模型，输入 `/model`。
+1. 输入 `/model`，选择 DeepSeek 或 GLM 模型。
+2. 输入 `/config`。
+3. 选择 `API Key` 并保存当前模型所属提供商的 API Key。
 4. 开始输入消息。
 
 ## 命令
@@ -83,6 +85,10 @@ YAP 使用终端的备用屏幕显示对话记录。退出后会恢复终端原�
 
 使用 `/model` 选择当前模型。每个模型都有自己的默认值和支持的推理设置。使用
 `/config` 查看或修改当前模型的推理强度。
+
+DeepSeek 模型直接使用 OpenAI Responses 协议。GLM 使用 Responses 适配层和
+`https://open.bigmodel.cn/api/v1` 端点。接入 GLM 需要标准 BigModel API Key；
+智谱目前限制 GLM Coding Plan 的 Key 仅使用 Chat Completions 协议。
 
 ## Prompt
 
