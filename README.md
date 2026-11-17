@@ -8,7 +8,7 @@
   <p>
     <img alt="Early development" src="https://img.shields.io/badge/status-early%20development-orange?style=flat-square" />
     <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" />
-    <img alt="Bun" src="https://img.shields.io/badge/runtime-Bun-000000?style=flat-square&logo=bun&logoColor=white" />
+    <img alt="Node.js" src="https://img.shields.io/badge/Node.js-22%2B-5FA04E?style=flat-square&logo=node.js&logoColor=white" />
   </p>
 
   <p><a href="./README.zh-CN.md">简体中文</a></p>
@@ -34,14 +34,18 @@ and credentials.
 
 ## Quick Start
 
-You need [Bun](https://bun.sh/) 1.4 or newer and a DeepSeek API key.
+You need [Node.js](https://nodejs.org/) 22 or newer and a DeepSeek API key.
 Run YAP in an interactive terminal; redirected input and output are rejected.
 
 ```bash
-git clone https://github.com/lrenc/yap.git
-cd yap
-bun install
-bun run start
+npm install -g @lrenc/yap
+yap
+```
+
+You can also run it without a global install:
+
+```bash
+npx @lrenc/yap
 ```
 
 On the first run:
@@ -118,6 +122,25 @@ provider when needed to process a request.
 
 ## Development
 
+Source development requires [Bun](https://bun.sh/) 1.4 or newer. The published
+CLI runs on Node.js and does not require Bun.
+
+```bash
+git clone https://github.com/lrenc/yap.git
+cd yap
+bun install
+bun run start
+```
+
+Build the Node-compatible CLI:
+
+```bash
+bun run build
+node dist/cli.js
+```
+
+Quality checks:
+
 ```bash
 bun run typecheck
 bun test
@@ -135,6 +158,7 @@ For coverage, run `bun run test:coverage`.
 | `src/context/` | Conversation history, tokens, and context compaction |
 | `src/model/` | Model providers and HTTP/SSE client code |
 | `src/tools/` | Built-in file tools and tool definitions |
+| `scripts/` | Build and release helper scripts |
 
 ### Roadmap
 

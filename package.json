@@ -1,10 +1,37 @@
 {
-  "name": "yap",
+  "name": "@lrenc/yap",
   "version": "0.0.1",
-  "private": true,
+  "description": "A focused terminal AI assistant",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lrenc/yap.git"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "coding-assistant",
+    "terminal"
+  ],
   "type": "module",
+  "bin": {
+    "yap": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "bun src/cli/index.tsx",
+    "build": "sh scripts/build.sh",
+    "prepack": "bun run build",
+    "prepublishOnly": "bun run typecheck && bun test",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "typecheck": "tsc --noEmit"
@@ -22,5 +49,8 @@
     "react": "^19.3.1",
     "string-width": "^8.3.0",
     "zod": "^4.6.7"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

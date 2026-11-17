@@ -8,7 +8,7 @@
   <p>
     <img alt="Early development" src="https://img.shields.io/badge/status-early%20development-orange?style=flat-square" />
     <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" />
-    <img alt="Bun" src="https://img.shields.io/badge/runtime-Bun-000000?style=flat-square&logo=bun&logoColor=white" />
+    <img alt="Node.js" src="https://img.shields.io/badge/Node.js-22%2B-5FA04E?style=flat-square&logo=node.js&logoColor=white" />
   </p>
 
   <p><a href="./README.md">English</a></p>
@@ -32,14 +32,18 @@ Prompt，以及简洁的模型和凭据管理。
 
 ## 快速开始
 
-需要 [Bun](https://bun.sh/) 1.4 或更高版本，以及 DeepSeek API Key。
+需要 [Node.js](https://nodejs.org/) 22 或更高版本，以及 DeepSeek API Key。
 YAP 必须在交互式终端中运行，重定向的输入和输出会被拒绝。
 
 ```bash
-git clone https://github.com/lrenc/yap.git
-cd yap
-bun install
-bun run start
+npm install -g @lrenc/yap
+yap
+```
+
+也可以不全局安装，直接运行：
+
+```bash
+npx @lrenc/yap
 ```
 
 首次运行时：
@@ -108,6 +112,25 @@ YAP 的设置和 Prompt 保存在本地。处理请求时，对话消息、工�
 
 ## 开发
 
+源码开发需要 [Bun](https://bun.sh/) 1.4 或更高版本。发布后的 CLI 使用
+Node.js 运行，不要求用户安装 Bun。
+
+```bash
+git clone https://github.com/lrenc/yap.git
+cd yap
+bun install
+bun run start
+```
+
+构建兼容 Node.js 的 CLI：
+
+```bash
+bun run build
+node dist/cli.js
+```
+
+质量检查：
+
 ```bash
 bun run typecheck
 bun test
@@ -129,6 +152,7 @@ bun run test:coverage
 | `src/context/` | 对话历史、token 估算和上下文压缩 |
 | `src/model/` | 模型提供商以及 HTTP/SSE 客户端 |
 | `src/tools/` | 内置文件工具和工具定义 |
+| `scripts/` | 构建和发布辅助脚本 |
 
 ### 路线图
 
