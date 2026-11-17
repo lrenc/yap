@@ -113,8 +113,7 @@ export class App {
     this.secrets = options.secrets ?? new FileSecretStore();
     this.settings = options.settings ?? new SettingsStore();
     this.prompts = options.prompts ?? new PromptRepository();
-    this.#admitRun = options.admitRun
-      ?? (() => this.#checkApiKeyAdmission());
+    this.#admitRun = options.admitRun ?? (() => this.#checkApiKeyAdmission());
     this.#clients = new ClientFactory(this.secrets);
     this.#tools = options.tools
       ? [...options.tools]
@@ -122,10 +121,6 @@ export class App {
         readFileTool(this.cwd),
         readDirectoryTool(this.cwd),
       ];
-  }
-
-  get sessionId(): number | undefined {
-    return this.#sessionId;
   }
 
   get pendingCount(): number {
@@ -242,11 +237,14 @@ export class App {
     return tracked;
   }
 
-  notice(message: string, level: 'info' | 'warning' | 'error' = 'info'): void {
+  #notice(
+    message: string,
+    level: 'info' | 'warning' | 'error' = 'info',
+  ): void {
     this.#emit({ type: 'notice', level, message });
   }
 
-  reportPromptWarnings(): void {
+  #reportPromptWarnings(): void {
     this.#reportWarnings(this.prompts.warnings);
   }
 
@@ -297,7 +295,7 @@ export class App {
           ? result.reason.message
           : `Cannot initialize ${source}.`;
         this.#errors.push({ source, message });
-        this.notice(message, 'error');
+        this.#notice(message, 'error');
       }
     }
     this.#reportWarnings(this.settings.warnings);
@@ -310,7 +308,7 @@ export class App {
       try {
         await this.#loadPrompt(this.settings.config.activePrompt);
       } catch (error) {
-        this.notice(
+        this.#notice(
           error instanceof Error
             ? error.message
             : 'Cannot read the selected Prompt.',
@@ -415,7 +413,7 @@ export class App {
           this.#inputQueue.shift();
           this.#blocked = null;
           this.#emitQueue();
-          this.notice(
+          this.#notice(
             admission.error instanceof Error
               ? admission.error.message
               : 'Cannot start the conversation.',
@@ -430,7 +428,7 @@ export class App {
         this.#startRun(input);
       }
     } catch (error) {
-      this.notice(
+      this.#notice(
         error instanceof Error ? error.message : 'Cannot process input.',
         'error',
       );
@@ -495,7 +493,7 @@ export class App {
     if (this.#disposed || generation !== this.#generation) {
       return;
     }
-    this.reportPromptWarnings();
+    this.#reportPromptWarnings();
     if (result.type === 'notice') {
       this.#emit(result);
     } else if (result.type === 'newSession' && this.#sessionId !== undefined) {
@@ -591,7 +589,7 @@ export class App {
         this.#emit({ ...event, runId, sessionId });
       }
     } catch (error) {
-      this.notice(
+      this.#notice(
         error instanceof Error ? error.message : 'Cannot run the conversation.',
         'error',
       );
@@ -629,7 +627,7 @@ export class App {
         prompt.missingPrompt
         && this.#missingPrompt !== prompt.missingPrompt
       ) {
-        this.notice(
+        this.#notice(
           `Prompt "${prompt.missingPrompt}" is missing; using default.`,
           'warning',
         );
@@ -638,7 +636,7 @@ export class App {
       return prompt;
     } finally {
       if (!signal?.aborted) {
-        this.reportPromptWarnings();
+        this.#reportPromptWarnings();
       }
     }
   }
@@ -647,7 +645,7 @@ export class App {
     for (const warning of warnings) {
       if (!this.#warnings.has(warning)) {
         this.#warnings.add(warning);
-        this.notice(warning, 'warning');
+        this.#notice(warning, 'warning');
       }
     }
   }

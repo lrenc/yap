@@ -1,7 +1,7 @@
 import { models } from './models.ts';
 import type { PromptRepository } from './settings/prompts.ts';
 
-export type CommandResult =
+type CommandResult =
   | { type: 'notice'; level: 'error'; message: string }
   | { type: 'panelRequest'; panel: 'model' | 'config' | 'prompt' }
   | { type: 'newSession' }
@@ -21,7 +21,7 @@ export interface CommandInfo {
   readonly description: string;
 }
 
-export const COMMANDS: readonly CommandInfo[] = [
+const COMMANDS: readonly CommandInfo[] = [
   {
     name: '/model',
     usage: '/model [id]',

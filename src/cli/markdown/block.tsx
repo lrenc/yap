@@ -67,7 +67,7 @@ export const MarkdownBlockView = memo(function MarkdownBlockView({
   }
 });
 
-export function MarkdownBlockSequence({
+function MarkdownBlockSequence({
   blocks,
   color,
   compact = false,

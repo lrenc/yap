@@ -10,9 +10,3 @@ export interface Model extends Omit<AgentModel, 'client'> {
   readonly name: string;
   readonly providerId: string;
 }
-
-export interface MissingSetting {
-  readonly key: 'apiKey';
-  readonly providerId: string;
-  readonly providerName: string;
-}

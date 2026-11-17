@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { models } from '../models.ts';
 import type { Model } from '../types.ts';
 
-export const DEFAULT_MODEL_ID = firstModelId(models);
+const DEFAULT_MODEL_ID = firstModelId(models);
 export const DEFAULT_PROMPT = `
 You are YAP, a terminal AI assistant.
 Help the user complete tasks carefully. Use tools when they improve accuracy and verify relevant results.
@@ -46,7 +46,7 @@ const modelSettingsSchema = z.looseObject({
   reasoningEffort: z.string().optional(),
 });
 
-export const appConfigSchema = z.strictObject({
+const appConfigSchema = z.strictObject({
   version: z.literal(1).default(1),
   activeModelId: z.string().default(DEFAULT_MODEL_ID),
   modelSettings: z.record(z.string(), modelSettingsSchema).default({}),
@@ -66,7 +66,7 @@ export const providerSecretsSchema = z.strictObject({
 export type AppConfig = z.infer<typeof appConfigSchema>;
 export type ProviderSecrets = z.infer<typeof providerSecretsSchema>;
 
-export function resolveModelId(
+function resolveModelId(
   modelId: string,
   catalog: readonly Model[] = models,
 ): { modelId: string; needsRepair: boolean } {

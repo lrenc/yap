@@ -7,7 +7,7 @@ import { pathResolver, pathSchema } from '../internal/path.ts';
 import { TextPage } from '../internal/text-page.ts';
 import type { AgentTool } from '../types.ts';
 
-export const MAX_READ_LINES = 2_000;
+const MAX_READ_LINES = 2_000;
 
 export function readFileTool(directory = process.cwd()): AgentTool {
   const resolvePath = pathResolver(directory);
