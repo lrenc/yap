@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Box, Text, useWindowSize } from 'ink';
 import { Input } from './input.tsx';
 import { createDraft } from '../../state/input.ts';
+import { useTheme } from '../../theme/index.ts';
 import type { Draft, DraftChangeReason } from '../../types.ts';
 
 export interface ComposerProps {
@@ -25,6 +26,7 @@ export function Composer({
   onEscape,
   onSubmit,
 }: ComposerProps) {
+  const theme = useTheme();
   const [draft, setDraft] = useState<Draft>(
     () => createDraft(initialValue),
   );
@@ -37,7 +39,7 @@ export function Composer({
   return (
     <Box
       width='100%'
-      backgroundColor='#373B43'
+      backgroundColor={theme.colors.surface.composer}
       flexDirection='column'
       flexShrink={0}
     >
@@ -48,7 +50,10 @@ export function Composer({
         flexDirection='row'
       >
         <Box width={2} flexShrink={0}>
-          <Text color={newOutput ? '#61AFEF' : '#B4B5BC'}>
+          <Text color={newOutput
+            ? theme.colors.markdown.cursor
+            : theme.colors.role.userPrompt}
+          >
             {newOutput ? '↓ ' : '› '}
           </Text>
         </Box>

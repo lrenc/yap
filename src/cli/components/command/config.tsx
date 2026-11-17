@@ -6,6 +6,7 @@ import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
 import { useLock } from '../../hooks/use-lock.ts';
 import { useSelection } from '../../hooks/use-selection.ts';
+import { useTheme } from '../../theme/index.ts';
 import { Editor } from '../input/editor.tsx';
 import { SelectList } from '../select-list.tsx';
 import { Panel } from './panel.tsx';
@@ -39,6 +40,7 @@ export function ConfigPanel({
   onComplete,
   onClose,
 }: ConfigPanelProps) {
+  const theme = useTheme();
   const [view, setView] = useState<View>({ type: 'fields' });
   const viewRef = useRef<View>(view);
   const [configured, setConfigured] = useState<boolean | undefined>();
@@ -251,12 +253,12 @@ export function ConfigPanel({
             selectedIndex={fields.index}
           />
           {apiStatus ? (
-            <Text color='#E06C75'>
+            <Text color={theme.colors.feedback.error}>
               API Key: {apiStatus}
             </Text>
           ) : null}
           {effortStatus ? (
-            <Text color='#E06C75'>
+            <Text color={theme.colors.feedback.error}>
               Reasoning Effort: {effortStatus}
             </Text>
           ) : null}
@@ -278,9 +280,11 @@ export function ConfigPanel({
             onSubmit={value => void saveApiKey(value)}
             placeholder='Enter API Key'
           />
-          {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
+          {saveLock.locked ? (
+            <Text color={theme.colors.text.muted}>Saving...</Text>
+          ) : null}
           {apiStatus ? (
-            <Text color='#E06C75'>{apiStatus}</Text>
+            <Text color={theme.colors.feedback.error}>{apiStatus}</Text>
           ) : null}
         </Box>
       ) : null}
@@ -295,20 +299,22 @@ export function ConfigPanel({
             }))}
             selectedIndex={effortOptions.index}
           />
-          {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
+          {saveLock.locked ? (
+            <Text color={theme.colors.text.muted}>Saving...</Text>
+          ) : null}
           {effortStatus ? (
-            <Text color='#E06C75'>{effortStatus}</Text>
+            <Text color={theme.colors.feedback.error}>{effortStatus}</Text>
           ) : null}
         </Box>
       ) : null}
 
       {view.type === 'confirm-clear' ? (
         <>
-          <Text color='#E5C07B'>
+          <Text color={theme.colors.feedback.warning}>
             Clear the stored API Key? Press Enter to confirm.
           </Text>
           {apiStatus ? (
-            <Text color='#E06C75'>{apiStatus}</Text>
+            <Text color={theme.colors.feedback.error}>{apiStatus}</Text>
           ) : null}
         </>
       ) : null}

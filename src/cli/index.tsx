@@ -5,6 +5,7 @@ import {
   ENABLE_MOUSE,
 } from './input/mouse.ts';
 import { Terminal } from './terminal.tsx';
+import { ThemeProvider } from './theme/index.ts';
 
 const ENTER_ALTERNATE_SCREEN = '\x1b[?1049h\x1b[H';
 const EXIT_ALTERNATE_SCREEN = '\x1b[?1049l';
@@ -30,7 +31,9 @@ async function start() {
   process.stdout.write(ENTER_ALTERNATE_SCREEN);
   try {
     const ui = render(
-      <Terminal wheelEvents={mouse.events} />, {
+      <ThemeProvider>
+        <Terminal wheelEvents={mouse.events} />
+      </ThemeProvider>, {
         stdin: mouse.stdin,
         interactive: true,
         kittyKeyboard: { mode: 'auto' },

@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  executeCommand,
-  suggestCommands,
-} from '../../src/app/commands.ts';
+import { executeCommand, suggestCommands } from '../../src/app/commands.ts';
 import { models } from '../../src/app/models.ts';
 
 describe('command suggestions', () => {

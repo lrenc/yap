@@ -1,4 +1,5 @@
 import { Box, Text } from 'ink';
+import { useTheme } from '../theme/index.ts';
 
 export interface SelectListItem {
   key: string;
@@ -16,12 +17,16 @@ export function SelectList({
   selectedIndex: number;
   labelWidth?: number;
 }) {
+  const theme = useTheme();
   return (
     <Box flexDirection='column'>
       {items.map((item, index) => {
         const selected = index === selectedIndex;
         const label = (
-          <Text color={selected ? '#61AFEF' : '#C6C7CD'}>
+          <Text color={selected
+            ? theme.colors.selection.active
+            : theme.colors.selection.label}
+          >
             {selected ? '›' : ' '} {item.label}
           </Text>
         );
@@ -33,10 +38,17 @@ export function SelectList({
               </Box>
             )}
             {item.detail !== undefined ? (
-              <Text color='#7F848E'>  {item.detail}</Text>
+              <Text color={theme.colors.selection.detail}>
+                {'  '}{item.detail}
+              </Text>
             ) : null}
             {item.checked ? (
-              <Text color={selected ? '#61AFEF' : '#C6C7CD'}>  ✓</Text>
+              <Text color={selected
+                ? theme.colors.selection.checked
+                : theme.colors.selection.label}
+              >
+                {'  ✓'}
+              </Text>
             ) : null}
           </Box>
         );

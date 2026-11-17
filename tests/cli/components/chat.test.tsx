@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { render } from 'ink-testing-library';
-import {
-  Chat,
-  ChatEntryView,
-} from '../../../src/cli/components/chat.tsx';
+import { Chat, ChatEntryView } from '../../../src/cli/components/chat.tsx';
 import type {
   ChatEntry,
   ChatState,
@@ -42,7 +39,6 @@ describe('Chat', () => {
         turn: 2,
         text: 'streaming',
         refusal: false,
-        parts: 0,
       },
       activity: null,
     };
@@ -65,6 +61,12 @@ describe('Chat', () => {
     expect(frame).not.toContain('You');
     expect(frame).not.toContain('YAP');
     expect(frame).toContain('streaming▌');
+    expect(frame).toContain('› question');
+    const lines = frame.split('\n');
+    const questionLine = lines.find(line => line.includes('question'))!;
+    const answerLine = lines.find(line => line.includes('answer'))!;
+    expect(questionLine.indexOf('question'))
+      .toBe(answerLine.indexOf('answer'));
   });
 
   test('renders active work status', async () => {
@@ -82,21 +84,13 @@ describe('Chat', () => {
     expect(rendered.lastFrame()).toContain('Compacting context...');
   });
 
-  test('continues a streamed response in order', async () => {
+  test('renders Markdown before the streaming response', async () => {
     const items: ChatEntry[] = [
       {
-        id: 'assistant:1:1:1:part:0',
+        id: 'assistant:1:1:1',
         type: 'assistant',
-        content: 'first line',
+        content: '## first line\n\nsecond line',
         refusal: false,
-        streamPart: 'start',
-      },
-      {
-        id: 'assistant:1:1:1:part:1',
-        type: 'assistant',
-        content: 'second line',
-        refusal: false,
-        streamPart: 'continue',
       },
     ];
     rendered = render(
@@ -112,9 +106,8 @@ describe('Chat', () => {
               runId: 1,
               sessionId: 1,
               turn: 1,
-              text: 'latest line',
+              text: 'latest **line**',
               refusal: false,
-              parts: 2,
             },
             activity: null,
           }}
@@ -126,11 +119,13 @@ describe('Chat', () => {
 
     const frame = rendered.lastFrame() ?? '';
     expect(frame).not.toContain('YAP');
+    expect(frame).not.toContain('##');
+    expect(frame).not.toContain('**');
     expect(frame.indexOf('first line')).toBeLessThan(
       frame.indexOf('second line'),
     );
     expect(frame.indexOf('second line')).toBeLessThan(
-      frame.indexOf('latest line'),
+      frame.indexOf('latest line▌'),
     );
   });
 });

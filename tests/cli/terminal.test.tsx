@@ -143,6 +143,61 @@ describe('Terminal', () => {
     }
   });
 
+  test('renders streamed Markdown without syntax markers', async () => {
+    const text = '## Result\n\n**Done**';
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response([
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: '## Result\n\n',
+      },
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: '**Done**',
+      },
+      {
+        type: 'response.completed',
+        response: {
+          id: 'response_1',
+          status: 'completed',
+          output: [{
+            type: 'message',
+            id: 'message_1',
+            role: 'assistant',
+            content: [{ type: 'output_text', text }],
+          }],
+        },
+      },
+    ].map(sseEvent).join(''), {
+      headers: { 'content-type': 'text/event-stream' },
+    });
+    try {
+      const app = await createApp();
+      rendered = render(<Terminal app={app} />);
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('Ask anything...') === true
+      ));
+      await app.secrets.setApiKey('deepseek', 'test-key');
+
+      rendered.stdin.write('hello\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('Done') === true
+      ));
+
+      const frame = rendered.lastFrame() ?? '';
+      expect(frame).toContain('Result');
+      expect(frame).toContain('Done');
+      expect(frame).not.toContain('##');
+      expect(frame).not.toContain('**');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test('renders multiline streamed content only once', async () => {
     const text = 'first line\nsecond line\nthird line';
     const originalFetch = globalThis.fetch;

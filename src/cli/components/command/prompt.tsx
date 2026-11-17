@@ -7,6 +7,7 @@ import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
 import { useLock } from '../../hooks/use-lock.ts';
 import { useSelection } from '../../hooks/use-selection.ts';
+import { useTheme } from '../../theme/index.ts';
 import { Editor } from '../input/editor.tsx';
 import { SelectList } from '../select-list.tsx';
 import { Panel } from './panel.tsx';
@@ -39,6 +40,7 @@ export function PromptPanel({
   onComplete,
   onClose,
 }: PromptPanelProps) {
+  const theme = useTheme();
   const [view, setView] = useState<View>({ type: 'list' });
   const viewRef = useRef<View>(view);
   const [names, setNames] = useState<string[]>([]);
@@ -262,7 +264,9 @@ export function PromptPanel({
     >
       {view.type === 'list' ? (
         <Box flexDirection='column'>
-          {loading ? <Text color='#7F848E'>Loading Prompts...</Text> : null}
+          {loading ? (
+            <Text color={theme.colors.text.muted}>Loading Prompts...</Text>
+          ) : null}
           <SelectList
             items={entries.map(entry => ({
               key: entry,
@@ -277,7 +281,7 @@ export function PromptPanel({
       {view.type === 'name' ? (
         <Box flexDirection='column'>
           <Text>New Prompt name</Text>
-          <Text color='#7F848E'>
+          <Text color={theme.colors.text.muted}>
             Up to 16 characters; must be a valid file name.
           </Text>
           <Editor
@@ -333,14 +337,18 @@ export function PromptPanel({
       ) : null}
 
       {view.type === 'confirm-delete' ? (
-        <Text color='#E5C07B'>
+        <Text color={theme.colors.feedback.warning}>
           Delete “{view.name}”
           {active === view.name ? ' and restore the default Prompt' : ''}?
         </Text>
       ) : null}
 
-      {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
-      {error ? <Text color='#E06C75'>{error}</Text> : null}
+      {saveLock.locked ? (
+        <Text color={theme.colors.text.muted}>Saving...</Text>
+      ) : null}
+      {error ? (
+        <Text color={theme.colors.feedback.error}>{error}</Text>
+      ) : null}
     </Panel>
   );
 }

@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  MAX_OUTPUT_BYTES,
-  truncateLines,
-} from '../../../src/tools/internal/truncate.ts';
+import { MAX_OUTPUT_BYTES, truncateLines } from '../../../src/tools/internal/truncate.ts';
 
 describe('truncateLines', () => {
   test('applies start and limit while preserving line endings', () => {

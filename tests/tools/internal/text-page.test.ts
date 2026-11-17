@@ -1,7 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  TextPage,
-} from '../../../src/tools/internal/text-page.ts';
+import { TextPage } from '../../../src/tools/internal/text-page.ts';
 import { MAX_OUTPUT_BYTES } from '../../../src/tools/internal/truncate.ts';
 
 describe('TextPage', () => {

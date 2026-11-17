@@ -1,10 +1,7 @@
 import { homedir, tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, test } from 'bun:test';
-import {
-  pathResolver,
-  pathSchema,
-} from '../../../src/tools/internal/path.ts';
+import { pathResolver, pathSchema } from '../../../src/tools/internal/path.ts';
 
 describe('pathResolver', () => {
   test('resolves relative and absolute paths', () => {

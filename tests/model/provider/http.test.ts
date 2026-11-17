@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  HttpError,
-  postJson,
-} from '../../../src/model/provider/http.ts';
+import { HttpError, postJson } from '../../../src/model/provider/http.ts';
 import { TimeoutError } from '../../../src/model/provider/errors.ts';
 
 async function captureError(action: () => Promise<unknown>): Promise<Error> {

@@ -2,15 +2,9 @@ import { Fragment, memo } from 'react';
 import { Box, Text, useWindowSize } from 'ink';
 import info from '../../../package.json' with { type: 'json' };
 import { isMacOS, isWindows } from '../../utils/env.ts';
+import { useTheme } from '../theme/index.ts';
 
 const version = `v${info.version}`;
-const palette: Record<string, string> = {
-  R: '#E18B91',
-  G: '#8FBC9B',
-  B: '#86AAD6',
-  W: '#E7E4DC',
-  K: '#27303B',
-};
 
 const logoRows: readonly [string, string][] = [
   ['.BWWWWB.', 'BBWWWWBB'],
@@ -19,6 +13,7 @@ const logoRows: readonly [string, string][] = [
 ];
 
 export const StartUp = memo(function StartUp() {
+  const theme = useTheme();
   const { columns } = useWindowSize();
   const isLimited = process.env.TERM_PROGRAM === 'Apple_Terminal'
     || process.env.TERM === 'dumb';
@@ -42,7 +37,7 @@ export const StartUp = memo(function StartUp() {
         </Box>
       </Box>
       {isLimited && (
-        <Text color='yellow' wrap='wrap'>
+        <Text color={theme.colors.feedback.warning} wrap='wrap'>
           For a better experience, use a recommended terminal:
           {' '}{getTerminals()}
         </Text>
@@ -62,7 +57,15 @@ function getTerminals(): string {
 }
 
 function Logo() {
+  const theme = useTheme();
   const colored = !process.env.NO_COLOR && process.env.FORCE_COLOR !== '0';
+  const palette: Record<string, string> = {
+    R: theme.colors.brand.logo.red,
+    G: theme.colors.brand.logo.green,
+    B: theme.colors.brand.logo.blue,
+    W: theme.colors.brand.logo.white,
+    K: theme.colors.brand.logo.black,
+  };
 
   return (
     <Text>
@@ -75,6 +78,7 @@ function Logo() {
               top={pixel}
               bottom={bottom.charAt(column)}
               colored={colored}
+              palette={palette}
             />
           ))}
         </Fragment>
@@ -83,10 +87,11 @@ function Logo() {
   );
 }
 
-function LogoCell({ top, bottom, colored }: {
+function LogoCell({ top, bottom, colored, palette }: {
   top: string;
   bottom: string;
   colored: boolean;
+  palette: Readonly<Record<string, string>>;
 }) {
   const upper = !colored && top === 'K' ? undefined : palette[top];
   const lower = !colored && bottom === 'K' ? undefined : palette[bottom];

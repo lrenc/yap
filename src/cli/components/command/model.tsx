@@ -3,6 +3,7 @@ import { Text, useInput } from 'ink';
 import type { Model } from '../../../app/types.ts';
 import { useLock } from '../../hooks/use-lock.ts';
 import { useSelection } from '../../hooks/use-selection.ts';
+import { useTheme } from '../../theme/index.ts';
 import { SelectList } from '../select-list.tsx';
 import { Panel } from './panel.tsx';
 
@@ -19,6 +20,7 @@ export function ModelPanel({
   onSave,
   onClose,
 }: ModelPanelProps) {
+  const theme = useTheme();
   const initial = Math.max(
     0,
     models.findIndex(model => model.id === currentModelId),
@@ -82,8 +84,12 @@ export function ModelPanel({
         }))}
         selectedIndex={selection.index}
       />
-      {saveLock.locked ? <Text color='#7F848E'>Saving...</Text> : null}
-      {error ? <Text color='#E06C75'>{error}</Text> : null}
+      {saveLock.locked ? (
+        <Text color={theme.colors.text.muted}>Saving...</Text>
+      ) : null}
+      {error ? (
+        <Text color={theme.colors.feedback.error}>{error}</Text>
+      ) : null}
     </Panel>
   );
 }

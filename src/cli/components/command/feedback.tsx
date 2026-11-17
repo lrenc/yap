@@ -1,11 +1,6 @@
 import { Box, Text } from 'ink';
 import type { AppFeedback } from '../../hooks/use-app.ts';
-
-const COLORS = {
-  info: '#B4B5BC',
-  warning: '#E5C07B',
-  error: '#E06C75',
-} as const;
+import { useTheme } from '../../theme/index.ts';
 
 export function Feedback({
   feedback,
@@ -16,6 +11,7 @@ export function Feedback({
   pending: number;
   paused: boolean;
 }) {
+  const theme = useTheme();
   return (
     <Box
       flexDirection='column'
@@ -24,12 +20,16 @@ export function Feedback({
       minHeight={1}
     >
       {feedback.map(item => (
-        <Text key={item.id} color={COLORS[item.level]} wrap='wrap'>
+        <Text
+          key={item.id}
+          color={theme.colors.feedback[item.level]}
+          wrap='wrap'
+        >
           {item.message}
         </Text>
       ))}
       {pending > 0 ? (
-        <Text color='#7F848E'>
+        <Text color={theme.colors.text.muted}>
           {pending} input{pending === 1 ? '' : 's'} queued
           {paused ? ' · waiting for panel' : ''}
         </Text>

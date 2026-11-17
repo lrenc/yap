@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Box, Text } from 'ink';
+import { useTheme } from '../../theme/index.ts';
 
 export function Panel({
   children,
@@ -10,6 +11,7 @@ export function Panel({
   footer?: string;
   height?: number;
 }) {
+  const theme = useTheme();
   return (
     <Box
       flexDirection='column'
@@ -23,7 +25,7 @@ export function Panel({
       </Box>
       {footer ? (
         <Box marginTop={1}>
-          <Text color='#7F848E'>{footer}</Text>
+          <Text color={theme.colors.text.muted}>{footer}</Text>
         </Box>
       ) : null}
     </Box>

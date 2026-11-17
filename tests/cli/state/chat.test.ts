@@ -94,7 +94,7 @@ describe('chat state', () => {
     });
   });
 
-  test('rebuilds multiline output from the final response text', () => {
+  test('uses multiline final text when it differs from deltas', () => {
     const state = apply([
       {
         type: 'text_delta',
@@ -121,7 +121,7 @@ describe('chat state', () => {
     });
   });
 
-  test('moves completed lines into static transcript parts', () => {
+  test('keeps multiline Markdown active until text_done', () => {
     const streaming = apply([
       {
         type: 'text_delta',
@@ -132,14 +132,8 @@ describe('chat state', () => {
       },
     ]);
 
-    expect(streaming.completed).toEqual([{
-      id: 'assistant:1:1:1:part:0',
-      type: 'assistant',
-      content: 'first line',
-      refusal: false,
-      streamPart: 'start',
-    }]);
-    expect(streaming.active?.text).toBe('second');
+    expect(streaming.completed).toEqual([]);
+    expect(streaming.active?.text).toBe('first line\nsecond');
 
     const completed = applyChatEvent(streaming, {
       type: 'text_done',
@@ -151,15 +145,14 @@ describe('chat state', () => {
     });
     expect(completed.active).toBeNull();
     expect(completed.completed).toEqual([{
-      id: 'assistant:1:1:1:part:0',
+      id: 'assistant:1:1:1',
       type: 'assistant',
       content: 'first line\nsecond',
       refusal: false,
-      streamPart: 'only',
     }]);
   });
 
-  test('preserves refusal styling when the first delta contains a newline', () => {
+  test('preserves refusal styling for multiline Markdown', () => {
     const state = apply([{
       type: 'refusal_delta',
       turn: 1,
@@ -169,13 +162,8 @@ describe('chat state', () => {
     }]);
 
     expect(state.active?.refusal).toBe(true);
-    expect(state.completed).toEqual([{
-      id: 'assistant:1:1:1:part:0',
-      type: 'assistant',
-      content: 'blocked',
-      refusal: true,
-      streamPart: 'start',
-    }]);
+    expect(state.active?.text).toBe('blocked\nrest');
+    expect(state.completed).toEqual([]);
 
     const completed = applyChatEvent(state, {
       type: 'text_done',
@@ -186,15 +174,14 @@ describe('chat state', () => {
       sessionId: 1,
     });
     expect(completed.completed.at(-1)).toEqual({
-      id: 'assistant:1:1:1:part:0',
+      id: 'assistant:1:1:1',
       type: 'assistant',
       content: 'blocked\nrest',
       refusal: true,
-      streamPart: 'only',
     });
   });
 
-  test('removes CRLF from completed transcript lines', () => {
+  test('preserves CRLF in the Markdown source', () => {
     const state = apply([{
       type: 'text_delta',
       turn: 1,
@@ -203,17 +190,11 @@ describe('chat state', () => {
       sessionId: 1,
     }]);
 
-    expect(state.completed[0]).toEqual({
-      id: 'assistant:1:1:1:part:0',
-      type: 'assistant',
-      content: 'first',
-      refusal: false,
-      streamPart: 'start',
-    });
-    expect(state.active?.text).toBe('second');
+    expect(state.completed).toEqual([]);
+    expect(state.active?.text).toBe('first\r\nsecond');
   });
 
-  test('does not merge streamed parts with different refusal styles', () => {
+  test('combines text and refusal deltas into one Markdown message', () => {
     let state = apply([{
       type: 'text_delta',
       turn: 1,
@@ -237,22 +218,12 @@ describe('chat state', () => {
       sessionId: 1,
     });
 
-    expect(state.completed).toEqual([
-      {
-        id: 'assistant:1:1:1:part:0',
-        type: 'assistant',
-        content: 'normal',
-        refusal: false,
-        streamPart: 'start',
-      },
-      {
-        id: 'assistant:1:1:1:part:1',
-        type: 'assistant',
-        content: 'refused',
-        refusal: true,
-        streamPart: 'end',
-      },
-    ]);
+    expect(state.completed).toEqual([{
+      id: 'assistant:1:1:1',
+      type: 'assistant',
+      content: 'normal\nrefused',
+      refusal: true,
+    }]);
   });
 
   test('tracks tool activity and preserves failed output', () => {

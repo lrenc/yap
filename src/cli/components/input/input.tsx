@@ -22,6 +22,7 @@ import {
   moveVerticalCursor,
   type InputLayout,
 } from '../../state/input.ts';
+import { useTheme } from '../../theme/index.ts';
 import type { Draft, DraftChangeReason } from '../../types.ts';
 
 const DEFAULT_MAX_ROWS = 8;
@@ -52,6 +53,7 @@ export function Input({
   onNavigate,
   onSubmit,
 }: InputProps) {
+  const theme = useTheme();
   const { value, cursor } = draft;
   const ref = useRef<DOMElement>(null);
   const { width, hasMeasured } = useBoxMetrics(ref);
@@ -187,7 +189,9 @@ export function Input({
         return (
           <Text
             key={index}
-            color={value ? '#E6E6E6' : '#B4B5BC'}
+            color={value
+              ? theme.colors.text.primary
+              : theme.colors.text.secondary}
             wrap='truncate-end'
           >
             {text}

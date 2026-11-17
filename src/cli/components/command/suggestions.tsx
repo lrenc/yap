@@ -1,5 +1,6 @@
 import { Text } from 'ink';
 import { suggestCommands } from '../../../app/commands.ts';
+import { useTheme } from '../../theme/index.ts';
 import { Panel } from './panel.tsx';
 import { SelectList } from '../select-list.tsx';
 
@@ -12,6 +13,7 @@ export function Suggestions({
   input: string;
   selectedIndex: number;
 }) {
+  const theme = useTheme();
   if (!input.startsWith('/') || /\s/u.test(input)) {
     return null;
   }
@@ -33,7 +35,7 @@ export function Suggestions({
           selectedIndex={selectedIndex}
         />
       ) : (
-        <Text color='#7F848E'>No matching commands</Text>
+        <Text color={theme.colors.text.muted}>No matching commands</Text>
       )}
       {Array.from(
         { length: VISIBLE_COMMANDS - visibleRows },

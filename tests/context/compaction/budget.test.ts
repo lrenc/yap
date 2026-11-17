@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  getModelBudget,
-  getSummaryLimit,
-} from '../../../src/context/compaction/budget.ts';
+import { getModelBudget, getSummaryLimit } from '../../../src/context/compaction/budget.ts';
 
 describe('getModelBudget', () => {
   test('derives the threshold and positive margin', () => {

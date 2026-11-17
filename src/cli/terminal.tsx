@@ -16,17 +16,13 @@ import { ModelPanel } from './components/command/model.tsx';
 import { Panel } from './components/command/panel.tsx';
 import { PromptPanel } from './components/command/prompt.tsx';
 import { Suggestions } from './components/command/suggestions.tsx';
-import {
-  Chat,
-  CompletedTranscript,
-} from './components/chat.tsx';
+import { Chat, CompletedTranscript } from './components/chat.tsx';
 import { Composer } from './components/input/composer.tsx';
-import {
-  Scroller,
-} from './components/scroller.tsx';
+import { Scroller } from './components/scroller.tsx';
 import { StartUp } from './components/startup.tsx';
 import { useApp } from './hooks/use-app.ts';
 import { useSelection } from './hooks/use-selection.ts';
+import { useTheme } from './theme/index.ts';
 
 const MAX_SUGGESTION_FOOTER_ROWS = 7;
 const MAX_FOOTER_ROWS = 16;
@@ -46,6 +42,7 @@ export interface TerminalProps {
 }
 
 export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
+  const theme = useTheme();
   const [runtime] = useState(() => app ?? new App());
   const [draft, setDraft] = useState('');
   const [hasNewOutput, setHasNewOutput] = useState(false);
@@ -72,14 +69,14 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
       ?? currentModel.params.reasoning?.effort
       ?? 'default'
     : undefined;
-  const status = currentModel
+  const modelStatus = currentModel
     ? [
       ...(config?.activePrompt ? [config.activePrompt] : []),
       currentModel.name,
       reasoningEffort,
-      displayPath(runtime.cwd),
     ].join(' · ')
     : undefined;
+  const pathStatus = currentModel ? displayPath(runtime.cwd) : undefined;
   const submit = (value: string) => {
     if (!value.trim()) {
       return;
@@ -141,7 +138,9 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
       if (!model) {
         return (
           <Panel>
-            <Text color='#E06C75'>Unknown configured model.</Text>
+            <Text color={theme.colors.feedback.error}>
+              Unknown configured model.
+            </Text>
           </Panel>
         );
       }
@@ -209,7 +208,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
         !state.feedback.some(item => item.message === error.message)
       )).map(error => (
         <Box key={`${error.source}-${error.message}`} paddingX={1}>
-          <Text color='#E06C75'>{error.message}</Text>
+          <Text color={theme.colors.feedback.error}>{error.message}</Text>
         </Box>
       ))}
       <Composer
@@ -233,8 +232,14 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
       >
         {currentModel ? (
           <Box paddingX={1}>
-            <Text color='#7F848E' wrap='truncate-end'>
-              {status}
+            <Text color={theme.colors.text.muted} wrap='truncate-end'>
+              <Text color={theme.colors.role.agent}>{modelStatus}</Text>
+              {modelStatus && pathStatus ? (
+                <Text color={theme.colors.text.muted}> · </Text>
+              ) : null}
+              {pathStatus ? (
+                <Text color={theme.colors.role.path}>{pathStatus}</Text>
+              ) : null}
             </Text>
           </Box>
         ) : null}
