@@ -134,7 +134,7 @@ export class App {
 
   async setModel(modelId: string): Promise<void> {
     await this.settings.setModel(modelId);
-    this.#configurationChanged('model');
+    this.#configChanged('model');
   }
 
   async setReasoningEffort(
@@ -142,37 +142,37 @@ export class App {
     effort: string | undefined,
   ): Promise<void> {
     await this.settings.setReasoningEffort(modelId, effort);
-    this.#configurationChanged('reasoning-effort');
+    this.#configChanged('reasoning-effort');
   }
 
   async setActivePrompt(name: string | undefined): Promise<void> {
     await this.settings.setActivePrompt(name);
-    this.#configurationChanged('prompt');
+    this.#configChanged('prompt');
   }
 
   async createPrompt(name: string, content: string): Promise<void> {
     await this.prompts.create(name, content);
-    this.#configurationChanged('prompt');
+    this.#configChanged('prompt');
   }
 
   async updatePrompt(name: string, content: string): Promise<void> {
     await this.prompts.update(name, content);
-    this.#configurationChanged('prompt');
+    this.#configChanged('prompt');
   }
 
   async deletePrompt(name: string): Promise<void> {
     await this.prompts.delete(name);
-    this.#configurationChanged('prompt');
+    this.#configChanged('prompt');
   }
 
   async setApiKey(providerId: string, apiKey: string): Promise<void> {
     await this.secrets.setApiKey(providerId, apiKey);
-    this.#configurationChanged('api-key');
+    this.#configChanged('api-key');
   }
 
   async clearApiKey(providerId: string): Promise<void> {
     await this.secrets.clearApiKey(providerId);
-    this.#configurationChanged('api-key');
+    this.#configChanged('api-key');
   }
 
   get panel(): AppPanel | null {
@@ -346,8 +346,11 @@ export class App {
     this.#settleIdle();
   }
 
-  #configurationChanged(change: ConfigurationChange): void {
-    this.#emit({ type: 'configuration_changed', change });
+  #configChanged(change: ConfigurationChange): void {
+    this.#emit({
+      type: 'configuration_changed',
+      change,
+    });
     this.#recheckQueue();
   }
 

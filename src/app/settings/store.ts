@@ -16,11 +16,19 @@ function loadError(path: string, error: unknown): Error {
   if (error instanceof ZodError) {
     detail = error.issues.map(issue => {
       const field = issue.path[0];
-      const location = field === 'modelSettings'
-        ? 'modelSettings'
-        : ['version', 'activeModelId', 'activePrompt'].includes(String(field))
-          ? String(field)
-          : 'config';
+      let location: string;
+      if (field === 'modelSettings') {
+        location = 'modelSettings';
+      } else if ([
+        'version',
+        'activeModelId',
+        'activePrompt',
+      ].includes(String(field))
+      ) {
+        location = String(field);
+      } else {
+        location = 'config';
+      }
       return `${location}: ${issue.code}`;
     }).join('; ');
   } else if (
@@ -117,7 +125,10 @@ export class SettingsStore {
   setActivePrompt(name: string | undefined): Promise<void> {
     return this.#enqueue(async () => {
       const config = this.#requireConfig();
-      if (name !== undefined && !promptNameSchema.safeParse(name).success) {
+      if (
+        name !== undefined
+        && !promptNameSchema.safeParse(name).success
+      ) {
         throw new Error('Invalid Prompt name');
       }
       await this.#save({
