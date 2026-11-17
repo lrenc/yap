@@ -226,9 +226,12 @@ function MarkdownCellLine({
 }): ReactNode {
   const text = layout.lines[lineIndex] ?? '';
   const padding = Math.max(0, width - stringWidth(text));
-  const left = align === 'right'
-    ? padding
-    : align === 'center' ? Math.floor(padding / 2) : 0;
+  let left = 0;
+  if (align === 'right') {
+    left = padding;
+  } else if (align === 'center') {
+    left = Math.floor(padding / 2);
+  }
   const right = padding - left;
   return (
     <>

@@ -1,9 +1,5 @@
 import { formatError } from '../error.ts';
-import type {
-  AgentEvent,
-  AgentResult,
-  ToolOutcome,
-} from '../../agent/run/types.ts';
+import type { AgentEvent, AgentResult, ToolOutcome } from '../../agent/run/types.ts';
 
 export type ChatEvent =
   | {
@@ -45,11 +41,6 @@ export type ChatEntry =
     type: 'notice';
     level: 'info' | 'warning' | 'error';
     message: string;
-  }
-  | {
-    id: string;
-    type: 'divider';
-    label: string;
   };
 
 export interface ActiveResponse {
@@ -161,15 +152,11 @@ export function applyChatEvent(
       return finishRun(state, event);
     }
     case 'session_boundary': {
-      return appendItem({
+      return {
         ...state,
         active: null,
         activity: null,
-      }, {
-        id: `divider:${event.sessionId}:${state.completed.length}`,
-        type: 'divider',
-        label: 'New conversation',
-      });
+      };
     }
   }
 }

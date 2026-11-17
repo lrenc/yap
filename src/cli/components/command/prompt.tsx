@@ -225,18 +225,19 @@ export function PromptPanel({
     isActive: view.type === 'list' || view.type === 'confirm-delete',
   });
 
+  let footer: string;
+  if (view.type === 'list') {
+    footer = '↑/↓ move · a add · e edit · d delete';
+  } else if (view.type === 'name') {
+    footer = 'Enter continue · Esc back';
+  } else if (view.type === 'editor') {
+    footer = 'Shift+Enter newline · Enter save · Esc cancel';
+  } else {
+    footer = 'Enter confirm delete · Esc cancel';
+  }
+
   return (
-    <Panel
-      footer={
-        view.type === 'list'
-          ? '↑/↓ move · a add · e edit · d delete'
-          : view.type === 'name'
-            ? 'Enter continue · Esc back'
-            : view.type === 'editor'
-              ? 'Shift+Enter newline · Enter save · Esc cancel'
-              : 'Enter confirm delete · Esc cancel'
-      }
-    >
+    <Panel footer={footer}>
       {view.type === 'list' ? (
         <Box flexDirection='column'>
           {loading ? (

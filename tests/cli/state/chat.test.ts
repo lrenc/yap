@@ -347,7 +347,7 @@ describe('chat state', () => {
     expect(state.completed).toEqual([]);
   });
 
-  test('starts a new transcript section at a session boundary', () => {
+  test('clears active output at a session boundary', () => {
     const active = apply([
       {
         type: 'user_message',
@@ -370,17 +370,10 @@ describe('chat state', () => {
 
     expect(active.active).toBeNull();
     expect(active.activity).toBeNull();
-    expect(active.completed).toEqual([
-      {
-        id: 'user:1:1',
-        type: 'user',
-        content: 'previous',
-      },
-      {
-        id: 'divider:1:1',
-        type: 'divider',
-        label: 'New conversation',
-      },
-    ]);
+    expect(active.completed).toEqual([{
+      id: 'user:1:1',
+      type: 'user',
+      content: 'previous',
+    }]);
   });
 });

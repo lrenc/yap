@@ -112,17 +112,7 @@ export const ChatEntryView = memo(function ChatEntryView({
       </Box>
     );
   }
-  return (
-    <Box
-      paddingLeft={ASSISTANT_INDENT.left}
-      paddingRight={ASSISTANT_INDENT.right}
-      marginBottom={1}
-    >
-      <Text color={theme.colors.text.muted}>
-        ──── {item.label} ────
-      </Text>
-    </Box>
-  );
+  return null;
 });
 
 export const CompletedTranscript = memo(function CompletedTranscript({
@@ -137,14 +127,19 @@ export const CompletedTranscript = memo(function CompletedTranscript({
 
 function Activity({ activity }: { activity: ChatActivity }) {
   const theme = useTheme();
-  const text = activity.type === 'thinking'
-    ? 'Thinking...'
-    : activity.type === 'compacting'
-      ? 'Compacting context...'
-      : activity.type === 'waiting'
-        ? `Waiting for ${activity.modelId}...`
-        : `Running ${activity.name}...`;
+  let text: string;
+  if (activity.type === 'thinking') {
+    text = 'Thinking...';
+  } else if (activity.type === 'compacting') {
+    text = 'Compacting context...';
+  } else if (activity.type === 'waiting') {
+    text = `Waiting for ${activity.modelId}...`;
+  } else {
+    text = `Running ${activity.name}...`;
+  }
   return (
-    <Text color={theme.colors.role.activity}>{text}</Text>
+    <Text color={theme.colors.role.activity}>
+      {text}
+    </Text>
   );
 }

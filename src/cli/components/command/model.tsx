@@ -76,7 +76,10 @@ export function ModelPanel({
         }))}
         selectedIndex={selection.index}
       />
-      <PanelStatus busy={saveLock.locked} error={error} />
+      <PanelStatus
+        busy={saveLock.locked}
+        error={error}
+      />
     </Panel>
   );
 }

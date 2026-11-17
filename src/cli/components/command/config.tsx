@@ -196,19 +196,27 @@ export function ConfigPanel({
 
   const apiStatus = status.apiKey;
   const effortStatus = status.reasoningEffort;
+  let footer: string;
+  if (view.type === 'fields') {
+    footer = '↑/↓ move · Enter edit · c clear key';
+  } else if (view.type === 'api-key') {
+    footer = 'Enter save · Esc cancel';
+  } else if (view.type === 'effort') {
+    footer = '↑/↓ move · Enter save · Esc back';
+  } else {
+    footer = 'Enter confirm · Esc cancel';
+  }
+  let apiKeyDetail: string;
+  if (configured === undefined) {
+    apiKeyDetail = 'checking...';
+  } else if (configured) {
+    apiKeyDetail = 'configured';
+  } else {
+    apiKeyDetail = 'not configured';
+  }
 
   return (
-    <Panel
-      footer={
-        view.type === 'fields'
-          ? '↑/↓ move · Enter edit · c clear key'
-          : view.type === 'api-key'
-            ? 'Enter save · Esc cancel'
-            : view.type === 'effort'
-              ? '↑/↓ move · Enter save · Esc back'
-              : 'Enter confirm · Esc cancel'
-      }
-    >
+    <Panel footer={footer}>
       {view.type === 'fields' ? (
         <Box flexDirection='column'>
           <SelectList
@@ -216,9 +224,7 @@ export function ConfigPanel({
               {
                 key: 'api-key',
                 label: 'API Key',
-                detail: configured === undefined
-                  ? 'checking...'
-                  : configured ? 'configured' : 'not configured',
+                detail: apiKeyDetail,
               },
               {
                 key: 'reasoning-effort',

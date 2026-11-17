@@ -25,11 +25,13 @@ const MAX_FOOTER_ROWS = 16;
 
 function displayPath(path: string): string {
   const home = homedir();
-  return path === home
-    ? '~'
-    : path.startsWith(`${home}${sep}`)
-      ? `~${path.slice(home.length)}`
-      : path;
+  if (path === home) {
+    return '~';
+  }
+  if (path.startsWith(`${home}${sep}`)) {
+    return `~${path.slice(home.length)}`;
+  }
+  return path;
 }
 
 export interface TerminalProps {

@@ -5,7 +5,8 @@ import { StringDecoder } from 'node:string_decoder';
 export const ENABLE_MOUSE = '\x1b[?1000h\x1b[?1006h';
 export const DISABLE_MOUSE = '\x1b[?1006l\x1b[?1000l';
 
-const SEQUENCE = /\x1b\[(?:<(\d+);(\d+);(\d+)([Mm])|M([\s\S])([\s\S])([\s\S]))/gu;
+const MOUSE_SEQUENCE =
+  /\x1b\[(?:<(\d+);\d+;\d+[Mm]|M([\s\S])[\s\S]{2})/gu;
 
 export interface FilteredMouseInput {
   text: string;
@@ -18,10 +19,10 @@ export function filterMouseInput(
 ): FilteredMouseInput {
   let text = '';
   let index = 0;
-  for (const match of input.matchAll(SEQUENCE)) {
+  for (const match of input.matchAll(MOUSE_SEQUENCE)) {
     text += input.slice(index, match.index);
     const button = match[1] === undefined
-      ? (match[5]?.charCodeAt(0) ?? 0) - 32
+      ? (match[2]?.charCodeAt(0) ?? 0) - 32
       : Number(match[1]);
     const verticalWheel = button & ~(4 | 8 | 16);
     if (verticalWheel === 64 || verticalWheel === 65) {

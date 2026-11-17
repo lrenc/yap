@@ -43,10 +43,14 @@ export function PanelStatus({
   return (
     <>
       {busy ? (
-        <Text color={theme.colors.text.muted}>Saving...</Text>
+        <Text color={theme.colors.text.muted}>
+          Saving...
+        </Text>
       ) : null}
       {error ? (
-        <Text color={theme.colors.feedback.error}>{error}</Text>
+        <Text color={theme.colors.feedback.error}>
+          {error}
+        </Text>
       ) : null}
     </>
   );
