@@ -141,8 +141,3 @@ For coverage, run `bun run test:coverage`.
 - [ ] Virtualize the transcript and preserve the reader's resize position with
   a stable message key plus row offset. Invalidate wrapped item heights when
   the terminal width changes; do not anchor to DOM child indexes.
-
-## License
-
-[MIT](./LICENSE). See [third-party notices](./THIRD_PARTY_NOTICES.md) for
-adapted terminal UI code.
