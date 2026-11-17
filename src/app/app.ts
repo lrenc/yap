@@ -47,7 +47,6 @@ export type AppEvent =
   | {
     type: 'input_queue';
     pending: number;
-    running: boolean;
     paused: boolean;
   };
 
@@ -103,10 +102,6 @@ export class App {
 
   get sessionId(): number | undefined {
     return this.#sessionId;
-  }
-
-  get running(): boolean {
-    return this.#runTasks.size > 0;
   }
 
   get pendingCount(): number {
@@ -450,7 +445,6 @@ export class App {
     this.#emit({
       type: 'input_queue',
       pending: this.#queue.length,
-      running: this.running,
       paused: this.#panel !== null || this.#panelSaves > 0,
     });
   }

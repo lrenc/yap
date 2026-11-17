@@ -109,7 +109,6 @@ function code(token: Tokens.Code): MarkdownBlock {
   }
   return {
     type: 'code',
-    language: token.lang || undefined,
     text: token.text,
   };
 }
@@ -214,10 +213,6 @@ function normalizeInline(tokens: readonly Token[]): InlineNode[] {
             text: token.text || token.href,
           }],
         });
-        break;
-      }
-      case 'checkbox': {
-        appendText(nodes, token.checked ? '[x] ' : '[ ] ');
         break;
       }
       default: {

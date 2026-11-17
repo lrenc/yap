@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Text, useInput } from 'ink';
+import { useInput } from 'ink';
 import type { Model } from '../../../app/types.ts';
+import { formatError } from '../../error.ts';
 import { useLock } from '../../hooks/use-lock.ts';
 import { useSelection } from '../../hooks/use-selection.ts';
-import { useTheme } from '../../theme/index.ts';
 import { SelectList } from '../select-list.tsx';
-import { Panel } from './panel.tsx';
+import { Panel, PanelStatus } from './panel.tsx';
 
 export interface ModelPanelProps {
   models: readonly Model[];
@@ -20,7 +20,6 @@ export function ModelPanel({
   onSave,
   onClose,
 }: ModelPanelProps) {
-  const theme = useTheme();
   const initial = Math.max(
     0,
     models.findIndex(model => model.id === currentModelId),
@@ -31,23 +30,16 @@ export function ModelPanel({
 
   const select = async () => {
     const model = models[selection.current()];
-    if (!model || !saveLock.tryLock()) {
+    if (!model) {
       return;
     }
     setError(undefined);
-    let saved = false;
-    try {
-      await onSave(model.id);
-      saved = true;
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : 'Cannot save model.'
-      );
-    } finally {
-      saveLock.unlock();
-      if (saved) {
-        onClose();
-      }
+    const saved = await saveLock.run(
+      () => onSave(model.id),
+      cause => setError(formatError(cause, 'Cannot save model.')),
+    );
+    if (saved) {
+      onClose();
     }
   };
 
@@ -84,12 +76,7 @@ export function ModelPanel({
         }))}
         selectedIndex={selection.index}
       />
-      {saveLock.locked ? (
-        <Text color={theme.colors.text.muted}>Saving...</Text>
-      ) : null}
-      {error ? (
-        <Text color={theme.colors.feedback.error}>{error}</Text>
-      ) : null}
+      <PanelStatus busy={saveLock.locked} error={error} />
     </Panel>
   );
 }

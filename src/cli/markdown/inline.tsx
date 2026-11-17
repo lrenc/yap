@@ -30,10 +30,10 @@ export function inlineText(nodes: readonly InlineNode[]): string {
         break;
       }
       case 'link': {
-        const label = inlineText(node.children);
-        text += label === node.href
+        const { label, destination } = linkParts(node);
+        text += destination === undefined
           ? label
-          : `${label} (${node.href})`;
+          : `${label} (${destination})`;
         break;
       }
       default: {
@@ -84,15 +84,14 @@ function renderInlineNode(
       );
     }
     case 'link': {
-      const label = inlineText(node.children);
-      const showDestination = label !== node.href;
+      const { destination } = linkParts(node);
       return (
         <>
           <Text color={markdown.link} underline>
             <InlineContent nodes={node.children} />
           </Text>
-          {showDestination ? (
-            <Text dimColor> ({node.href})</Text>
+          {destination !== undefined ? (
+            <Text dimColor> ({destination})</Text>
           ) : null}
         </>
       );
@@ -101,4 +100,17 @@ function renderInlineNode(
       return '\n';
     }
   }
+}
+
+function linkParts(
+  node: Extract<InlineNode, { type: 'link' }>,
+): {
+  label: string;
+  destination: string | undefined;
+} {
+  const label = inlineText(node.children);
+  return {
+    label,
+    destination: label === node.href ? undefined : node.href,
+  };
 }

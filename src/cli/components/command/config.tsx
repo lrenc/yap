@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { Model } from '../../../app/types.ts';
-import { formatError } from '../../format-error.ts';
+import { formatError } from '../../error.ts';
 import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
 import { useLock } from '../../hooks/use-lock.ts';
@@ -9,7 +9,7 @@ import { useSelection } from '../../hooks/use-selection.ts';
 import { useTheme } from '../../theme/index.ts';
 import { Editor } from '../input/editor.tsx';
 import { SelectList } from '../select-list.tsx';
-import { Panel } from './panel.tsx';
+import { Panel, PanelStatus } from './panel.tsx';
 
 type Field = 'apiKey' | 'reasoningEffort';
 
@@ -86,66 +86,42 @@ export function ConfigPanel({
       }));
       return;
     }
-    if (!saveLock.tryLock()) {
-      return;
-    }
-    let succeeded = false;
-    try {
-      await onSaveApiKey(value);
-      succeeded = true;
-    } catch (error) {
-      setStatus(current => ({
+    const succeeded = await saveLock.run(
+      () => onSaveApiKey(value),
+      error => setStatus(current => ({
         ...current,
         apiKey: formatError(error, 'Cannot save API Key.'),
-      }));
-    } finally {
-      saveLock.unlock();
-      if (succeeded) {
-        onComplete();
-      }
+      })),
+    );
+    if (succeeded) {
+      onComplete();
     }
   };
 
   const clearApiKey = async () => {
-    if (!saveLock.tryLock()) {
-      return;
-    }
-    let succeeded = false;
-    try {
-      await onClearApiKey();
-      succeeded = true;
-    } catch (error) {
-      setStatus(current => ({
+    const succeeded = await saveLock.run(
+      () => onClearApiKey(),
+      error => setStatus(current => ({
         ...current,
         apiKey: formatError(error, 'Cannot clear API Key.'),
-      }));
-    } finally {
-      saveLock.unlock();
-      if (succeeded) {
-        onComplete();
-      }
+      })),
+    );
+    if (succeeded) {
+      onComplete();
     }
   };
 
   const saveEffort = async (option: string) => {
-    if (!saveLock.tryLock()) {
-      return;
-    }
-    let succeeded = false;
-    try {
-      const value = option === 'default' ? undefined : option;
-      await onSaveEffort(value);
-      succeeded = true;
-    } catch (error) {
-      setStatus(current => ({
+    const value = option === 'default' ? undefined : option;
+    const succeeded = await saveLock.run(
+      () => onSaveEffort(value),
+      error => setStatus(current => ({
         ...current,
         reasoningEffort: formatError(error, 'Save failed.'),
-      }));
-    } finally {
-      saveLock.unlock();
-      if (succeeded) {
-        onComplete();
-      }
+      })),
+    );
+    if (succeeded) {
+      onComplete();
     }
   };
 
@@ -280,12 +256,7 @@ export function ConfigPanel({
             onSubmit={value => void saveApiKey(value)}
             placeholder='Enter API Key'
           />
-          {saveLock.locked ? (
-            <Text color={theme.colors.text.muted}>Saving...</Text>
-          ) : null}
-          {apiStatus ? (
-            <Text color={theme.colors.feedback.error}>{apiStatus}</Text>
-          ) : null}
+          <PanelStatus busy={saveLock.locked} error={apiStatus} />
         </Box>
       ) : null}
 
@@ -299,12 +270,7 @@ export function ConfigPanel({
             }))}
             selectedIndex={effortOptions.index}
           />
-          {saveLock.locked ? (
-            <Text color={theme.colors.text.muted}>Saving...</Text>
-          ) : null}
-          {effortStatus ? (
-            <Text color={theme.colors.feedback.error}>{effortStatus}</Text>
-          ) : null}
+          <PanelStatus busy={saveLock.locked} error={effortStatus} />
         </Box>
       ) : null}
 

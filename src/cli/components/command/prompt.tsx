@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { PromptRepository } from '../../../app/settings/prompts.ts';
 import { promptNameSchema } from '../../../app/settings/schema.ts';
-import { formatError } from '../../format-error.ts';
+import { formatError } from '../../error.ts';
 import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
 import { useLock } from '../../hooks/use-lock.ts';
@@ -10,7 +10,7 @@ import { useSelection } from '../../hooks/use-selection.ts';
 import { useTheme } from '../../theme/index.ts';
 import { Editor } from '../input/editor.tsx';
 import { SelectList } from '../select-list.tsx';
-import { Panel } from './panel.tsx';
+import { Panel, PanelStatus } from './panel.tsx';
 
 type View =
   | { type: 'list' }
@@ -86,23 +86,14 @@ export function PromptPanel({
   }, [prompts]);
 
   const select = async (name: string) => {
-    if (!saveLock.tryLock()) {
-      return;
-    }
     setError(undefined);
-    let succeeded = false;
-    try {
+    const succeeded = await saveLock.run(async () => {
       const value = name === 'default' ? undefined : name;
       await trackSave(onSelect(value));
       setActive(value);
-      succeeded = true;
-    } catch (cause) {
-      setError(formatError(cause, 'Prompt operation failed.'));
-    } finally {
-      saveLock.unlock();
-      if (succeeded) {
-        onComplete();
-      }
+    }, cause => setError(formatError(cause, 'Prompt operation failed.')));
+    if (succeeded) {
+      onComplete();
     }
   };
 
@@ -136,36 +127,23 @@ export function PromptPanel({
       setError('Prompt content must not be empty.');
       return;
     }
-    if (!saveLock.tryLock()) {
-      return;
-    }
     setError(undefined);
-    let succeeded = false;
-    try {
+    const succeeded = await saveLock.run(async () => {
       await trackSave(
         mode === 'add'
           ? prompts.create(name, contentValue.value)
           : prompts.update(name, contentValue.value)
       );
-      succeeded = true;
-    } catch (cause) {
-      setError(formatError(cause, 'Prompt operation failed.'));
-    } finally {
-      saveLock.unlock();
-      if (succeeded) {
-        onComplete();
-      }
+    }, cause => setError(formatError(cause, 'Prompt operation failed.')));
+    if (succeeded) {
+      onComplete();
     }
   };
 
   const deletePrompt = async (name: string) => {
-    if (!saveLock.tryLock()) {
-      return;
-    }
     setError(undefined);
     let deleted = false;
-    let succeeded = false;
-    try {
+    const succeeded = await saveLock.run(async () => {
       await trackSave((async () => {
         await prompts.delete(name);
         deleted = true;
@@ -176,27 +154,24 @@ export function PromptPanel({
       if (active === name) {
         setActive(undefined);
       }
-      succeeded = true;
-    } catch (cause) {
+    }, cause => {
       if (deleted && active === name) {
         setActive(undefined);
       }
       setError(formatError(cause, 'Prompt operation failed.'));
-    } finally {
-      saveLock.unlock();
-      if (succeeded) {
-        onComplete();
-        return;
-      }
-      list.select(0);
-      changeView({ type: 'list' });
-      try {
-        await refresh();
-      } catch (cause) {
-        setError(current => (
-          current ?? formatError(cause, 'Prompt operation failed.')
-        ));
-      }
+    });
+    if (succeeded) {
+      onComplete();
+      return;
+    }
+    list.select(0);
+    changeView({ type: 'list' });
+    try {
+      await refresh();
+    } catch (cause) {
+      setError(current => (
+        current ?? formatError(cause, 'Prompt operation failed.')
+      ));
     }
   };
 
@@ -343,12 +318,7 @@ export function PromptPanel({
         </Text>
       ) : null}
 
-      {saveLock.locked ? (
-        <Text color={theme.colors.text.muted}>Saving...</Text>
-      ) : null}
-      {error ? (
-        <Text color={theme.colors.feedback.error}>{error}</Text>
-      ) : null}
+      <PanelStatus busy={saveLock.locked} error={error} />
     </Panel>
   );
 }

@@ -48,7 +48,6 @@ describe('Markdown parser', () => {
     ]);
     expect(blocks[3]).toEqual({
       type: 'code',
-      language: 'ts',
       text: 'const x = 1;',
     });
   });
@@ -58,7 +57,6 @@ describe('Markdown parser', () => {
 
     expect(blocks).toEqual([{
       type: 'code',
-      language: 'ts',
       text: 'const value = 1',
     }]);
   });

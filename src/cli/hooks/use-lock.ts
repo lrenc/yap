@@ -6,17 +6,25 @@ export function useLock() {
 
   return {
     locked,
-    tryLock: () => {
+    run: async (
+      action: () => Promise<void>,
+      onError: (error: unknown) => void,
+    ): Promise<boolean> => {
       if (lockedRef.current) {
         return false;
       }
       lockedRef.current = true;
       setLocked(true);
-      return true;
-    },
-    unlock: () => {
-      lockedRef.current = false;
-      setLocked(false);
+      try {
+        await action();
+        return true;
+      } catch (error) {
+        onError(error);
+        return false;
+      } finally {
+        lockedRef.current = false;
+        setLocked(false);
+      }
     },
   };
 }

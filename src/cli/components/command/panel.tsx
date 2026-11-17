@@ -31,3 +31,23 @@ export function Panel({
     </Box>
   );
 }
+
+export function PanelStatus({
+  busy,
+  error,
+}: {
+  busy: boolean;
+  error: string | undefined;
+}) {
+  const theme = useTheme();
+  return (
+    <>
+      {busy ? (
+        <Text color={theme.colors.text.muted}>Saving...</Text>
+      ) : null}
+      {error ? (
+        <Text color={theme.colors.feedback.error}>{error}</Text>
+      ) : null}
+    </>
+  );
+}

@@ -35,7 +35,6 @@ describe('Chat', () => {
       active: {
         id: 'active',
         runId: 1,
-        sessionId: 1,
         turn: 2,
         text: 'streaming',
         refusal: false,
@@ -104,7 +103,6 @@ describe('Chat', () => {
             active: {
               id: 'assistant:1:1:1',
               runId: 1,
-              sessionId: 1,
               turn: 1,
               text: 'latest **line**',
               refusal: false,

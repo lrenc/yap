@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { render } from 'ink-testing-library';
+import { suggestCommands } from '../../../../src/app/commands.ts';
 import { Suggestions } from '../../../../src/cli/components/command/suggestions.tsx';
 
 describe('Suggestions', () => {
@@ -11,7 +12,13 @@ describe('Suggestions', () => {
   });
 
   test('shows the command catalog for a slash', async () => {
-    rendered = render(<Suggestions input='/' selectedIndex={0} />);
+    rendered = render(
+      <Suggestions
+        input='/'
+        commands={suggestCommands('/')}
+        selectedIndex={0}
+      />,
+    );
     await new Promise(resolve => setTimeout(resolve, 0));
 
     const frame = rendered.lastFrame() ?? '';
@@ -22,7 +29,13 @@ describe('Suggestions', () => {
   });
 
   test('filters the catalog as the command name grows', async () => {
-    rendered = render(<Suggestions input='/co' selectedIndex={0} />);
+    rendered = render(
+      <Suggestions
+        input='/co'
+        commands={suggestCommands('/co')}
+        selectedIndex={0}
+      />,
+    );
     await new Promise(resolve => setTimeout(resolve, 0));
 
     const frame = rendered.lastFrame() ?? '';
@@ -32,7 +45,13 @@ describe('Suggestions', () => {
   });
 
   test('reports when no command matches', async () => {
-    rendered = render(<Suggestions input='/missing' selectedIndex={0} />);
+    rendered = render(
+      <Suggestions
+        input='/missing'
+        commands={suggestCommands('/missing')}
+        selectedIndex={0}
+      />,
+    );
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(rendered.lastFrame()).toContain('No matching commands');

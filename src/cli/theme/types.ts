@@ -9,17 +9,14 @@ export interface Theme {
       info: string;
       warning: string;
       error: string;
-      success: string;
     };
     surface: {
       composer: string;
       userMessage: string;
-      code: string;
     };
     role: {
       userPrompt: string;
       agent: string;
-      model: string;
       path: string;
       refusal: string;
       activity: string;

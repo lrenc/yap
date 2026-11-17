@@ -1,4 +1,4 @@
-import { formatError } from '../format-error.ts';
+import { formatError } from '../error.ts';
 import type {
   AgentEvent,
   AgentResult,
@@ -55,7 +55,6 @@ export type ChatEntry =
 export interface ActiveResponse {
   id: string;
   runId: number;
-  sessionId: number;
   turn: number;
   text: string;
   refusal: boolean;
@@ -67,7 +66,6 @@ export type ChatActivity =
   | { type: 'waiting'; modelId: string }
   | {
     type: 'tool';
-    id: string;
     name: string;
     callId: string;
   };
@@ -112,12 +110,10 @@ export function applyChatEvent(
       return finishText(state, event);
     }
     case 'tool_start': {
-      const id = `tool:${event.sessionId}:${event.runId}:${event.call.call_id}`;
       return {
         ...state,
         activity: {
           type: 'tool',
-          id,
           name: event.call.name,
           callId: event.call.call_id,
         },
@@ -130,8 +126,7 @@ export function applyChatEvent(
         : undefined;
       return {
         ...appendItem(state, {
-          id: current?.id
-            ?? `tool:${event.sessionId}:${event.runId}:${event.call.call_id}`,
+          id: `tool:${event.sessionId}:${event.runId}:${event.call.call_id}`,
           type: 'tool',
           name: event.call.name,
           status: event.status,
@@ -194,7 +189,6 @@ function updateActive(
     : {
       id: assistantId(event.sessionId, event.runId, event.turn),
       runId: event.runId,
-      sessionId: event.sessionId,
       turn: event.turn,
       text: '',
       refusal: false,

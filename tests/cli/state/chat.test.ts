@@ -242,7 +242,6 @@ describe('chat state', () => {
 
     expect(started.activity).toEqual({
       type: 'tool',
-      id: 'tool:1:1:call_1',
       name: 'read_file',
       callId: 'call_1',
     });

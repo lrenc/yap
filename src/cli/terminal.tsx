@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import type { EventEmitter } from 'node:events';
-import {
-  Box,
-  Text,
-  useWindowSize,
-} from 'ink';
+import { Box, Text, useWindowSize } from 'ink';
 import { homedir } from 'node:os';
 import { sep } from 'node:path';
 import { App } from '../app/app.ts';
@@ -247,6 +243,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
         {state.panel ? null : (
           <Suggestions
             input={draft}
+            commands={commands}
             selectedIndex={commandSelection.index}
           />
         )}

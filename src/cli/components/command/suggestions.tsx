@@ -1,5 +1,5 @@
 import { Text } from 'ink';
-import { suggestCommands } from '../../../app/commands.ts';
+import type { CommandInfo } from '../../../app/commands.ts';
 import { useTheme } from '../../theme/index.ts';
 import { Panel } from './panel.tsx';
 import { SelectList } from '../select-list.tsx';
@@ -8,16 +8,18 @@ const VISIBLE_COMMANDS = 5;
 
 export function Suggestions({
   input,
+  commands,
   selectedIndex,
 }: {
   input: string;
+  commands: readonly CommandInfo[];
   selectedIndex: number;
 }) {
   const theme = useTheme();
   if (!input.startsWith('/') || /\s/u.test(input)) {
     return null;
   }
-  const suggestions = suggestCommands(input).slice(0, VISIBLE_COMMANDS);
+  const suggestions = commands.slice(0, VISIBLE_COMMANDS);
   const visibleRows = Math.max(1, suggestions.length);
 
   return (

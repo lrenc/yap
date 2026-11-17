@@ -32,7 +32,6 @@ export type MarkdownBlock =
   }
   | {
     type: 'code';
-    language: string | undefined;
     text: string;
   }
   | {

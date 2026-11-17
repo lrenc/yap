@@ -12,17 +12,14 @@ export const darkTheme = {
       info: palette.gray500,
       warning: palette.yellow,
       error: palette.red,
-      success: palette.green,
     },
     surface: {
       composer: palette.gray800,
       userMessage: palette.gray850,
-      code: palette.gray900,
     },
     role: {
       userPrompt: palette.gray500,
       agent: palette.yellow,
-      model: palette.yellow,
       path: palette.green,
       refusal: palette.yellow,
       activity: palette.gray600,

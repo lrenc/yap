@@ -1,14 +1,9 @@
 import { render } from 'ink';
-import {
-  createMouseInput,
-  DISABLE_MOUSE,
-  ENABLE_MOUSE,
-} from './input/mouse.ts';
+import { createMouseInput, DISABLE_MOUSE, ENABLE_MOUSE } from './input/mouse.ts';
 import { Terminal } from './terminal.tsx';
-import { ThemeProvider } from './theme/index.ts';
 
-const ENTER_ALTERNATE_SCREEN = '\x1b[?1049h\x1b[H';
-const EXIT_ALTERNATE_SCREEN = '\x1b[?1049l';
+const ENTER_ALT_SCREEN = '\x1b[?1049h\x1b[H';
+const EXIT_ALT_SCREEN = '\x1b[?1049l';
 
 if (!process.stdin.isTTY || !process.stdout.isTTY) {
   console.error('Please run Yap in an interactive terminal.');
@@ -28,12 +23,10 @@ async function start() {
   process.stdin.setRawMode(true);
   const mouse = createMouseInput(process.stdin);
   process.stdout.write(ENABLE_MOUSE);
-  process.stdout.write(ENTER_ALTERNATE_SCREEN);
+  process.stdout.write(ENTER_ALT_SCREEN);
   try {
     const ui = render(
-      <ThemeProvider>
-        <Terminal wheelEvents={mouse.events} />
-      </ThemeProvider>, {
+      <Terminal wheelEvents={mouse.events} />, {
         stdin: mouse.stdin,
         interactive: true,
         kittyKeyboard: { mode: 'auto' },
@@ -55,7 +48,7 @@ async function start() {
     }
   } finally {
     process.stdout.write(DISABLE_MOUSE);
-    process.stdout.write(EXIT_ALTERNATE_SCREEN);
+    process.stdout.write(EXIT_ALT_SCREEN);
     mouse.dispose();
     process.stdin.setRawMode(false);
   }
