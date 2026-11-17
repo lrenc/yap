@@ -21,7 +21,7 @@ YAP 是一款本地优先的终端 AI 编程助手，提供可中断的 Agent �
 Prompt，以及简洁的模型和凭据管理。
 
 > [!NOTE]
-> YAP 仍处于早期开发阶段，会话持久化和独立打包尚未完成。
+> YAP 仍处于早期开发阶段，会话持久化尚未完成。
 
 ## 功能
 
@@ -30,6 +30,7 @@ Prompt，以及简洁的模型和凭据管理。
 - 为长对话提供上下文压缩和 token 预算管理。
 - 本地 Prompt 管理，以及可配置的模型推理强度。
 - 内置文件和目录读取工具。
+- 支持 DeepSeek 和智谱 GLM 的 Responses 协议适配。
 
 ## 快速开始
 
@@ -83,12 +84,13 @@ YAP 使用终端的备用屏幕显示对话记录。退出后会恢复终端原�
 
 ## 模型
 
-使用 `/model` 选择当前模型。每个模型都有自己的默认值和支持的推理设置。使用
-`/config` 查看或修改当前模型的推理强度。
+当前支持的模型：
 
-DeepSeek 模型直接使用 OpenAI Responses 协议。GLM 使用 Responses 适配层和
-`https://open.bigmodel.cn/api/v1` 端点。接入 GLM 需要标准 BigModel API Key；
-智谱目前限制 GLM Coding Plan 的 Key 仅使用 Chat Completions 协议。
+- DeepSeek Flash（`deepseek-flash`）
+- DeepSeek Pro（`deepseek-v4-pro`）
+- GLM-5.3（`glm-5.3`）
+
+可以使用 `/model <id>` 直接选择模型，或运行不带参数的 `/model` 打开模型选择器。
 
 ## Prompt
 
@@ -158,7 +160,7 @@ bun run test:coverage
 | `src/app/` | 应用状态、命令、模型和本地设置 |
 | `src/agent/` | Session、Run、流式处理和工具执行 |
 | `src/context/` | 对话历史、token 估算和上下文压缩 |
-| `src/model/` | 模型提供商以及 HTTP/SSE 客户端 |
+| `src/model/` | 提供商配置、Responses 客户端和协议适配层 |
 | `src/tools/` | 内置文件工具和工具定义 |
 | `scripts/` | 构建和发布辅助脚本 |
 

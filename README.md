@@ -22,8 +22,7 @@ interruptible agent runtime, reusable prompts, and simple controls for models
 and credentials.
 
 > [!NOTE]
-> YAP is still in early development. Session persistence and standalone
-> packaging are not complete.
+> YAP is still in early development. Session persistence is not complete.
 
 ## Features
 
@@ -32,11 +31,12 @@ and credentials.
 - Context compaction and token budgeting for long conversations.
 - Local Prompt management and configurable model reasoning effort.
 - Built-in tools for reading files and directories.
+- Provider-aware Responses API support for DeepSeek and Zhipu GLM.
 
 ## Quick Start
 
-You need [Node.js](https://nodejs.org/) 22 or newer and an API key for
-DeepSeek or [Zhipu GLM](https://docs.bigmodel.cn/cn/guide/develop/responses/introduction).
+You need [Node.js](https://nodejs.org/) 22 or newer and an API key for DeepSeek
+or [Zhipu GLM](https://docs.bigmodel.cn/cn/guide/develop/responses/introduction).
 Run YAP in an interactive terminal; redirected input and output are rejected.
 The package is available on [npm](https://www.npmjs.com/package/@lrenc/yap).
 
@@ -87,14 +87,14 @@ the previous terminal contents; use the transcript while YAP is open.
 
 ## Models
 
-Use `/model` to choose the active model. Each model provides its own defaults
-and supported reasoning settings. Use `/config` to review or change the active
-model's reasoning effort.
+Supported models:
 
-DeepSeek models use the OpenAI Responses protocol directly. GLM uses the
-Responses adapter and the `https://open.bigmodel.cn/api/v1` endpoint. A standard
-BigModel API key is required; GLM Coding Plan keys are currently limited to the
-Chat Completions protocol by Zhipu.
+- DeepSeek Flash (`deepseek-flash`)
+- DeepSeek Pro (`deepseek-v4-pro`)
+- GLM-5.3 (`glm-5.3`)
+
+Select a model directly with `/model <id>` or use `/model` without an argument
+to open the picker.
 
 ## Prompts
 
@@ -164,7 +164,7 @@ For coverage, run `bun run test:coverage`.
 | `src/app/` | Application state, commands, models, and local settings |
 | `src/agent/` | Session, Run, streaming, and tool execution |
 | `src/context/` | Conversation history, tokens, and context compaction |
-| `src/model/` | Model providers and HTTP/SSE client code |
+| `src/model/` | Provider configuration, Responses clients, and protocol adapters |
 | `src/tools/` | Built-in file tools and tool definitions |
 | `scripts/` | Build and release helper scripts |
 
