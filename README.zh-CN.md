@@ -9,6 +9,7 @@
     <img alt="Early development" src="https://img.shields.io/badge/status-early%20development-orange?style=flat-square" />
     <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" />
     <img alt="Node.js" src="https://img.shields.io/badge/Node.js-22%2B-5FA04E?style=flat-square&logo=node.js&logoColor=white" />
+    <a href="https://www.npmjs.com/package/@lrenc/yap"><img alt="npm version" src="https://img.shields.io/npm/v/@lrenc/yap?style=flat-square" /></a>
   </p>
 
   <p><a href="./README.md">English</a></p>
@@ -34,6 +35,7 @@ Prompt，以及简洁的模型和凭据管理。
 
 需要 [Node.js](https://nodejs.org/) 22 或更高版本，以及 DeepSeek API Key。
 YAP 必须在交互式终端中运行，重定向的输入和输出会被拒绝。
+安装包已发布到 [npm](https://www.npmjs.com/package/@lrenc/yap)。
 
 ```bash
 npm install -g @lrenc/yap

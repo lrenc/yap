@@ -9,6 +9,7 @@
     <img alt="Early development" src="https://img.shields.io/badge/status-early%20development-orange?style=flat-square" />
     <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" />
     <img alt="Node.js" src="https://img.shields.io/badge/Node.js-22%2B-5FA04E?style=flat-square&logo=node.js&logoColor=white" />
+    <a href="https://www.npmjs.com/package/@lrenc/yap"><img alt="npm version" src="https://img.shields.io/npm/v/@lrenc/yap?style=flat-square" /></a>
   </p>
 
   <p><a href="./README.zh-CN.md">简体中文</a></p>
@@ -36,6 +37,7 @@ and credentials.
 
 You need [Node.js](https://nodejs.org/) 22 or newer and a DeepSeek API key.
 Run YAP in an interactive terminal; redirected input and output are rejected.
+The package is available on [npm](https://www.npmjs.com/package/@lrenc/yap).
 
 ```bash
 npm install -g @lrenc/yap
