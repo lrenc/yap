@@ -65,7 +65,7 @@ export class Context {
 
   addToolResult(call: FunctionCall, output: string): void {
     this.#history.push({
-      type: 'tool_result',
+      type: 'toolResult',
       result: {
         type: 'function_call_output',
         call_id: call.call_id,

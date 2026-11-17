@@ -18,37 +18,37 @@ describe('chat state', () => {
   test('streams and finalizes assistant text without duplication', () => {
     const state = apply([
       {
-        type: 'user_message',
+        type: 'userMessage',
         content: 'hello',
         runId: 1,
         sessionId: 1,
       },
       {
-        type: 'turn_start',
+        type: 'turnStart',
         turn: 1,
         modelId: 'test-model',
         runId: 1,
         sessionId: 1,
       },
       {
-        type: 'text_delta',
+        type: 'textDelta',
         turn: 1,
         delta: 'hel',
         runId: 1,
         sessionId: 1,
       },
       {
-        type: 'text_delta',
+        type: 'textDelta',
         turn: 1,
         delta: 'lo',
         runId: 1,
         sessionId: 1,
       },
       {
-        type: 'text_done',
+        type: 'textDone',
         turn: 1,
         text: 'hello',
-        parts: [{ type: 'output_text', text: 'hello' }],
+        parts: [{ type: 'outputText', text: 'hello' }],
         runId: 1,
         sessionId: 1,
       },
@@ -71,17 +71,17 @@ describe('chat state', () => {
   test('uses the final response text when deltas are incomplete', () => {
     const state = apply([
       {
-        type: 'text_delta',
+        type: 'textDelta',
         turn: 1,
         delta: 'hel',
         runId: 1,
         sessionId: 1,
       },
       {
-        type: 'text_done',
+        type: 'textDone',
         turn: 1,
         text: 'hello',
-        parts: [{ type: 'output_text', text: 'hello' }],
+        parts: [{ type: 'outputText', text: 'hello' }],
         runId: 1,
         sessionId: 1,
       },
@@ -97,17 +97,17 @@ describe('chat state', () => {
   test('uses multiline final text when it differs from deltas', () => {
     const state = apply([
       {
-        type: 'text_delta',
+        type: 'textDelta',
         turn: 1,
         delta: 'first\nsec',
         runId: 1,
         sessionId: 1,
       },
       {
-        type: 'text_done',
+        type: 'textDone',
         turn: 1,
         text: 'first\nsecond\nthird',
-        parts: [{ type: 'output_text', text: 'first\nsecond\nthird' }],
+        parts: [{ type: 'outputText', text: 'first\nsecond\nthird' }],
         runId: 1,
         sessionId: 1,
       },
@@ -124,7 +124,7 @@ describe('chat state', () => {
   test('keeps multiline Markdown active until text_done', () => {
     const streaming = apply([
       {
-        type: 'text_delta',
+        type: 'textDelta',
         turn: 1,
         delta: 'first line\nsecond',
         runId: 1,
@@ -136,10 +136,10 @@ describe('chat state', () => {
     expect(streaming.active?.text).toBe('first line\nsecond');
 
     const completed = applyChatEvent(streaming, {
-      type: 'text_done',
+      type: 'textDone',
       turn: 1,
       text: 'first line\nsecond',
-      parts: [{ type: 'output_text', text: 'first line\nsecond' }],
+      parts: [{ type: 'outputText', text: 'first line\nsecond' }],
       runId: 1,
       sessionId: 1,
     });
@@ -154,7 +154,7 @@ describe('chat state', () => {
 
   test('preserves refusal styling for multiline Markdown', () => {
     const state = apply([{
-      type: 'refusal_delta',
+      type: 'refusalDelta',
       turn: 1,
       delta: 'blocked\nrest',
       runId: 1,
@@ -166,10 +166,10 @@ describe('chat state', () => {
     expect(state.completed).toEqual([]);
 
     const completed = applyChatEvent(state, {
-      type: 'text_done',
+      type: 'textDone',
       turn: 1,
       text: 'blocked\nrest',
-      parts: [{ type: 'output_text', text: 'blocked\nrest' }],
+      parts: [{ type: 'outputText', text: 'blocked\nrest' }],
       runId: 1,
       sessionId: 1,
     });
@@ -183,7 +183,7 @@ describe('chat state', () => {
 
   test('preserves CRLF in the Markdown source', () => {
     const state = apply([{
-      type: 'text_delta',
+      type: 'textDelta',
       turn: 1,
       delta: 'first\r\nsecond',
       runId: 1,
@@ -196,21 +196,21 @@ describe('chat state', () => {
 
   test('combines text and refusal deltas into one Markdown message', () => {
     let state = apply([{
-      type: 'text_delta',
+      type: 'textDelta',
       turn: 1,
       delta: 'normal\n',
       runId: 1,
       sessionId: 1,
     }]);
     state = applyChatEvent(state, {
-      type: 'refusal_delta',
+      type: 'refusalDelta',
       turn: 1,
       delta: 'refused',
       runId: 1,
       sessionId: 1,
     });
     state = applyChatEvent(state, {
-      type: 'text_done',
+      type: 'textDone',
       turn: 1,
       text: 'normal\nrefused',
       parts: [{ type: 'refusal', refusal: 'refused' }],
@@ -234,7 +234,7 @@ describe('chat state', () => {
       arguments: '{}',
     };
     const started = apply([{
-      type: 'tool_start',
+      type: 'toolStart',
       call,
       runId: 1,
       sessionId: 1,
@@ -247,7 +247,7 @@ describe('chat state', () => {
     });
 
     const ended = applyChatEvent(started, {
-      type: 'tool_end',
+      type: 'toolEnd',
       call,
       status: 'error',
       output: 'failed to read the file',
@@ -267,7 +267,7 @@ describe('chat state', () => {
   test('finalizes partial text and reports run errors', () => {
     const state = apply([
       {
-        type: 'text_delta',
+        type: 'textDelta',
         turn: 1,
         delta: 'partial',
         runId: 2,
@@ -305,7 +305,7 @@ describe('chat state', () => {
   test('keeps completed lines when a run fails before text_done', () => {
     const state = apply([
       {
-        type: 'text_delta',
+        type: 'textDelta',
         turn: 1,
         delta: 'first line\npartial',
         runId: 1,
@@ -350,20 +350,20 @@ describe('chat state', () => {
   test('clears active output at a session boundary', () => {
     const active = apply([
       {
-        type: 'user_message',
+        type: 'userMessage',
         content: 'previous',
         runId: 1,
         sessionId: 1,
       },
       {
-        type: 'text_delta',
+        type: 'textDelta',
         turn: 1,
         delta: 'unfinished',
         runId: 1,
         sessionId: 1,
       },
       {
-        type: 'session_boundary',
+        type: 'sessionBoundary',
         sessionId: 1,
       },
     ]);

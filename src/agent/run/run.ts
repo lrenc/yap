@@ -170,7 +170,7 @@ export class Run {
         this.#turns += 1;
         const effort = captured.params.reasoning?.effort;
         this.#emit({
-          type: 'turn_start',
+          type: 'turnStart',
           turn: this.#turns,
           modelId: captured.params.model,
           ...(effort === undefined ? {} : {
@@ -264,7 +264,7 @@ export class Run {
     budget: CompactionBudget,
     params: ResponseCreateParams,
   ): Promise<void> {
-    this.#emit({ type: 'compaction_start' });
+    this.#emit({ type: 'compactionStart' });
     const result = await this.#withRequest(signal => compact({
       context: this.#context,
       budget,
@@ -278,7 +278,7 @@ export class Run {
       }),
     }));
     this.#emit({
-      type: 'compaction_end',
+      type: 'compactionEnd',
       status: result.status,
     });
     if (result.status !== 'completed') {
@@ -323,13 +323,13 @@ export class Run {
       }
       if (event.type === 'response.output_text.delta') {
         this.#emit({
-          type: 'text_delta',
+          type: 'textDelta',
           turn: this.#turns,
           delta: event.delta,
         });
       } else if (event.type === 'response.refusal.delta') {
         this.#emit({
-          type: 'refusal_delta',
+          type: 'refusalDelta',
           turn: this.#turns,
           delta: event.delta,
         });
@@ -376,7 +376,7 @@ export class Run {
       return;
     }
     this.#emit({
-      type: 'text_done',
+      type: 'textDone',
       turn: this.#turns,
       text: responseText(output),
       parts: output.flatMap(item => item.type === 'message'
@@ -386,7 +386,7 @@ export class Run {
             refusal: part.refusal
           }
           : {
-            type: 'output_text' as const,
+            type: 'outputText' as const,
             text: part.text
           }
         ) : []
@@ -413,7 +413,7 @@ export class Run {
         };
       } else {
         this.#emit({
-          type: 'tool_start',
+          type: 'toolStart',
           call: structuredClone(call),
         });
         result = await executeTool({
@@ -424,7 +424,7 @@ export class Run {
       }
       this.#context.addToolResult(call, result.output);
       this.#emit({
-        type: 'tool_end',
+        type: 'toolEnd',
         call: structuredClone(call),
         ...result,
       });

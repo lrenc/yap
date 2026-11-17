@@ -165,18 +165,18 @@ describe('Run', () => {
 
     expect(result.stopReason).toBe('completed');
     expect(events.map(event => event.type)).toEqual([
-      'turn_start',
-      'refusal_delta',
-      'refusal_delta',
-      'text_done',
+      'turnStart',
+      'refusalDelta',
+      'refusalDelta',
+      'textDone',
       'done',
     ]);
-    expect(events.filter(event => event.type === 'refusal_delta')).toEqual([
-      { type: 'refusal_delta', turn: 1, delta: 'not ' },
-      { type: 'refusal_delta', turn: 1, delta: 'allowed' },
+    expect(events.filter(event => event.type === 'refusalDelta')).toEqual([
+      { type: 'refusalDelta', turn: 1, delta: 'not ' },
+      { type: 'refusalDelta', turn: 1, delta: 'allowed' },
     ]);
-    expect(events.find(event => event.type === 'text_done')).toEqual({
-      type: 'text_done',
+    expect(events.find(event => event.type === 'textDone')).toEqual({
+      type: 'textDone',
       turn: 1,
       text: 'not allowed',
       parts: [{ type: 'refusal', refusal: 'not allowed' }],
@@ -379,10 +379,10 @@ describe('Run', () => {
     expect(requests).toBe(1);
     expect(context.contextStart).toBeGreaterThan(0);
     expect(events.map(event => event.type)).toEqual([
-      'compaction_start',
-      'compaction_end',
-      'turn_start',
-      'text_done',
+      'compactionStart',
+      'compactionEnd',
+      'turnStart',
+      'textDone',
       'done',
     ]);
   });
@@ -480,12 +480,12 @@ describe('Run', () => {
     expect(result.stopReason).toBe('completed');
     expect(result.turns).toBe(2);
     expect(events.map(event => event.type)).toEqual([
-      'turn_start',
-      'text_done',
-      'tool_start',
-      'tool_end',
-      'turn_start',
-      'text_done',
+      'turnStart',
+      'textDone',
+      'toolStart',
+      'toolEnd',
+      'turnStart',
+      'textDone',
       'done',
     ]);
     expect(JSON.stringify(requests[1]?.input))

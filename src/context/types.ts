@@ -27,7 +27,7 @@ export type HistoryEntry =
     request?: RequestInfo;
   }
   | {
-    type: 'tool_result';
+    type: 'toolResult';
     result: FunctionCallOutput
   };
 

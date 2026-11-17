@@ -100,7 +100,7 @@ describe('Terminal', () => {
     ));
 
     expect(app.pendingCount).toBe(1);
-    expect(events).not.toContain('user_message');
+    expect(events).not.toContain('userMessage');
     expect(events).not.toContain('done');
     expect(rendered.lastFrame()).not.toContain('Missing API Key');
     expect(rendered.lastFrame()).toContain('API key is not configured');
@@ -172,7 +172,7 @@ describe('Terminal', () => {
         rendered?.lastFrame()?.includes('Queued response') === true
       ));
 
-      expect(events.filter(type => type === 'user_message')).toHaveLength(1);
+      expect(events.filter(type => type === 'userMessage')).toHaveLength(1);
       expect(notices).not.toContain(
         'Missing API Key for DeepSeek. Set it with /config.',
       );

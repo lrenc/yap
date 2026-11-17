@@ -15,7 +15,7 @@ export interface ToolOutcome {
 }
 
 export type AgentTextPart =
-  | { type: 'output_text'; text: string }
+  | { type: 'outputText'; text: string }
   | { type: 'refusal'; refusal: string }
 
 export type AgentEvent =
@@ -24,38 +24,38 @@ export type AgentEvent =
     waitingFor: string | undefined;
   }
   | {
-    type: 'compaction_start';
+    type: 'compactionStart';
   }
   | {
-    type: 'compaction_end';
+    type: 'compactionEnd';
     status: 'completed' | 'error' | 'cancelled';
   }
   | ({
-    type: 'turn_start';
+    type: 'turnStart';
     turn: number;
   } & ModelSelection)
   | {
-    type: 'text_delta';
+    type: 'textDelta';
     turn: number;
     delta: string;
   }
   | {
-    type: 'refusal_delta';
+    type: 'refusalDelta';
     turn: number;
     delta: string;
   }
   | {
-    type: 'text_done';
+    type: 'textDone';
     turn: number;
     text: string;
     parts?: AgentTextPart[];
   }
   | {
-    type: 'tool_start';
+    type: 'toolStart';
     call: FunctionCall;
   }
   | ({
-    type: 'tool_end';
+    type: 'toolEnd';
     call: FunctionCall;
   } & ToolOutcome)
   | {

@@ -19,7 +19,7 @@ interface QueuedRun {
 }
 
 export class Session {
-  readonly #queue: QueuedRun[] = [];
+  readonly #runQueue: QueuedRun[] = [];
   readonly #tools: AgentTool[];
   readonly #context = new Context();
   readonly #resolveRunConfig: RunConfigResolver;
@@ -81,7 +81,7 @@ export class Session {
     this.#pendingMessages = [];
     try {
       this.#active?.cancel();
-      for (const { run } of [...this.#queue]) {
+      for (const { run } of [...this.#runQueue]) {
         run.cancel();
       }
     } finally {
@@ -91,13 +91,13 @@ export class Session {
   }
 
   get waiting(): WaitingState | null {
-    const index = this.#queue.findIndex(item => !item.admitted);
-    const waitingFor = this.#queue[index]?.waitingFor;
+    const index = this.#runQueue.findIndex(item => !item.admitted);
+    const waitingFor = this.#runQueue[index]?.waitingFor;
     return waitingFor === undefined
       ? null
       : {
         modelId: waitingFor,
-        count: this.#queue.length - index,
+        count: this.#runQueue.length - index,
       };
   }
 
@@ -135,7 +135,7 @@ export class Session {
       const { agent, options } = this.#legacy;
       const config = selectRunConfig(agent, options.getModelSelection());
       const input = this.#pendingInput();
-      for (const item of this.#queue) {
+      for (const item of this.#runQueue) {
         input.push(...item.messages.map(content => ({
           role: 'user' as const,
           content,
@@ -154,7 +154,7 @@ export class Session {
       waitingFor: undefined,
       onAbort: () => this.#cancelQueued(item),
     };
-    this.#queue.push(item);
+    this.#runQueue.push(item);
     run.signal.addEventListener('abort', item.onAbort, { once: true });
     this.#schedule();
     return run;
@@ -172,11 +172,11 @@ export class Session {
   }
 
   #cancelQueued(item: QueuedRun): void {
-    const index = this.#queue.indexOf(item);
+    const index = this.#runQueue.indexOf(item);
     if (index < 0) {
       return;
     }
-    this.#queue.splice(index, 1);
+    this.#runQueue.splice(index, 1);
     item.run.signal.removeEventListener('abort', item.onAbort);
     item.run.finish({
       stopReason: 'cancelled', response: null, turns: 0,
@@ -188,13 +188,13 @@ export class Session {
 
   #refreshQueue(): number {
     if (!this.#legacy) {
-      for (const item of this.#queue) {
+      for (const item of this.#runQueue) {
         item.admitted = true;
       }
-      return this.#queue.length;
+      return this.#runQueue.length;
     }
-    if (this.#queue.every(item => item.admitted)) {
-      return this.#queue.length;
+    if (this.#runQueue.every(item => item.admitted)) {
+      return this.#runQueue.length;
     }
     try {
       const { agent, options } = this.#legacy;
@@ -203,8 +203,8 @@ export class Session {
       const ready = options.isReady?.(modelId) !== false;
       const input = ready ? this.#pendingInput() : [];
       let count = 0;
-      for (let index = 0; index < this.#queue.length;) {
-        const item = this.#queue[index];
+      for (let index = 0; index < this.#runQueue.length;) {
+        const item = this.#runQueue[index];
         if (!item) {
           break;
         }
@@ -237,17 +237,17 @@ export class Session {
       }
       return count;
     } catch (error) {
-      for (let index = this.#queue.length - 1; index >= 0; index -= 1) {
-        if (!this.#queue[index]?.admitted) {
+      for (let index = this.#runQueue.length - 1; index >= 0; index -= 1) {
+        if (!this.#runQueue[index]?.admitted) {
           this.#rejectQueued(index, error);
         }
       }
-      return this.#queue.length;
+      return this.#runQueue.length;
     }
   }
 
   #rejectQueued(index: number, error: unknown): void {
-    const [item] = this.#queue.splice(index, 1);
+    const [item] = this.#runQueue.splice(index, 1);
     if (!item) {
       return;
     }
@@ -265,7 +265,7 @@ export class Session {
     if (count === 0) {
       return;
     }
-    if (this.#queue.some((item, index) => (
+    if (this.#runQueue.some((item, index) => (
       index < count && !item.run.signal.aborted
     ))) {
       this.#active?.interrupt();
@@ -281,7 +281,7 @@ export class Session {
     try {
       let count = this.#refreshQueue();
       while (count > 0) {
-        batch = this.#queue.splice(0, count);
+        batch = this.#runQueue.splice(0, count);
         const run = batch.at(-1)?.run;
         if (!run) {
           break;
@@ -317,13 +317,13 @@ export class Session {
           error,
         });
       }
-      for (let index = this.#queue.length - 1; index >= 0; index -= 1) {
+      for (let index = this.#runQueue.length - 1; index >= 0; index -= 1) {
         this.#rejectQueued(index, error);
       }
     } finally {
       this.#active = null;
       this.#draining = false;
-      if (this.#queue.length > 0) {
+      if (this.#runQueue.length > 0) {
         this.#schedule();
       }
     }

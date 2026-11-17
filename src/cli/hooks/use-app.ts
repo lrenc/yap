@@ -52,7 +52,7 @@ function reduceAppState(
   }
   const { event } = action;
   if (
-    event.type === 'session_boundary'
+    event.type === 'sessionBoundary'
     || (event.type !== 'notice' && 'runId' in event)
   ) {
     return {
@@ -83,7 +83,7 @@ function reduceAppState(
         panel: event.panel,
       };
     }
-    case 'input_queue': {
+    case 'inputQueue': {
       return {
         ...state,
         pending: event.pending,

@@ -72,7 +72,7 @@ describe('token estimates', () => {
         }],
       },
       {
-        type: 'tool_result',
+        type: 'toolResult',
         result: {
           type: 'function_call_output',
           call_id: 'call',

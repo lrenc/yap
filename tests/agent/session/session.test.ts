@@ -182,7 +182,7 @@ describe('Session', () => {
 
     const events = await collect(session.runStream('hello'));
 
-    expect(events.map(event => event.type)).toContain('text_delta');
+    expect(events.map(event => event.type)).toContain('textDelta');
     expect(events.at(-1)?.type).toBe('done');
   });
 
@@ -389,7 +389,7 @@ describe('Session', () => {
     let firstDone: AgentEvent & { type: 'done' } | null = null;
 
     for await (const event of session.runStream('first')) {
-      if (event.type === 'text_done') {
+      if (event.type === 'textDone') {
         second = session.run('second');
       }
       if (event.type === 'done') {

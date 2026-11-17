@@ -3,8 +3,8 @@ import type { PromptRepository } from './settings/prompts.ts';
 
 export type CommandResult =
   | { type: 'notice'; level: 'error'; message: string }
-  | { type: 'panel_request'; panel: 'model' | 'config' | 'prompt' }
-  | { type: 'new_session' }
+  | { type: 'panelRequest'; panel: 'model' | 'config' | 'prompt' }
+  | { type: 'newSession' }
   | { type: 'noop' };
 
 type Dependencies = {
@@ -82,7 +82,7 @@ export async function executeCommand(
         }
         if (argument === undefined) {
           return {
-            type: 'panel_request',
+            type: 'panelRequest',
             panel: 'model',
           };
         }
@@ -99,7 +99,7 @@ export async function executeCommand(
           return failure('/config does not accept arguments.');
         }
         return {
-          type: 'panel_request',
+          type: 'panelRequest',
           panel: 'config',
         };
       }
@@ -109,7 +109,7 @@ export async function executeCommand(
         }
         if (argument === undefined) {
           return {
-            type: 'panel_request',
+            type: 'panelRequest',
             panel: 'prompt',
           };
         }
@@ -131,7 +131,7 @@ export async function executeCommand(
           return failure('/new does not accept arguments.');
         }
         return {
-          type: 'new_session',
+          type: 'newSession',
         };
       }
       default: {

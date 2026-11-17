@@ -6,7 +6,7 @@ export function toInput(history: HistoryEntry[]): ResponseInputItem[] {
   for (const entry of history) {
     if (entry.type === 'user') {
       input.push(entry.message);
-    } else if (entry.type === 'tool_result') {
+    } else if (entry.type === 'toolResult') {
       input.push(entry.result);
     } else {
       for (const item of entry.output) {

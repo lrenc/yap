@@ -24,7 +24,7 @@ export class ClientFactory {
 
     let key: string | undefined;
     try {
-      key = (await this.#secrets.getApiKey(provider.id))?.trim();
+      key = await this.#secrets.getApiKey(provider.id);
     } catch (error) {
       this.#clients.delete(provider.id);
       throw error;

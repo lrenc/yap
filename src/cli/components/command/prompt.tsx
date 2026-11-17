@@ -21,7 +21,7 @@ type View =
     name: string;
     content: Draft;
   }
-  | { type: 'confirm-delete'; name: string };
+  | { type: 'confirmDelete'; name: string };
 
 export interface PromptPanelProps {
   prompts: Pick<PromptRepository, 'list' | 'read'>;
@@ -183,7 +183,7 @@ export function PromptPanel({
 
   useInput((input, key) => {
     const current = viewRef.current;
-    if (current.type === 'confirm-delete') {
+    if (current.type === 'confirmDelete') {
       if (saveLock.locked) {
         return;
       }
@@ -225,10 +225,10 @@ export function PromptPanel({
     }
     if (input === 'd' && selected && selected !== 'default') {
       setError(undefined);
-      changeView({ type: 'confirm-delete', name: selected });
+      changeView({ type: 'confirmDelete', name: selected });
     }
   }, {
-    isActive: view.type === 'list' || view.type === 'confirm-delete',
+    isActive: view.type === 'list' || view.type === 'confirmDelete',
   });
 
   let footer: string;
@@ -318,7 +318,7 @@ export function PromptPanel({
         </Box>
       ) : null}
 
-      {view.type === 'confirm-delete' ? (
+      {view.type === 'confirmDelete' ? (
         <Text color={theme.colors.feedback.warning}>
           Delete “{view.name}”
           {active === view.name ? ' and restore the default Prompt' : ''}?

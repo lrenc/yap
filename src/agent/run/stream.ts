@@ -24,8 +24,8 @@ export class RunStream implements AsyncIterableIterator<AgentEvent> {
     }
     const last = this.#events.at(-1);
     if (
-      event.type === 'text_delta'
-      && last?.type === 'text_delta'
+      event.type === 'textDelta'
+      && last?.type === 'textDelta'
       && last.turn === event.turn
     ) {
       last.delta += event.delta;

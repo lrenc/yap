@@ -3,7 +3,7 @@ import type { AgentEvent, AgentResult, ToolOutcome } from '../../agent/run/types
 
 export type ChatEvent =
   | {
-    type: 'user_message';
+    type: 'userMessage';
     content: string;
     runId: number;
     sessionId: number;
@@ -13,7 +13,7 @@ export type ChatEvent =
     sessionId: number;
   })
   | {
-    type: 'session_boundary';
+    type: 'sessionBoundary';
     sessionId: number;
   };
 
@@ -78,29 +78,29 @@ export function applyChatEvent(
   event: ChatEvent,
 ): ChatState {
   switch (event.type) {
-    case 'user_message': {
+    case 'userMessage': {
       return appendItem(state, {
         id: `user:${event.sessionId}:${event.runId}`,
         type: 'user',
         content: event.content,
       });
     }
-    case 'turn_start': {
+    case 'turnStart': {
       return {
         ...state,
         activity: { type: 'thinking' },
       };
     }
-    case 'text_delta': {
+    case 'textDelta': {
       return updateActive(state, event, false);
     }
-    case 'refusal_delta': {
+    case 'refusalDelta': {
       return updateActive(state, event, true);
     }
-    case 'text_done': {
+    case 'textDone': {
       return finishText(state, event);
     }
-    case 'tool_start': {
+    case 'toolStart': {
       return {
         ...state,
         activity: {
@@ -110,7 +110,7 @@ export function applyChatEvent(
         },
       };
     }
-    case 'tool_end': {
+    case 'toolEnd': {
       const current = state.activity?.type === 'tool'
         && state.activity.callId === event.call.call_id
         ? state.activity
@@ -128,13 +128,13 @@ export function applyChatEvent(
         activity: current ? null : state.activity,
       };
     }
-    case 'compaction_start': {
+    case 'compactionStart': {
       return {
         ...state,
         activity: { type: 'compacting' },
       };
     }
-    case 'compaction_end': {
+    case 'compactionEnd': {
       return {
         ...state,
         activity: null,
@@ -151,7 +151,7 @@ export function applyChatEvent(
     case 'done': {
       return finishRun(state, event);
     }
-    case 'session_boundary': {
+    case 'sessionBoundary': {
       return {
         ...state,
         active: null,
@@ -165,7 +165,7 @@ function updateActive(
   state: ChatState,
   event: Extract<
     ChatEvent,
-    { type: 'text_delta' | 'refusal_delta' }
+    { type: 'textDelta' | 'refusalDelta' }
   >,
   refusal: boolean,
 ): ChatState {
@@ -193,7 +193,7 @@ function updateActive(
 
 function finishText(
   state: ChatState,
-  event: Extract<ChatEvent, { type: 'text_done' }>,
+  event: Extract<ChatEvent, { type: 'textDone' }>,
 ): ChatState {
   const sameTurn = state.active?.runId === event.runId
     && state.active.turn === event.turn;

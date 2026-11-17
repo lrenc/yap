@@ -31,14 +31,14 @@ export interface InitError {
 
 export type ConfigurationChange =
   | 'model'
-  | 'reasoning-effort'
+  | 'reasoningEffort'
   | 'prompt'
-  | 'api-key';
+  | 'apiKey';
 
 export type AppEvent =
   | (AgentEvent & { runId: number; sessionId: number })
   | {
-    type: 'user_message';
+    type: 'userMessage';
     content: string;
     runId: number;
     sessionId: number;
@@ -53,15 +53,15 @@ export type AppEvent =
     panel: AppPanel | null;
   }
   | {
-    type: 'session_boundary';
+    type: 'sessionBoundary';
     sessionId: number;
   }
   | {
-    type: 'configuration_changed';
+    type: 'configurationChanged';
     change: ConfigurationChange;
   }
   | {
-    type: 'input_queue';
+    type: 'inputQueue';
     pending: number;
     paused: boolean;
     blocked: QueueBlock | null;
@@ -84,7 +84,7 @@ export class App {
   readonly #clients: ClientFactory;
   readonly #tools: AgentTool[];
   readonly #admitRun: RunAdmission;
-  readonly #queue: string[] = [];
+  readonly #inputQueue: string[] = [];
   readonly #listeners = new Set<(event: AppEvent) => void>();
   readonly #idleWaiters = new Set<() => void>();
   readonly #runTasks = new Set<Promise<void>>();
@@ -129,7 +129,7 @@ export class App {
   }
 
   get pendingCount(): number {
-    return this.#queue.length;
+    return this.#inputQueue.length;
   }
 
   async setModel(modelId: string): Promise<void> {
@@ -142,7 +142,7 @@ export class App {
     effort: string | undefined,
   ): Promise<void> {
     await this.settings.setReasoningEffort(modelId, effort);
-    this.#configChanged('reasoning-effort');
+    this.#configChanged('reasoningEffort');
   }
 
   async setActivePrompt(name: string | undefined): Promise<void> {
@@ -167,12 +167,12 @@ export class App {
 
   async setApiKey(providerId: string, apiKey: string): Promise<void> {
     await this.secrets.setApiKey(providerId, apiKey);
-    this.#configChanged('api-key');
+    this.#configChanged('apiKey');
   }
 
   async clearApiKey(providerId: string): Promise<void> {
     await this.secrets.clearApiKey(providerId);
-    this.#configChanged('api-key');
+    this.#configChanged('apiKey');
   }
 
   get panel(): AppPanel | null {
@@ -215,7 +215,7 @@ export class App {
     if (this.#disposed || !input.trim()) {
       return;
     }
-    this.#queue.push(input);
+    this.#inputQueue.push(input);
     this.#emitQueue();
     this.#schedule();
   }
@@ -261,7 +261,7 @@ export class App {
 
   cancel(): void {
     this.#generation += 1;
-    this.#queue.length = 0;
+    this.#inputQueue.length = 0;
     this.#blocked = null;
     this.#recheckPending = false;
     this.#admissionController?.abort();
@@ -323,14 +323,14 @@ export class App {
   #schedule(): void {
     if (
       this.#disposed
+      || !this.#inputQueue.length
       || this.#draining
       || this.#panel
       || this.#panelSaves
-      || !this.#queue.length
       || (
         !this.#recheckPending
         && this.#blocked !== null
-        && overtakingCommandIndex(this.#queue, this.#blocked) < 0
+        && overtakingCommandIndex(this.#inputQueue, this.#blocked) < 0
       )
     ) {
       return;
@@ -340,7 +340,7 @@ export class App {
   }
 
   #recheckQueue(): void {
-    this.#recheckPending = this.#queue.length > 0;
+    this.#recheckPending = this.#inputQueue.length > 0;
     this.#emitQueue();
     this.#schedule();
     this.#settleIdle();
@@ -348,7 +348,7 @@ export class App {
 
   #configChanged(change: ConfigurationChange): void {
     this.#emit({
-      type: 'configuration_changed',
+      type: 'configurationChanged',
       change,
     });
     this.#recheckQueue();
@@ -360,18 +360,18 @@ export class App {
         !this.#disposed
         && !this.#panel
         && !this.#panelSaves
-        && this.#queue.length
+        && this.#inputQueue.length
       ) {
         await this.initialize();
         if (this.#disposed || this.#panel || this.#panelSaves) {
           break;
         }
-        const input = this.#queue[0];
+        const input = this.#inputQueue[0];
         if (input === undefined) {
           break;
         }
         if (isCommand(input)) {
-          this.#queue.shift();
+          this.#inputQueue.shift();
           if (!(await this.#drainCommand(input))) {
             break;
           }
@@ -394,13 +394,13 @@ export class App {
           this.#blocked = admission.block;
           this.#emitQueue();
           const commandIndex = overtakingCommandIndex(
-            this.#queue,
+            this.#inputQueue,
             admission.block,
           );
           if (commandIndex < 0) {
             break;
           }
-          const [command] = this.#queue.splice(commandIndex, 1);
+          const [command] = this.#inputQueue.splice(commandIndex, 1);
           if (command === undefined) {
             break;
           }
@@ -412,7 +412,7 @@ export class App {
         }
 
         if (admission.type === 'rejected') {
-          this.#queue.shift();
+          this.#inputQueue.shift();
           this.#blocked = null;
           this.#emitQueue();
           this.notice(
@@ -424,7 +424,7 @@ export class App {
           continue;
         }
 
-        this.#queue.shift();
+        this.#inputQueue.shift();
         this.#blocked = null;
         this.#emitQueue();
         this.#startRun(input);
@@ -436,7 +436,7 @@ export class App {
       );
     } finally {
       this.#draining = false;
-      if (!this.#queue.length) {
+      if (!this.#inputQueue.length) {
         this.#recheckPending = false;
       }
       this.#emitQueue();
@@ -498,14 +498,14 @@ export class App {
     this.reportPromptWarnings();
     if (result.type === 'notice') {
       this.#emit(result);
-    } else if (result.type === 'new_session' && this.#sessionId !== undefined) {
+    } else if (result.type === 'newSession' && this.#sessionId !== undefined) {
       const sessionId = this.#sessionId;
       this.#session = null;
       this.#sessionId = undefined;
       this.#emit({
-        type: 'session_boundary', sessionId,
+        type: 'sessionBoundary', sessionId,
       });
-    } else if (result.type === 'panel_request') {
+    } else if (result.type === 'panelRequest') {
       if (result.panel === 'config') {
         const modelId = this.settings.config.activeModelId;
         const model = models.find(item => item.id === modelId);
@@ -539,12 +539,12 @@ export class App {
       };
     }
     try {
-      const key = (await this.secrets.getApiKey(model.providerId))?.trim();
+      const key = await this.secrets.getApiKey(model.providerId);
       if (!key) {
         return {
           type: 'blocked',
           block: {
-            type: 'missing-api-key',
+            type: 'missingApiKey',
             message: 'waiting for API key',
           },
         };
@@ -582,7 +582,7 @@ export class App {
   ): Promise<void> {
     try {
       this.#emit({
-        type: 'user_message',
+        type: 'userMessage',
         content: input,
         runId,
         sessionId,
@@ -654,8 +654,8 @@ export class App {
 
   #emitQueue(): void {
     this.#emit({
-      type: 'input_queue',
-      pending: this.#queue.length,
+      type: 'inputQueue',
+      pending: this.#inputQueue.length,
       paused: this.#panel !== null || this.#panelSaves > 0,
       blocked: this.#blocked === null ? null : { ...this.#blocked },
     });
@@ -675,11 +675,11 @@ export class App {
   }
 
   #hasRunnableInput(): boolean {
-    if (!this.#queue.length) {
+    if (!this.#inputQueue.length) {
       return false;
     }
     return this.#blocked === null
-      || overtakingCommandIndex(this.#queue, this.#blocked) >= 0;
+      || overtakingCommandIndex(this.#inputQueue, this.#blocked) >= 0;
   }
 
   #isIdle(): boolean {

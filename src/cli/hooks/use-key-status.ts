@@ -41,7 +41,7 @@ export function useKeyStatus(
   }, [modelId, providerId]);
 
   useEffect(() => app.subscribe(event => {
-    if (event.type === 'configuration_changed') {
+    if (event.type === 'configurationChanged') {
       setAttempted(false);
       setRevision(value => value + 1);
     }
@@ -61,7 +61,7 @@ export function useKeyStatus(
           setChecked({
             modelId,
             providerId,
-            status: key?.trim() ? 'configured' : 'missing',
+            status: key ? 'configured' : 'missing',
           });
         }
       })

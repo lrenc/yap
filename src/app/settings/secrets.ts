@@ -51,7 +51,7 @@ export class FileSecretStore implements SecretStore {
   async getApiKey(providerId: string): Promise<string | undefined> {
     const { providers } = this.#requireSecrets();
     return Object.hasOwn(providers, providerId)
-      ? providers[providerId]?.apiKey
+      ? providers[providerId]?.apiKey.trim()
       : undefined;
   }
 

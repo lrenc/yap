@@ -15,9 +15,9 @@ type Field = 'apiKey' | 'reasoningEffort';
 
 type View =
   | { type: 'fields' }
-  | { type: 'api-key'; draft: Draft }
+  | { type: 'apiKey'; draft: Draft }
   | { type: 'effort' }
-  | { type: 'confirm-clear' };
+  | { type: 'confirmClear' };
 
 export interface ConfigPanelProps {
   model: Model;
@@ -144,12 +144,12 @@ export function ConfigPanel({
         return;
       }
       if (input === 'c' && fields.current() === 0 && configured) {
-        changeView({ type: 'confirm-clear' });
+        changeView({ type: 'confirmClear' });
         return;
       }
       if (key.return) {
         if (fields.current() === 0) {
-          changeView({ type: 'api-key', draft: createDraft('') });
+          changeView({ type: 'apiKey', draft: createDraft('') });
         } else {
           const selected = effort
             ? Math.max(0, efforts.indexOf(effort))
@@ -182,7 +182,7 @@ export function ConfigPanel({
       }
       return;
     }
-    if (current.type === 'confirm-clear') {
+    if (current.type === 'confirmClear') {
       if (key.escape) {
         fields.select(0);
         changeView({ type: 'fields' });
@@ -191,7 +191,7 @@ export function ConfigPanel({
       }
     }
   }, {
-    isActive: view.type !== 'api-key',
+    isActive: view.type !== 'apiKey',
   });
 
   const apiStatus = status.apiKey;
@@ -199,7 +199,7 @@ export function ConfigPanel({
   let footer: string;
   if (view.type === 'fields') {
     footer = '↑/↓ move · Enter edit · c clear key';
-  } else if (view.type === 'api-key') {
+  } else if (view.type === 'apiKey') {
     footer = 'Enter save · Esc cancel';
   } else if (view.type === 'effort') {
     footer = '↑/↓ move · Enter save · Esc back';
@@ -222,12 +222,12 @@ export function ConfigPanel({
           <SelectList
             items={[
               {
-                key: 'api-key',
+                key: 'apiKey',
                 label: 'API Key',
                 detail: apiKeyDetail,
               },
               {
-                key: 'reasoning-effort',
+                key: 'reasoningEffort',
                 label: 'Reasoning Effort',
                 detail: effort ?? 'default',
               },
@@ -247,14 +247,14 @@ export function ConfigPanel({
         </Box>
       ) : null}
 
-      {view.type === 'api-key' ? (
+      {view.type === 'apiKey' ? (
         <Box flexDirection='column'>
           <Text>API Key for {model.name}</Text>
           <Editor
             draft={view.draft}
             focus={!saveLock.locked}
             maxRows={1}
-            onDraftChange={draft => changeView({ type: 'api-key', draft })}
+            onDraftChange={draft => changeView({ type: 'apiKey', draft })}
             onEscape={() => {
               fields.select(0);
               changeView({ type: 'fields' });
@@ -280,7 +280,7 @@ export function ConfigPanel({
         </Box>
       ) : null}
 
-      {view.type === 'confirm-clear' ? (
+      {view.type === 'confirmClear' ? (
         <>
           <Text color={theme.colors.feedback.warning}>
             Clear the stored API Key? Press Enter to confirm.

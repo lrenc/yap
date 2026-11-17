@@ -66,7 +66,7 @@ describe('queue admission policy', () => {
 
   test('lets a command overtake a generically blocked message', () => {
     const blocked = {
-      type: 'some-other-prerequisite',
+      type: 'someOtherPrerequisite',
       message: 'waiting for another prerequisite',
     };
     expect(overtakingCommandIndex(
@@ -87,7 +87,7 @@ describe('queue admission policy', () => {
     const runtime = await createApp(() => ({
       type: 'blocked',
       block: {
-        type: 'some-other-prerequisite',
+        type: 'someOtherPrerequisite',
         message: 'waiting for another prerequisite',
       },
     }));
@@ -95,11 +95,11 @@ describe('queue admission policy', () => {
 
     runtime.submit('hello');
     await waitFor(() => events.some(event => (
-      event.type === 'input_queue'
-      && event.blocked?.type === 'some-other-prerequisite'
+      event.type === 'inputQueue'
+      && event.blocked?.type === 'someOtherPrerequisite'
     )));
     expect(runtime.pendingCount).toBe(1);
-    expect(events.some(event => event.type === 'user_message')).toBe(false);
+    expect(events.some(event => event.type === 'userMessage')).toBe(false);
 
     runtime.submit('/config');
     await waitFor(() => events.some(event => (
@@ -107,7 +107,7 @@ describe('queue admission policy', () => {
     )));
 
     expect(runtime.pendingCount).toBe(1);
-    expect(events.some(event => event.type === 'user_message')).toBe(false);
+    expect(events.some(event => event.type === 'userMessage')).toBe(false);
   });
 
   test('cancels an unresolved admission and resumes new commands', async () => {
@@ -140,26 +140,26 @@ describe('queue admission policy', () => {
         : {
           type: 'blocked',
           block: {
-            type: 'some-other-prerequisite',
+            type: 'someOtherPrerequisite',
             message: 'waiting for another prerequisite',
           },
         }
     ));
     runtime.subscribe(event => {
       events.push(event);
-      if (event.type === 'user_message') {
+      if (event.type === 'userMessage') {
         runtime.cancel();
       }
     });
 
     runtime.submit('hello');
     await waitFor(() => events.some(event => (
-      event.type === 'input_queue' && event.blocked !== null
+      event.type === 'inputQueue' && event.blocked !== null
     )));
 
     ready = true;
     await runtime.setApiKey('deepseek', 'test-key');
-    await waitFor(() => events.some(event => event.type === 'user_message'));
+    await waitFor(() => events.some(event => event.type === 'userMessage'));
   });
 
   test('preserves the current block while rechecking admission', async () => {
@@ -167,7 +167,7 @@ describe('queue admission policy', () => {
     const runtime = await createApp(() => ({
       type: 'blocked',
       block: {
-        type: 'some-other-prerequisite',
+        type: 'someOtherPrerequisite',
         message: 'waiting for another prerequisite',
       },
     }));
@@ -175,17 +175,17 @@ describe('queue admission policy', () => {
 
     runtime.submit('hello');
     await waitFor(() => events.some(event => (
-      event.type === 'input_queue' && event.blocked !== null
+      event.type === 'inputQueue' && event.blocked !== null
     )));
     const previousLength = events.length;
 
     await runtime.setReasoningEffort('deepseek-flash', 'none');
     await waitFor(() => events.slice(previousLength).some(event => (
-      event.type === 'input_queue' && event.blocked !== null
+      event.type === 'inputQueue' && event.blocked !== null
     )));
 
     expect(events.slice(previousLength).some(event => (
-      event.type === 'input_queue'
+      event.type === 'inputQueue'
       && event.pending > 0
       && event.blocked === null
     ))).toBe(false);
@@ -195,7 +195,7 @@ describe('queue admission policy', () => {
     const changes: string[] = [];
     const runtime = await createApp(() => ({ type: 'ready' }));
     runtime.subscribe(event => {
-      if (event.type === 'configuration_changed') {
+      if (event.type === 'configurationChanged') {
         changes.push(event.change);
       }
     });
@@ -212,7 +212,7 @@ describe('queue admission policy', () => {
     const runtime = await createApp(() => ({
       type: 'blocked',
       block: {
-        type: 'some-other-prerequisite',
+        type: 'someOtherPrerequisite',
         message: 'waiting for another prerequisite',
       },
     }));
@@ -220,7 +220,7 @@ describe('queue admission policy', () => {
 
     runtime.submit('hello');
     await waitFor(() => events.some(event => (
-      event.type === 'input_queue' && event.blocked !== null
+      event.type === 'inputQueue' && event.blocked !== null
     )));
 
     expect(await completesWithin(runtime.whenIdle())).toBe(true);

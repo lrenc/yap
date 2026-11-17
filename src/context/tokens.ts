@@ -35,7 +35,7 @@ export function estimateEntry(entry: HistoryEntry): number {
   if (entry.type === 'user') {
     return estimateItem(entry.message);
   }
-  if (entry.type === 'tool_result') {
+  if (entry.type === 'toolResult') {
     return estimateItem(entry.result);
   }
   let tokens = 0;
