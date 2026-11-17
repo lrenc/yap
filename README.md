@@ -10,6 +10,8 @@
     <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" />
     <img alt="Bun" src="https://img.shields.io/badge/runtime-Bun-000000?style=flat-square&logo=bun&logoColor=white" />
   </p>
+
+  <p><a href="./README.zh-CN.md">简体中文</a></p>
 </div>
 
 ---
@@ -22,9 +24,18 @@ and credentials.
 > YAP is still in early development. Session persistence and standalone
 > packaging are not complete.
 
+## Features
+
+- Interruptible, streamed conversations with queued follow-up messages.
+- Terminal-friendly Markdown, tables, directory trees, and code blocks.
+- Context compaction and token budgeting for long conversations.
+- Local Prompt management and configurable model reasoning effort.
+- Built-in tools for reading files and directories.
+
 ## Quick Start
 
 You need [Bun](https://bun.sh/) 1.4 or newer and a DeepSeek API key.
+Run YAP in an interactive terminal; redirected input and output are rejected.
 
 ```bash
 git clone https://github.com/lrenc/yap.git
@@ -33,7 +44,12 @@ bun install
 bun run start
 ```
 
-Inside YAP, use `/config` to set the API key and `/model` to choose a model.
+On the first run:
+
+1. Enter `/config`.
+2. Select `API Key` and save your DeepSeek key.
+3. Enter `/model` if you want to choose between the available models.
+4. Start typing a message.
 
 ## Commands
 
@@ -64,17 +80,41 @@ the previous terminal contents; use the transcript while YAP is open.
 
 ## Models
 
-| ID | Context | Reasoning efforts |
-| --- | ---: | --- |
-| `deepseek-flash` | 1,000,000 | `none`, `low`, `high`, `max` |
-| `deepseek-v4-pro` | 1,000,000 | `none`, `low`, `high`, `max` |
-
-Both models default to `high` reasoning effort.
+Use `/model` to choose the active model. Each model provides its own defaults
+and supported reasoning settings. Use `/config` to review or change the active
+model's reasoning effort.
 
 ## Prompts
 
-Prompts are stored as plain Markdown files and can be created, edited, or
-selected with `/prompt`.
+Prompts are plain Markdown files and can be created, edited, selected, or
+deleted with `/prompt`. Names are limited to 16 characters, must be safe file
+names, and cannot use the reserved name `default`. Selecting `default` restores
+the built-in system Prompt.
+
+## Configuration and Data
+
+YAP stores local data under `~/.yap` by default:
+
+```text
+~/.yap/
+├── config.json
+├── secrets.json
+└── prompts/
+    └── <name>.md
+```
+
+- `config.json` contains the active model, reasoning effort, and selected
+  Prompt.
+- `secrets.json` contains provider API keys.
+- `prompts/` contains user-created Prompt files.
+
+Settings files are written atomically with private file permissions where the
+platform supports them. API keys are stored as plaintext JSON rather than in an
+OS keychain, so protect the contents of `~/.yap`.
+
+YAP's settings and Prompts stay on the local machine. Conversation messages,
+tool results, and relevant file contents may be sent to the configured model
+provider when needed to process a request.
 
 ## Development
 
@@ -85,7 +125,18 @@ bun test
 
 For coverage, run `bun run test:coverage`.
 
-### TODO
+### Project Layout
+
+| Path | Purpose |
+| --- | --- |
+| `src/cli/` | Ink terminal UI, input handling, and Markdown rendering |
+| `src/app/` | Application state, commands, models, and local settings |
+| `src/agent/` | Session, Run, streaming, and tool execution |
+| `src/context/` | Conversation history, tokens, and context compaction |
+| `src/model/` | Model providers and HTTP/SSE client code |
+| `src/tools/` | Built-in file tools and tool definitions |
+
+### Roadmap
 
 - [ ] Virtualize the transcript and preserve the reader's resize position with
   a stable message key plus row offset. Invalidate wrapped item heights when
