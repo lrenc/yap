@@ -6,7 +6,7 @@ import { ensureDirectory, repairPermissions } from './permissions.ts';
 import { DEFAULT_PROMPT, promptNameSchema } from './schema.ts';
 
 function validateContent(content: string, path: string): void {
-  if (typeof content !== 'string' || content.trim().length === 0) {
+  if (!content.trim().length) {
     throw new Error(`Prompt must not be empty: ${path}`);
   }
 }
@@ -22,7 +22,9 @@ export class PromptRepository {
   }
 
   get warnings(): readonly string[] {
-    return [...this.#warningMessages];
+    return [
+      ...this.#warningMessages,
+    ];
   }
 
   list(): Promise<string[]> {
@@ -87,7 +89,9 @@ export class PromptRepository {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           throw new Error(`Prompt not found: ${path}`);
         }
-        throw new Error(`Cannot delete Prompt: ${path}`);
+        throw new Error(
+          `Cannot delete Prompt: ${path}`
+        );
       }
     });
   }
@@ -144,9 +148,7 @@ export class PromptRepository {
   }
 
   async #write(
-    name: string,
-    content: string,
-    mustExist: boolean,
+    name: string, content: string, mustExist: boolean,
   ): Promise<void> {
     const path = this.#filePath(name);
     validateContent(content, path);
@@ -196,7 +198,9 @@ export class PromptRepository {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return false;
       }
-      throw new Error(`Cannot list Prompts: ${this.directoryPath}`);
+      throw new Error(
+        `Cannot list Prompts: ${this.directoryPath}`
+      );
     }
   }
 

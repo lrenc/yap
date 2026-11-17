@@ -3,6 +3,7 @@ import { models } from '../models.ts';
 import type { Model } from '../types.ts';
 
 const DEFAULT_MODEL_ID = firstModelId(models);
+
 export const DEFAULT_PROMPT = `
 You are YAP, a terminal AI assistant.
 Help the user complete tasks carefully. Use tools when they improve accuracy and verify relevant results.
@@ -18,12 +19,10 @@ function firstModelId(catalog: readonly Model[]): string {
 }
 
 const invalidFileNameChars = /[<>:"/\\|?*\p{Cc}]/u;
-const windowsReservedName =
-  /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
+const windowsReservedName = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
 
 function isValidPromptName(name: string): boolean {
   const length = Array.from(name).length;
-
   return (
     length >= 1
     && length <= 16
