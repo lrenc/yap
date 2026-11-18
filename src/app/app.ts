@@ -74,7 +74,6 @@ export type AppEvent =
   | {
     type: 'inputQueue';
     pending: number;
-    paused: boolean;
     blocked: QueueBlock | null;
     messages: readonly QueuedMessage[];
   };
@@ -90,7 +89,6 @@ export interface AppOptions {
 
 interface InputQueueState {
   pending: number;
-  paused: boolean;
   blocked: QueueBlock | null;
   messages: readonly QueuedMessage[];
 }
@@ -202,10 +200,6 @@ export class App {
 
   get config(): AppConfig | null {
     return this.#config;
-  }
-
-  get initErrors(): readonly InitError[] {
-    return this.#errors.map(error => ({ ...error }));
   }
 
   subscribe(listener: (event: AppEvent) => void): () => void {
@@ -336,7 +330,7 @@ export class App {
     }
     this.#emit({
       type: 'initErrors',
-      errors: this.initErrors,
+      errors: this.#errors.map(error => ({ ...error })),
     });
     this.#reportWarnings(this.#settings.warnings);
     this.#reportWarnings(this.secrets.warnings ?? []);
@@ -753,7 +747,6 @@ export class App {
   #emitQueue(force = false): void {
     const next: InputQueueState = {
       pending: this.#inputQueue.length,
-      paused: this.#panel !== null || this.#panelSaves > 0,
       blocked: this.#blocked === null ? null : { ...this.#blocked },
       messages: this.#inputQueue
         .filter(item => !isCommand(item.input))
@@ -767,7 +760,6 @@ export class App {
       !force
       && previous !== undefined
       && previous.pending === next.pending
-      && previous.paused === next.paused
       && previous.blocked?.type === next.blocked?.type
       && previous.blocked?.message === next.blocked?.message
       && sameQueuedMessages(previous.messages, next.messages)
