@@ -19,6 +19,7 @@ import {
 } from './components/chat.tsx';
 import { Composer } from './components/input/composer.tsx';
 import { KeyNotice } from './components/key-notice.tsx';
+import { NoticeArea } from './components/notice-area.tsx';
 import { Scroller } from './components/scroller.tsx';
 import { StartUp } from './components/startup.tsx';
 import { useApp } from './hooks/use-app.ts';
@@ -208,24 +209,24 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
           blocked={state.blocked !== null}
         />
       </Scroller>
-      <Feedback feedback={state.feedback} />
-      {state.initErrors.filter(error => (
-        !state.feedback.some(item => item.message === error.message)
-      )).map(error => (
-        <Box key={`${error.source}-${error.message}`} paddingX={1}>
-          <Text color={theme.colors.feedback.error}>{error.message}</Text>
-        </Box>
-      ))}
-      {state.blocked && state.blocked.type !== 'missingApiKey' ? (
-        <Box paddingX={1}>
+      <NoticeArea>
+        <Feedback feedback={state.feedback} />
+        {state.initErrors.filter(error => (
+          !state.feedback.some(item => item.message === error.message)
+        )).map(error => (
+          <Box key={`${error.source}-${error.message}`}>
+            <Text color={theme.colors.feedback.error}>{error.message}</Text>
+          </Box>
+        ))}
+        {state.blocked && state.blocked.type !== 'missingApiKey' ? (
           <Text color={theme.colors.feedback.warning} wrap='truncate-end'>
             {state.blocked.message}
           </Text>
-        </Box>
-      ) : null}
-      {key.status === 'missing' ? (
-        <KeyNotice ignored={key.ignored} />
-      ) : null}
+        ) : null}
+        {key.status === 'missing' ? (
+          <KeyNotice ignored={key.ignored} />
+        ) : null}
+      </NoticeArea>
       <Composer
         focus={state.panel === null}
         newOutput={hasNewOutput && state.panel === null}

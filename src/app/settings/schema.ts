@@ -58,7 +58,7 @@ const appConfigSchema = z.strictObject({
 export const providerSecretsSchema = z.strictObject({
   version: z.literal(1).default(1),
   providers: z.record(z.string(), z.strictObject({
-    apiKey: z.string().trim().min(1, 'API Key must not be empty'),
+    apiKey: z.string().trim().default(''),
   })).default({}),
 });
 

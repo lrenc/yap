@@ -1,5 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { ZodError } from 'zod';
 import { readJson, writeJson } from '../../utils/json.ts';
 import { ensureDirectory, repairPermissions } from './permissions.ts';
 import { providerSecretsSchema, type ProviderSecrets } from './schema.ts';
@@ -26,20 +27,20 @@ export class FileSecretStore implements SecretStore {
 
   load(): Promise<void> {
     return this.#enqueue(async () => {
-      this.#current = null;
       this.#warningMessages = [];
       this.#warningMessages = [
         await repairPermissions(this.rootDirectory, 0o700),
         await repairPermissions(this.filePath, 0o600),
       ].filter(message => message !== undefined);
       try {
-        this.#current = await readJson(
+        const current = await readJson(
           this.filePath,
           value => providerSecretsSchema.parse(value),
         ) ?? providerSecretsSchema.parse({});
+        this.#current = current;
       } catch (error) {
         throw new Error(
-          `Cannot load secrets ${this.filePath}: ${error instanceof Error ? error.message : String(error)}`,
+          `Cannot load secrets ${this.filePath}: ${errorDetail(error)}`,
           {
             cause: error,
           },
@@ -50,9 +51,10 @@ export class FileSecretStore implements SecretStore {
 
   async getApiKey(providerId: string): Promise<string | undefined> {
     const { providers } = this.#requireSecrets();
-    return Object.hasOwn(providers, providerId)
+    const key = Object.hasOwn(providers, providerId)
       ? providers[providerId]?.apiKey.trim()
-      : undefined;
+      : '';
+    return key || undefined;
   }
 
   setApiKey(providerId: string, apiKey: string): Promise<void> {
@@ -105,4 +107,12 @@ export class FileSecretStore implements SecretStore {
     this.#pending = result.catch(() => {});
     return result;
   }
+}
+
+function errorDetail(error: unknown): string {
+  if (error instanceof ZodError) {
+    return JSON.stringify(error.issues);
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/\s+/gu, ' ').trim();
 }

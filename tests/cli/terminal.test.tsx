@@ -79,6 +79,11 @@ describe('Terminal', () => {
     expect(frame.indexOf('API key is not configured')).toBeLessThan(
       frame.indexOf('Ask anything...'),
     );
+    const rows = frame.split('\n');
+    const noticeRow = rows.findIndex(line => (
+      line.includes('API key is not configured')
+    ));
+    expect(rows[noticeRow - 1]).toBe('');
     expect(frame.split('\n').length).toBeLessThanOrEqual(16);
   });
 
@@ -145,6 +150,100 @@ describe('Terminal', () => {
     expect(frame.indexOf('waiting for workspace access')).toBeLessThan(
       frame.indexOf('Ask anything...'),
     );
+    const rows = frame.split('\n');
+    const noticeRow = rows.findIndex(line => (
+      line.includes('waiting for workspace access')
+    ));
+    expect(rows[noticeRow - 1]).toBe('');
+  });
+
+  test('uses the same spacing for secrets loading errors', async () => {
+    const app = await createApp();
+    await fs.writeFile(
+      join(root!, 'secrets.json'),
+      JSON.stringify({
+        version: 1,
+        providers: {
+          deepseek: { apiKey: 123 },
+        },
+      }),
+    );
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Cannot load secrets') === true
+    ));
+
+    const frame = rendered.lastFrame() ?? '';
+    const rows = frame.split('\n');
+    const noticeRow = rows.findIndex(line => (
+      line.includes('Cannot load secrets')
+    ));
+    expect(rows[noticeRow - 1]).toBe('');
+    expect(frame.indexOf('Cannot load secrets')).toBeLessThan(
+      frame.indexOf('Ask anything...'),
+    );
+  });
+
+  test('keeps messages queued when secrets cannot be loaded', async () => {
+    const app = await createApp();
+    await fs.writeFile(
+      join(root!, 'secrets.json'),
+      JSON.stringify({
+        version: 1,
+        providers: {
+          deepseek: { apiKey: 123 },
+        },
+      }),
+    );
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Cannot load secrets') === true
+    ));
+
+    rendered.stdin.write('hello\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('! hello') === true
+    ));
+    await flush();
+
+    expect(app.pendingCount).toBe(1);
+    expect(rendered.lastFrame()?.match(/Cannot load secrets/g)).toHaveLength(1);
+    expect(rendered.lastFrame()).not.toContain(
+      'Secrets must be loaded successfully before use'
+    );
+  });
+
+  test('clears initialization errors after secrets are repaired', async () => {
+    const app = await createApp();
+    const secretsPath = join(root!, 'secrets.json');
+    await fs.writeFile(
+      secretsPath,
+      JSON.stringify({
+        version: 1,
+        providers: {
+          deepseek: { apiKey: 123 },
+        },
+      }),
+    );
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Cannot load secrets') === true
+    ));
+
+    await fs.writeFile(
+      secretsPath,
+      JSON.stringify({
+        version: 1,
+        providers: {},
+      }),
+    );
+    rendered.stdin.write('hello\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('! hello') === true
+      && rendered?.lastFrame()?.includes('API key is not configured') === true
+    ));
+
+    expect(rendered.lastFrame()).not.toContain('Cannot load secrets');
   });
 
   test('sends a queued message after configuring the API key', async () => {
@@ -243,6 +342,68 @@ describe('Terminal', () => {
     await flush();
 
     expect(rendered.lastFrame()).not.toContain('API key is not configured');
+  });
+
+  test('ignores an empty key for another provider on GLM', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response([
+      {
+        type: 'response.output_text.delta',
+        item_id: 'message_1',
+        output_index: 0,
+        delta: 'GLM response',
+      },
+      {
+        type: 'response.completed',
+        response: {
+          id: 'response_1',
+          status: 'completed',
+          output: [{
+            type: 'message',
+            id: 'message_1',
+            role: 'assistant',
+            content: [{ type: 'output_text', text: 'GLM response' }],
+          }],
+        },
+      },
+    ].map(sseEvent).join(''), {
+      headers: { 'content-type': 'text/event-stream' },
+    });
+    try {
+      const app = await createApp();
+      await fs.writeFile(
+        join(root!, 'config.json'),
+        JSON.stringify({
+          version: 1,
+          activeModelId: 'glm-5.3',
+          modelSettings: {},
+        }),
+      );
+      await fs.writeFile(
+        join(root!, 'secrets.json'),
+        JSON.stringify({
+          version: 1,
+          providers: {
+            deepseek: { apiKey: '' },
+            zhipu: { apiKey: 'glm-test-key' },
+          },
+        }),
+      );
+      rendered = render(<Terminal app={app} />);
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('GLM-5.3') === true
+      ));
+
+      expect(rendered.lastFrame()).not.toContain('Cannot load secrets');
+      expect(rendered.lastFrame()).not.toContain('API key is not configured');
+      rendered.stdin.write('hello\r');
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes('GLM response') === true
+      ));
+      expect(rendered.lastFrame()).toContain('✓ hello');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test('refreshes the key notice after a configuration event', async () => {

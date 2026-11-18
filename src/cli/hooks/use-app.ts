@@ -31,7 +31,7 @@ export interface AppUiState {
 
 type Action =
   | { type: 'event'; event: AppEvent }
-  | { type: 'ready'; errors: readonly InitError[] };
+  | { type: 'ready' };
 
 const INITIAL_STATE: AppUiState = {
   panel: null,
@@ -51,7 +51,6 @@ function reduceAppState(
     return {
       ...state,
       ready: true,
-      initErrors: action.errors,
     };
   }
   const { event } = action;
@@ -94,6 +93,12 @@ function reduceAppState(
         ],
       };
     }
+    case 'initErrors': {
+      return {
+        ...state,
+        initErrors: event.errors,
+      };
+    }
     case 'panel': {
       return {
         ...state,
@@ -125,7 +130,7 @@ export function useApp(app: App): AppUiState {
     });
     void app.initialize().finally(() => {
       if (active) {
-        dispatch({ type: 'ready', errors: app.initErrors });
+        dispatch({ type: 'ready' });
       }
     });
     return () => {

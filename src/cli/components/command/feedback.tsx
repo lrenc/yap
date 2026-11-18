@@ -12,8 +12,6 @@ export function Feedback({
     <Box
       flexDirection='column'
       flexShrink={0}
-      paddingX={1}
-      minHeight={1}
     >
       {feedback.map(item => (
         <Text

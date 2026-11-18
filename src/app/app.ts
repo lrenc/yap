@@ -56,6 +56,10 @@ export type AppEvent =
     message: string;
   }
   | {
+    type: 'initErrors';
+    errors: readonly InitError[];
+  }
+  | {
     type: 'panel';
     panel: AppPanel | null;
   }
@@ -328,9 +332,12 @@ export class App {
           ? result.reason.message
           : `Cannot initialize ${source}.`;
         this.#errors.push({ source, message });
-        this.#notice(message, 'error');
       }
     }
+    this.#emit({
+      type: 'initErrors',
+      errors: this.initErrors,
+    });
     this.#reportWarnings(this.#settings.warnings);
     this.#reportWarnings(this.secrets.warnings ?? []);
     if (
@@ -602,20 +609,26 @@ export class App {
 
   async #checkApiKeyAdmission(): Promise<AdmissionResult> {
     const modelId = this.#settings.config.activeModelId;
+    let model: ReturnType<typeof requireModel>;
     try {
-      const model = requireModel(modelId);
-      const key = await this.secrets.getApiKey(model.providerId);
-      if (!key) {
-        return {
-          type: 'blocked',
-          block: {
-            type: 'missingApiKey',
-            message: 'waiting for API key',
-          },
-        };
-      }
+      model = requireModel(modelId);
     } catch (error) {
       return { type: 'rejected', error };
+    }
+    let key: string | undefined;
+    try {
+      key = await this.secrets.getApiKey(model.providerId);
+    } catch {
+      key = undefined;
+    }
+    if (!key) {
+      return {
+        type: 'blocked',
+        block: {
+          type: 'missingApiKey',
+          message: 'waiting for API key',
+        },
+      };
     }
     return { type: 'ready' };
   }
