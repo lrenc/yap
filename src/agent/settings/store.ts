@@ -8,7 +8,7 @@ import {
   parseConfig,
   promptNameSchema,
   validateReasoningEffort,
-  type AppConfig,
+  type AgentSettingsConfig,
 } from './schema.ts';
 
 function loadError(path: string, error: unknown): Error {
@@ -45,7 +45,7 @@ function loadError(path: string, error: unknown): Error {
 export class SettingsStore {
   readonly filePath: string;
 
-  #current: AppConfig | null = null;
+  #current: AgentSettingsConfig | null = null;
   #warningMessages: string[] = [];
   #pending: Promise<void> = Promise.resolve();
 
@@ -53,7 +53,7 @@ export class SettingsStore {
     this.filePath = join(rootDirectory, 'config.json');
   }
 
-  get config(): AppConfig {
+  get config(): AgentSettingsConfig {
     return structuredClone(this.#requireConfig());
   }
 
@@ -138,7 +138,7 @@ export class SettingsStore {
     });
   }
 
-  #requireConfig(): AppConfig {
+  #requireConfig(): AgentSettingsConfig {
     if (!this.#current) {
       throw new Error(
         `Configuration must be loaded successfully before use: ${this.filePath}`
@@ -147,12 +147,12 @@ export class SettingsStore {
     return this.#current;
   }
 
-  async #persist(config: AppConfig): Promise<void> {
+  async #persist(config: AgentSettingsConfig): Promise<void> {
     await ensureDirectory(this.rootDirectory);
     await writeJson(this.filePath, config, { mode: 0o600 });
   }
 
-  async #save(config: AppConfig): Promise<void> {
+  async #save(config: AgentSettingsConfig): Promise<void> {
     try {
       await this.#persist(config);
     } catch {

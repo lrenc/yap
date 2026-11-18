@@ -2,17 +2,17 @@ import { createClient } from '../model/provider/openai/client.ts';
 import type { OpenAIClient } from '../model/provider/openai/types.ts';
 import type { AgentModel } from '../model/types.ts';
 import { requireModel } from './models.ts';
+import type { AgentSecrets } from './ports.ts';
 import { providers } from './providers.ts';
-import type { SecretStore } from './settings/secrets.ts';
 
 export class ClientFactory {
-  readonly #secrets: SecretStore;
+  readonly #secrets: AgentSecrets;
   readonly #clients = new Map<
     string,
     { key: string; client: OpenAIClient }
   >();
 
-  constructor(secrets: SecretStore) {
+  constructor(secrets: AgentSecrets) {
     this.#secrets = secrets;
   }
 
@@ -41,7 +41,6 @@ export class ClientFactory {
       return cached.client;
     }
 
-    // Existing Runs retain their captured client; new Runs must use this key.
     this.#clients.delete(provider.id);
     const client = createClient({
       apiKey: key,
@@ -60,7 +59,9 @@ export class ClientFactory {
       params: structuredClone(model.params),
       ...(model.reasoningEfforts === undefined
         ? {}
-        : { reasoningEfforts: [...model.reasoningEfforts] }),
+        : {
+          reasoningEfforts: [...model.reasoningEfforts],
+        }),
       client: await this.getClient(model.providerId),
     };
   }

@@ -26,11 +26,7 @@ import type {
   AgentResult,
   ToolOutcome,
 } from './types.ts';
-import type {
-  AgentConfig,
-  RunConfigResolver,
-  RunConfigSnapshot,
-} from '../types.ts';
+import type { AgentToolset, RunConfigResolver, RunConfigSnapshot } from '../types.ts';
 import type { AgentTool } from '../../tools/types.ts';
 
 const STALLED_INSTRUCTIONS = `
@@ -73,7 +69,7 @@ export class Run {
   #resolve!: (result: AgentResult) => void;
 
   constructor(
-    agent: Pick<AgentConfig, 'tools'>,
+    agent: AgentToolset,
     context: Context,
     options: ExecutionOptions,
   ) {

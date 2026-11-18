@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { FileSecretStore } from '../../src/app/settings/secrets.ts';
+import { FileSecretStore } from '../../src/agent/settings/secrets.ts';
 
 describe('FileSecretStore', () => {
   let root: string | undefined;

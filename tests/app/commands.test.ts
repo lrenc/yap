@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { executeCommand, suggestCommands } from '../../src/app/commands.ts';
-import { models } from '../../src/app/models.ts';
+import { models } from '../../src/agent/models.ts';
 
 describe('command suggestions', () => {
   test('lists every command after a slash', () => {
@@ -32,6 +32,7 @@ describe('command suggestions', () => {
     let selectedModel: string | undefined;
     let selectedPrompt: string | undefined;
     const dependencies = {
+      models,
       settings: {
         setModel: async (id: string) => {
           selectedModel = id;

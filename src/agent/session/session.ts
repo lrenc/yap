@@ -1,13 +1,13 @@
 import { Context } from '../../context/context.ts';
-import { checkPendingInput, selectRunConfig } from '../run/request.ts';
+import { checkPendingInput } from '../run/request.ts';
 import { Run } from '../run/run.ts';
 import type { AgentEvent, AgentResult, RunOptions } from '../run/types.ts';
-import type { AgentConfig, RunConfigResolver } from '../types.ts';
+import type { RunConfigResolver, RunConfigSnapshot } from '../types.ts';
 import type { AgentTool } from '../../tools/types.ts';
 import type {
-  WaitingState,
-  ResolverOptions,
+  SessionRun,
   SessionOptions,
+  WaitingState,
 } from './types.ts';
 
 interface QueuedRun {
@@ -18,46 +18,37 @@ interface QueuedRun {
   onAbort: () => void;
 }
 
+interface SubmittedRun {
+  runId: number;
+  run: Run;
+}
+
 export class Session {
+  readonly id: number;
   readonly #runQueue: QueuedRun[] = [];
   readonly #tools: AgentTool[];
   readonly #context = new Context();
   readonly #resolveRunConfig: RunConfigResolver;
-  readonly #legacy: {
-    agent: AgentConfig;
-    options: SessionOptions;
-  } | null = null;
+  readonly #resolveQueueConfig: (() => RunConfigSnapshot) | null;
+  readonly #isReady: ((modelId: string) => boolean) | null;
+  readonly #allocateRunId: (() => number) | null;
 
   #cancelling = false;
+  #nextRunId = 0;
   #active: Run | null = null;
   #pendingMessages: string[] = [];
   #draining = false;
 
-  constructor(agent: AgentConfig, options: SessionOptions);
   constructor(
-    agent: Pick<AgentConfig, 'tools'>,
-    options: ResolverOptions,
-  );
-  constructor(
-    agent: AgentConfig | Pick<AgentConfig, 'tools'>,
-    options: SessionOptions | ResolverOptions,
+    agent: Pick<{ tools: AgentTool[] }, 'tools'>,
+    options: SessionOptions,
   ) {
+    this.id = options.id ?? 0;
     this.#tools = agent.tools;
-    if ('resolveRunConfig' in options) {
-      this.#resolveRunConfig = options.resolveRunConfig;
-    } else if (
-      'models' in agent
-      && 'instructions' in agent
-    ) {
-      this.#legacy = { agent, options };
-      this.#resolveRunConfig = () => (
-        selectRunConfig(agent, options.getModelSelection())
-      );
-    } else {
-      throw new Error(
-        'Model selection requires an agent configuration'
-      );
-    }
+    this.#resolveRunConfig = options.resolveRunConfig;
+    this.#resolveQueueConfig = options.resolveQueueConfig ?? null;
+    this.#isReady = options.isReady ?? null;
+    this.#allocateRunId = options.allocateRunId ?? null;
   }
 
   run(
@@ -65,7 +56,7 @@ export class Session {
     options: RunOptions = {},
   ): Promise<AgentResult> {
     const messages = typeof content === 'string' ? [content] : content;
-    return this.#submit(messages, false, options).result;
+    return this.#submit(messages, false, options).run.result;
   }
 
   runStream(
@@ -73,7 +64,19 @@ export class Session {
     options: RunOptions = {},
   ): AsyncIterableIterator<AgentEvent> {
     const messages = typeof content === 'string' ? [content] : content;
-    return this.#submit(messages, true, options).stream;
+    return this.#submit(messages, true, options).run.stream;
+  }
+
+  submitStream(
+    content: string | readonly string[],
+    options: RunOptions = {},
+  ): SessionRun {
+    const messages = typeof content === 'string' ? [content] : content;
+    const submitted = this.#submit(messages, true, options);
+    return {
+      runId: submitted.runId,
+      stream: submitted.run.stream,
+    };
   }
 
   cancel(): void {
@@ -109,7 +112,7 @@ export class Session {
     input: readonly string[],
     streaming: boolean,
     options: RunOptions,
-  ): Run {
+  ): SubmittedRun {
     const messages = [...input];
     if (
       messages.length === 0 ||
@@ -117,6 +120,7 @@ export class Session {
     ) {
       throw new Error('Message must not be empty');
     }
+    const runId = this.#allocateRunId?.() ?? ++this.#nextRunId;
     const run = new Run({ tools: this.#tools }, this.#context, {
       ...options,
       content: messages.at(-1)!,
@@ -129,11 +133,10 @@ export class Session {
         response: null,
         turns: 0,
       });
-      return run;
+      return { runId, run };
     }
-    if (this.#legacy) {
-      const { agent, options } = this.#legacy;
-      const config = selectRunConfig(agent, options.getModelSelection());
+    if (this.#resolveQueueConfig) {
+      const config = this.#resolveQueueConfig();
       const input = this.#pendingInput();
       for (const item of this.#runQueue) {
         input.push(...item.messages.map(content => ({
@@ -157,7 +160,7 @@ export class Session {
     this.#runQueue.push(item);
     run.signal.addEventListener('abort', item.onAbort, { once: true });
     this.#schedule();
-    return run;
+    return { runId, run };
   }
 
   #pendingInput() {
@@ -187,7 +190,7 @@ export class Session {
   }
 
   #refreshQueue(): number {
-    if (!this.#legacy) {
+    if (!this.#resolveQueueConfig) {
       for (const item of this.#runQueue) {
         item.admitted = true;
       }
@@ -197,10 +200,9 @@ export class Session {
       return this.#runQueue.length;
     }
     try {
-      const { agent, options } = this.#legacy;
-      const config = selectRunConfig(agent, options.getModelSelection());
+      const config = this.#resolveQueueConfig();
       const modelId = config.model.id;
-      const ready = options.isReady?.(modelId) !== false;
+      const ready = this.#isReady?.(modelId) !== false;
       const input = ready ? this.#pendingInput() : [];
       let count = 0;
       for (let index = 0; index < this.#runQueue.length;) {

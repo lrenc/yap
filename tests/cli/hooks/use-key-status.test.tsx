@@ -5,15 +5,15 @@ import { join } from 'node:path';
 import { Text } from 'ink';
 import { render } from 'ink-testing-library';
 import { App } from '../../../src/app/app.ts';
-import { models } from '../../../src/app/models.ts';
-import { FileSecretStore } from '../../../src/app/settings/secrets.ts';
-import { PromptRepository } from '../../../src/app/settings/prompts.ts';
-import { SettingsStore } from '../../../src/app/settings/store.ts';
+import { models } from '../../../src/agent/models.ts';
+import { FileSecretStore } from '../../../src/agent/settings/secrets.ts';
+import { PromptRepository } from '../../../src/agent/settings/prompts.ts';
+import { SettingsStore } from '../../../src/agent/settings/store.ts';
 import {
   useKeyStatus,
   type KeyStatusResult,
 } from '../../../src/cli/hooks/use-key-status.ts';
-import type { Model } from '../../../src/app/types.ts';
+import type { Model } from '../../../src/agent/types.ts';
 
 describe('useKeyStatus', () => {
   let rendered: ReturnType<typeof render> | null = null;

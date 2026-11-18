@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { App } from '../../src/app/app.ts';
 import { nextCommandIndex } from '../../src/app/queue.ts';
-import { FileSecretStore } from '../../src/app/settings/secrets.ts';
-import { PromptRepository } from '../../src/app/settings/prompts.ts';
-import { SettingsStore } from '../../src/app/settings/store.ts';
+import { FileSecretStore } from '../../src/agent/settings/secrets.ts';
+import { PromptRepository } from '../../src/agent/settings/prompts.ts';
+import { SettingsStore } from '../../src/agent/settings/store.ts';
 import type { AppEvent } from '../../src/app/app.ts';
 import type { RunAdmission } from '../../src/app/queue.ts';
 

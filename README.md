@@ -185,9 +185,9 @@ For coverage, run `bun run test:coverage`.
 | Path | Purpose |
 | --- | --- |
 | `src/cli/` | Terminal client, input handling, and Markdown rendering |
-| `src/app/` | Harness orchestration, commands, models, and local settings |
-| `src/agent/` | Agent runtime, sessions, model-tool loops, streaming, and guardrails |
+| `src/app/` | Harness input flow, terminal commands, and Agent lifecycle orchestration |
+| `src/agent/` | Agent configuration and capabilities, Session/Run lifecycle, model catalog, and local settings |
 | `src/context/` | Conversation history, tokens, and context compaction |
-| `src/model/` | Provider configuration, Responses clients, and protocol adapters |
+| `src/model/` | Responses protocol types, HTTP/SSE clients, and provider adapters |
 | `src/tools/` | Built-in file tools and tool definitions |
 | `scripts/` | Build and release helper scripts |

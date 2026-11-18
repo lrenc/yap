@@ -1,14 +1,6 @@
-import type { AgentModel } from '../model/types.ts';
-import type { AdapterName } from '../model/provider/openai/types.ts';
+import type { AgentPrompts } from '../agent/ports.ts';
 
-export interface Provider {
-  readonly id: string;
-  readonly name: string;
-  readonly baseURL: string;
-  readonly adapter: AdapterName;
-}
+export type { Model } from '../agent/types.ts';
+export { promptNameSchema } from '../agent/settings/schema.ts';
 
-export interface Model extends Omit<AgentModel, 'client'> {
-  readonly name: string;
-  readonly providerId: string;
-}
+export type PromptSource = Pick<AgentPrompts, 'list' | 'read'>;

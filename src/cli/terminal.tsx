@@ -5,7 +5,6 @@ import { homedir } from 'node:os';
 import { sep } from 'node:path';
 import { App } from '../app/app.ts';
 import { isCommand, suggestCommands } from '../app/commands.ts';
-import { models } from '../app/models.ts';
 import { ConfigPanel } from './components/command/config.tsx';
 import { ModelPanel } from './components/command/model.tsx';
 import { Panel } from './components/command/panel.tsx';
@@ -50,6 +49,10 @@ export interface TerminalProps {
 export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
   const theme = useTheme();
   const [runtime] = useState(() => app ?? new App());
+  const [promptSource] = useState(() => ({
+    list: () => runtime.listPrompts(),
+    read: (name: string) => runtime.readPrompt(name),
+  }));
   const [draft, setDraft] = useState('');
   const [hasNewOutput, setHasNewOutput] = useState(false);
   const commands = suggestCommands(draft);
@@ -62,7 +65,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
     : Math.max(1, Math.min(MAX_SUGGESTION_ROWS, liveRows - 4));
   const config = runtime.config;
   const currentModel = config
-    ? models.find(model => model.id === config.activeModelId) ?? null
+    ? runtime.models.find(model => model.id === config.activeModelId) ?? null
     : null;
   const key = useKeyStatus(runtime, currentModel, state.ready);
   const reasoningEffort = currentModel
@@ -157,8 +160,8 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
     if (panel.type === 'model') {
       return (
         <ModelPanel
-          models={models}
-          currentModelId={config?.activeModelId ?? models[0]!.id}
+          models={runtime.models}
+          currentModelId={config?.activeModelId ?? runtime.models[0]!.id}
           onSave={modelId => runtime.trackPanelSave(
             runtime.setModel(modelId)
           )}
@@ -169,7 +172,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
       );
     }
     if (panel.type === 'config') {
-      const model = models.find(item => item.id === panel.modelId);
+      const model = runtime.models.find(item => item.id === panel.modelId);
       if (!model) {
         return (
           <Panel>
@@ -188,7 +191,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
             currentEffort: effort,
           })}
           hasApiKey={async () => Boolean(
-            await runtime.secrets.getApiKey(panel.providerId)
+            await runtime.hasApiKey(panel.providerId)
           )}
           onSaveApiKey={apiKey => runtime.trackPanelSave(
             runtime.setApiKey(panel.providerId, apiKey)
@@ -206,7 +209,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
     }
     return (
       <PromptPanel
-        prompts={runtime.prompts}
+        prompts={promptSource}
         activePrompt={config?.activePrompt}
         trackSave={save => runtime.trackPanelSave(save)}
         onCreate={(name, content) => runtime.createPrompt(name, content)}

@@ -5,9 +5,9 @@ import { join, sep } from 'node:path';
 import { render } from 'ink-testing-library';
 import { App } from '../../src/app/app.ts';
 import type { RunAdmission } from '../../src/app/queue.ts';
-import { FileSecretStore } from '../../src/app/settings/secrets.ts';
-import { PromptRepository } from '../../src/app/settings/prompts.ts';
-import { SettingsStore } from '../../src/app/settings/store.ts';
+import { FileSecretStore } from '../../src/agent/settings/secrets.ts';
+import { PromptRepository } from '../../src/agent/settings/prompts.ts';
+import { SettingsStore } from '../../src/agent/settings/store.ts';
 import { Terminal } from '../../src/cli/terminal.tsx';
 import { sseEvent } from '../helpers/streams.ts';
 
@@ -841,7 +841,7 @@ describe('Terminal', () => {
 
     expect(rendered.lastFrame()).not.toContain('API Key saved');
     expect(rendered.lastFrame()).not.toContain('applies from the next run');
-    expect(await app.secrets.getApiKey('deepseek')).toBe('sk-test-secret');
+    expect(await app.hasApiKey('deepseek')).toBe(true);
     await waitFor(() => (
       rendered?.lastFrame()?.includes('API key is not configured') === false
     ));
@@ -897,7 +897,7 @@ describe('Terminal', () => {
     await waitFor(() => (
       rendered?.lastFrame()?.includes('API key is not configured') === true
     ));
-    expect(await app.secrets.getApiKey('deepseek')).toBeUndefined();
+    expect(await app.hasApiKey('deepseek')).toBe(false);
   });
 
   test('creates a Prompt from the Prompt panel', async () => {
@@ -945,7 +945,7 @@ describe('Terminal', () => {
     ));
 
     expect(rendered.lastFrame()).not.toContain('Prompt created: reviewer');
-    expect(await app.prompts.read('reviewer')).toBe('Review carefully');
+    expect(await app.readPrompt('reviewer')).toBe('Review carefully');
 
     await flush();
     rendered.stdin.write('/prompt reviewer\r');

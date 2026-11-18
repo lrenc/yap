@@ -7,7 +7,7 @@ import type {
   AgentEvent,
   AgentResult,
 } from '../../../src/agent/run/types.ts';
-import type { AgentConfig } from '../../../src/agent/types.ts';
+import type { RunConfigSnapshot } from '../../../src/agent/types.ts';
 import type {
   OpenAIClient,
   OpenAIResponse,
@@ -68,13 +68,14 @@ function createSession(
       max_output_tokens: 1_024,
     },
   };
-  const agent: AgentConfig = {
+  const config = (): RunConfigSnapshot => ({
+    model,
     instructions: 'Be concise',
-    models: [model],
-    tools: [],
-  };
-  return new Session(agent, {
-    getModelSelection: () => ({ modelId: 'test-model' }),
+  });
+  return new Session({ tools: [] }, {
+    id: 1,
+    resolveRunConfig: config,
+    resolveQueueConfig: config,
     ...options,
   });
 }
@@ -284,13 +285,27 @@ describe('Session', () => {
 
   test('rejects a waiting run when model selection fails', async () => {
     let unavailable = false;
-    const session = createSession(immediateClient(), {
-      getModelSelection: () => {
-        if (unavailable) {
-          throw new Error('model unavailable');
-        }
-        return { modelId: 'test-model' };
+    const model: AgentModel = {
+      id: 'test-model',
+      client: immediateClient(),
+      contextWindow: 128_000,
+      params: {
+        max_output_tokens: 1_024,
       },
+    };
+    const resolveQueueConfig = (): RunConfigSnapshot => {
+      if (unavailable) {
+        throw new Error('model unavailable');
+      }
+      return {
+        model,
+        instructions: 'Be concise',
+      };
+    };
+    const session = new Session({ tools: [] }, {
+      id: 1,
+      resolveRunConfig: resolveQueueConfig,
+      resolveQueueConfig,
       isReady: () => false,
     });
     const result = session.run('hello');

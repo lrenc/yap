@@ -4,7 +4,7 @@ import type {
   AgentEvent,
   AgentResult,
 } from '../../../src/agent/run/types.ts';
-import type { AgentConfig } from '../../../src/agent/types.ts';
+import type { AgentToolset } from '../../../src/agent/types.ts';
 import { Context } from '../../../src/context/context.ts';
 import type {
   OpenAIClient,
@@ -99,9 +99,7 @@ function createRun(onRequest?: () => void): Run {
       max_output_tokens: 100,
     },
   };
-  const agent: AgentConfig = {
-    instructions: 'Be concise',
-    models: [model],
+  const agent: AgentToolset = {
     tools: [],
   };
 
@@ -109,7 +107,7 @@ function createRun(onRequest?: () => void): Run {
     content: 'hello',
     resolveRunConfig: () => ({
       model,
-      instructions: agent.instructions,
+      instructions: 'Be concise',
     }),
     streaming: true,
     signal: new AbortController().signal,
@@ -132,9 +130,7 @@ function createRunWith(
       max_output_tokens: 100,
     },
   };
-  const agent: AgentConfig = {
-    instructions: 'Be concise',
-    models: [model],
+  const agent: AgentToolset = {
     tools: options.tools ?? [],
   };
 
@@ -142,7 +138,7 @@ function createRunWith(
     content: 'hello',
     resolveRunConfig: () => ({
       model,
-      instructions: agent.instructions,
+      instructions: 'Be concise',
     }),
     streaming: options.streaming ?? true,
     signal: options.signal ?? new AbortController().signal,

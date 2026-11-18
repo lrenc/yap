@@ -1,23 +1,12 @@
 import { isCommand } from './commands.ts';
+import type { QueueBlock } from '../agent/admission.ts';
 
-export interface QueueBlock {
-  readonly type: string;
-  readonly message: string;
-}
-
-export type AdmissionResult =
-  | { type: 'ready' }
-  | { type: 'blocked'; block: QueueBlock }
-  | { type: 'rejected'; error: unknown };
-
-export interface AdmissionContext {
-  readonly input: string;
-  readonly signal: AbortSignal;
-}
-
-export type RunAdmission = (
-  context: AdmissionContext,
-) => AdmissionResult | Promise<AdmissionResult>;
+export type {
+  AdmissionContext,
+  AdmissionResult,
+  QueueBlock,
+  RunAdmission,
+} from '../agent/admission.ts';
 
 export function nextCommandIndex(
   queue: readonly string[],

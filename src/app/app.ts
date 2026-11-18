@@ -1,18 +1,13 @@
 import { resolve } from 'node:path';
-import { Session } from '../agent/session/session.ts';
-import { readFileTool } from '../tools/files/read-file.ts';
-import { readDirectoryTool } from '../tools/files/read-directory.ts';
-import { ClientFactory } from './clients.ts';
+import { Agent } from '../agent/agent.ts';
+import type { AgentRuntimeConfig } from '../agent/ports.ts';
+import { FileSecretStore } from '../agent/settings/secrets.ts';
+import { PromptRepository } from '../agent/settings/prompts.ts';
+import { SettingsStore } from '../agent/settings/store.ts';
 import { executeCommand, isCommand } from './commands.ts';
-import { requireModel } from './models.ts';
 import { nextCommandIndex } from './queue.ts';
-import { PromptRepository } from './settings/prompts.ts';
-import { FileSecretStore } from './settings/secrets.ts';
-import type { AppConfig } from './settings/schema.ts';
-import { SettingsStore } from './settings/store.ts';
 
 import type { AgentEvent } from '../agent/run/types.ts';
-import type { RunConfigSnapshot } from '../agent/types.ts';
 import type { AgentTool } from '../tools/types.ts';
 import type {
   AdmissionResult,
@@ -100,11 +95,7 @@ interface QueuedInput {
 
 export class App {
   readonly cwd: string;
-  readonly secrets: FileSecretStore;
-  readonly prompts: PromptRepository;
-  readonly #settings: SettingsStore;
-  readonly #clients: ClientFactory;
-  readonly #tools: AgentTool[];
+  readonly #agent: Agent;
   readonly #admitRun: RunAdmission;
   readonly #inputQueue: QueuedInput[] = [];
   readonly #listeners = new Set<(event: AppEvent) => void>();
@@ -112,14 +103,9 @@ export class App {
   readonly #runTasks = new Set<Promise<void>>();
   readonly #warnings = new Set<string>();
 
-  #config: AppConfig | null = null;
   #errors: InitError[] = [];
   #initialized = false;
   #initializing: Promise<void> | null = null;
-  #session: Session | null = null;
-  #sessionId: number | undefined;
-  #nextSessionId = 0;
-  #nextRunId = 0;
   #nextInputId = 0;
 
   #panel: AppPanel | null = null;
@@ -127,7 +113,6 @@ export class App {
   #blocked: QueueBlock | null = null;
   #recheckPending = false;
   #admissionController: AbortController | null = null;
-  #missingPrompt: string | undefined;
   #draining = false;
   #disposed = false;
   #generation = 0;
@@ -135,26 +120,36 @@ export class App {
 
   constructor(options: AppOptions = {}) {
     this.cwd = resolve(options.cwd ?? process.cwd());
-    this.secrets = options.secrets ?? new FileSecretStore();
-    this.#settings = options.settings ?? new SettingsStore();
-    this.prompts = options.prompts ?? new PromptRepository();
-    this.#admitRun = options.admitRun ?? (() => this.#checkApiKeyAdmission());
-    this.#clients = new ClientFactory(this.secrets);
-    this.#tools = options.tools
-      ? [...options.tools]
-      : [
-        readFileTool(this.cwd),
-        readDirectoryTool(this.cwd),
-      ];
+    const secrets = options.secrets ?? new FileSecretStore();
+    const settings = options.settings ?? new SettingsStore();
+    const prompts = options.prompts ?? new PromptRepository();
+    this.#agent = new Agent({
+      cwd: this.cwd,
+      settings,
+      secrets,
+      prompts,
+      ...(options.tools === undefined ? {} : { tools: options.tools }),
+      onNotice: (message, level) => this.#notice(message, level),
+    });
+    this.#admitRun = options.admitRun
+      ?? (context => this.#agent.admit(context));
   }
 
   get pendingCount(): number {
     return this.#inputQueue.length;
   }
 
+  get models() {
+    return this.#agent.models;
+  }
+
+  get currentModel() {
+    return this.#agent.currentModel;
+  }
+
   setModel(modelId: string): Promise<void> {
     return this.#updateConfig('model', () =>
-      this.#settings.setModel(modelId));
+      this.#agent.setModel(modelId));
   }
 
   setReasoningEffort(
@@ -162,44 +157,56 @@ export class App {
     effort: string | undefined,
   ): Promise<void> {
     return this.#updateConfig('reasoningEffort', () =>
-      this.#settings.setReasoningEffort(modelId, effort));
+      this.#agent.setReasoningEffort(modelId, effort));
   }
 
   setActivePrompt(name: string | undefined): Promise<void> {
     return this.#updateConfig('prompt', () =>
-      this.#settings.setActivePrompt(name));
+      this.#agent.setActivePrompt(name));
   }
 
   createPrompt(name: string, content: string): Promise<void> {
     return this.#updateConfig('prompt', () =>
-      this.prompts.create(name, content));
+      this.#agent.createPrompt(name, content));
   }
 
   updatePrompt(name: string, content: string): Promise<void> {
     return this.#updateConfig('prompt', () =>
-      this.prompts.update(name, content));
+      this.#agent.updatePrompt(name, content));
   }
 
   deletePrompt(name: string): Promise<void> {
-    return this.#updateConfig('prompt', () => this.prompts.delete(name));
+    return this.#updateConfig('prompt', () => this.#agent.deletePrompt(name));
+  }
+
+  listPrompts(): Promise<string[]> {
+    return this.#agent.listPrompts();
+  }
+
+  readPrompt(name: string): Promise<string | undefined> {
+    return this.#agent.readPrompt(name);
+  }
+
+  hasApiKey(providerId: string): Promise<boolean> {
+    return this.#agent.hasApiKey(providerId);
   }
 
   setApiKey(providerId: string, apiKey: string): Promise<void> {
     return this.#updateConfig('apiKey', () =>
-      this.secrets.setApiKey(providerId, apiKey));
+      this.#agent.setApiKey(providerId, apiKey));
   }
 
   clearApiKey(providerId: string): Promise<void> {
     return this.#updateConfig('apiKey', () =>
-      this.secrets.clearApiKey(providerId));
+      this.#agent.clearApiKey(providerId));
   }
 
   get panel(): AppPanel | null {
     return this.#panel ? { ...this.#panel } : null;
   }
 
-  get config(): AppConfig | null {
-    return this.#config;
+  get config(): AgentRuntimeConfig | null {
+    return this.#agent.config;
   }
 
   subscribe(listener: (event: AppEvent) => void): () => void {
@@ -267,7 +274,7 @@ export class App {
   }
 
   #reportPromptWarnings(): void {
-    this.#reportWarnings(this.prompts.warnings);
+    this.#agent.reportPromptWarnings();
   }
 
   whenIdle(): Promise<void> {
@@ -286,7 +293,7 @@ export class App {
     this.#recheckPending = false;
     this.#admissionController?.abort();
     this.#admissionController = null;
-    this.#session?.cancel();
+    this.#agent.cancel();
     this.closePanel();
     this.#notifyQueue({ settle: true });
   }
@@ -297,28 +304,21 @@ export class App {
     }
     this.#disposed = true;
     this.cancel();
+    this.#agent.dispose();
     this.#listeners.clear();
     this.#settleIdle();
   }
 
   async #load(sources: InitError['source'][]): Promise<void> {
-    if (sources.includes('settings')) {
-      this.#config = null;
-    }
     const results = await Promise.allSettled(sources.map(source => {
       return Promise.resolve().then(() =>
-        source === 'settings' ? this.#settings.load() : this.secrets.load?.(),
+        source === 'settings'
+          ? this.#agent.loadSettings()
+          : this.#agent.loadSecrets(),
       )
     }));
     this.#initialized = true;
     this.#errors = [];
-    const settingsIndex = sources.indexOf('settings');
-    if (
-      settingsIndex >= 0
-      && results[settingsIndex]?.status === 'fulfilled'
-    ) {
-      this.#config = this.#readConfig();
-    }
     for (const [index, result] of results.entries()) {
       const source = sources[index]!;
       if (result.status === 'rejected') {
@@ -332,15 +332,15 @@ export class App {
       type: 'initErrors',
       errors: this.#errors.map(error => ({ ...error })),
     });
-    this.#reportWarnings(this.#settings.warnings);
-    this.#reportWarnings(this.secrets.warnings ?? []);
+    this.#reportWarnings(this.#agent.settingsWarnings);
+    this.#reportWarnings(this.#agent.secretWarnings);
     if (
       !this.#disposed
       && sources.includes('settings')
       && !this.#errors.some(error => error.source === 'settings')
     ) {
       try {
-        await this.#loadPrompt(this.#config?.activePrompt);
+        await this.#agent.prepare();
       } catch (error) {
         this.#notice(
           error instanceof Error
@@ -380,16 +380,7 @@ export class App {
     update: () => Promise<void>,
   ): Promise<void> {
     await update();
-    this.#config = this.#readConfig();
     this.#configChanged(change);
-  }
-
-  #readConfig(): AppConfig | null {
-    try {
-      return this.#settings.config;
-    } catch {
-      return null;
-    }
   }
 
   #configChanged(change: ConfigChange): void {
@@ -559,11 +550,14 @@ export class App {
   async #command(input: string): Promise<void> {
     const generation = this.#generation;
     const result = await executeCommand(input, {
+      models: this.#agent.models,
       settings: {
         setModel: modelId => this.setModel(modelId),
         setActivePrompt: name => this.setActivePrompt(name),
       },
-      prompts: this.prompts,
+      prompts: {
+        read: name => this.#agent.readPrompt(name),
+      },
     });
     if (this.#disposed || generation !== this.#generation) {
       return;
@@ -577,21 +571,24 @@ export class App {
     this.#reportPromptWarnings();
     if (result.type === 'notice') {
       this.#emit(result);
-    } else if (result.type === 'newSession' && this.#sessionId !== undefined) {
-      const sessionId = this.#sessionId;
-      this.#session = null;
-      this.#sessionId = undefined;
-      this.#emit({
-        type: 'sessionBoundary', sessionId,
-      });
+    } else if (result.type === 'newSession') {
+      const sessionId = this.#agent.newSession();
+      if (sessionId !== undefined) {
+        this.#emit({
+          type: 'sessionBoundary', sessionId,
+        });
+      }
     } else if (result.type === 'panelRequest') {
       let panel: AppPanel;
       if (result.panel === 'config') {
-        const modelId = this.#settings.config.activeModelId;
-        const model = requireModel(modelId);
+        const model = this.#agent.currentModel;
+        if (!model) {
+          this.#notice('Unknown model; select a model with /model.', 'error');
+          return;
+        }
         panel = {
           type: 'config',
-          modelId,
+          modelId: model.id,
           providerId: model.providerId,
         };
       } else {
@@ -601,41 +598,15 @@ export class App {
     }
   }
 
-  async #checkApiKeyAdmission(): Promise<AdmissionResult> {
-    const modelId = this.#settings.config.activeModelId;
-    let model: ReturnType<typeof requireModel>;
-    try {
-      model = requireModel(modelId);
-    } catch (error) {
-      return { type: 'rejected', error };
-    }
-    let key: string | undefined;
-    try {
-      key = await this.secrets.getApiKey(model.providerId);
-    } catch {
-      key = undefined;
-    }
-    if (!key) {
-      return {
-        type: 'blocked',
-        block: {
-          type: 'missingApiKey',
-          message: 'waiting for API key',
-        },
-      };
-    }
-    return { type: 'ready' };
-  }
-
   #startRun(input: string, queueId: number): void {
-    this.#session ??= new Session({ tools: this.#tools }, {
-      resolveRunConfig: signal => this.#resolveConfig(signal),
-    });
-    this.#sessionId ??= ++this.#nextSessionId;
-    const sessionId = this.#sessionId;
-    const runId = ++this.#nextRunId;
-    const stream = this.#session.runStream(input);
-    const task = this.#consumeRun(stream, input, runId, sessionId, queueId)
+    const run = this.#agent.runStream(input);
+    const task = this.#consumeRun(
+      run.stream,
+      input,
+      run.runId,
+      run.sessionId,
+      queueId,
+    )
       .finally(() => {
         this.#runTasks.delete(task);
         this.#emitQueue();
@@ -693,45 +664,6 @@ export class App {
   async #waitForRuns(): Promise<void> {
     while (this.#runTasks.size > 0) {
       await Promise.allSettled([...this.#runTasks]);
-    }
-  }
-
-  async #resolveConfig(signal: AbortSignal): Promise<RunConfigSnapshot> {
-    signal.throwIfAborted();
-    const config = this.#settings.config;
-    const [prompt, model] = await Promise.all([
-      this.#loadPrompt(config.activePrompt, signal),
-      this.#clients.getModel(config.activeModelId),
-    ]);
-    signal.throwIfAborted();
-    const reasoningEffort =
-      config.modelSettings[config.activeModelId]?.reasoningEffort;
-    return {
-      model,
-      instructions: prompt.content,
-      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
-    };
-  }
-
-  async #loadPrompt(name: string | undefined, signal?: AbortSignal) {
-    try {
-      const prompt = await this.prompts.loadSelected(name);
-      signal?.throwIfAborted();
-      if (
-        prompt.missingPrompt
-        && this.#missingPrompt !== prompt.missingPrompt
-      ) {
-        this.#notice(
-          `Prompt "${prompt.missingPrompt}" is missing; using default.`,
-          'warning',
-        );
-      }
-      this.#missingPrompt = prompt.missingPrompt;
-      return prompt;
-    } finally {
-      if (!signal?.aborted) {
-        this.#reportPromptWarnings();
-      }
     }
   }
 

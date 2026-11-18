@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { promptNameSchema } from '../../src/app/settings/schema.ts';
-import { PromptRepository } from '../../src/app/settings/prompts.ts';
+import { promptNameSchema } from '../../src/agent/settings/schema.ts';
+import { PromptRepository } from '../../src/agent/settings/prompts.ts';
 
 describe('promptNameSchema', () => {
   test('accepts Unicode file names up to 16 characters', () => {

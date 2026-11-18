@@ -1,5 +1,4 @@
-import { models } from './models.ts';
-import type { PromptRepository } from './settings/prompts.ts';
+import type { Model } from '../agent/types.ts';
 
 type CommandResult =
   | { type: 'notice'; level: 'error'; message: string }
@@ -8,11 +7,14 @@ type CommandResult =
   | { type: 'noop' };
 
 type Dependencies = {
+  models: readonly Model[];
   settings: {
     setModel(modelId: string): Promise<void>;
     setActivePrompt(name: string | undefined): Promise<void>;
   };
-  prompts: Pick<PromptRepository, 'read'>;
+  prompts: {
+    read(name: string): Promise<string | undefined>;
+  };
 };
 
 export interface CommandInfo {
@@ -67,7 +69,7 @@ export function suggestCommands(input: string): readonly CommandInfo[] {
 
 export async function executeCommand(
   input: string,
-  { settings, prompts }: Dependencies,
+  { models, settings, prompts }: Dependencies,
 ): Promise<CommandResult> {
   if (!isCommand(input)) {
     return { type: 'noop' };

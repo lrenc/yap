@@ -2,28 +2,13 @@ import { createHash } from 'node:crypto';
 import { getModelBudget, getSummaryLimit } from '../../context/compaction/budget.ts';
 import { summaryMessages } from '../../context/history.ts';
 import { estimateTokens } from '../../context/tokens.ts';
-import { getModel } from '../../model/lookup.ts';
 import { buildModelParams } from '../../model/params.ts';
 import type { CompactionBudget, RequestInfo } from '../../context/types.ts';
 import type {
   ResponseCreateParams,
   ResponseInputItem
 } from '../../model/provider/openai/types.ts';
-import type { ModelSelection } from '../../model/types.ts';
-import type { AgentConfig, RunConfigSnapshot } from '../types.ts';
-
-export function selectRunConfig(
-  agent: AgentConfig,
-  selection: ModelSelection,
-): RunConfigSnapshot {
-  return {
-    model: getModel(agent.models, selection.modelId),
-    instructions: agent.instructions,
-    ...(selection.reasoningEffort === undefined ? {} : {
-      reasoningEffort: selection.reasoningEffort,
-    }),
-  };
-}
+import type { AgentToolset, RunConfigSnapshot } from '../types.ts';
 
 export function captureRunConfig(config: RunConfigSnapshot): RunConfigSnapshot {
   const { client, ...model } = config.model;
@@ -37,7 +22,7 @@ export function captureRunConfig(config: RunConfigSnapshot): RunConfigSnapshot {
 }
 
 export function checkPendingInput(
-  agent: Pick<AgentConfig, 'tools'>,
+  agent: AgentToolset,
   config: RunConfigSnapshot,
   input: ResponseInputItem[],
 ): CompactionBudget {
@@ -60,7 +45,7 @@ export function checkPendingInput(
 }
 
 export function buildRequest(
-  agent: Pick<AgentConfig, 'tools'>,
+  agent: AgentToolset,
   { model, instructions, reasoningEffort }: RunConfigSnapshot,
   input: ResponseInputItem[],
 ): ResponseCreateParams {

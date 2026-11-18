@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { models } from '../../src/app/models.ts';
-import { providers } from '../../src/app/providers.ts';
+import { models } from '../../src/agent/models.ts';
+import { providers } from '../../src/agent/providers.ts';
 
 describe('provider catalog', () => {
   test('routes GLM through its Responses adapter', () => {

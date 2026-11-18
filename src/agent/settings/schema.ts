@@ -45,7 +45,7 @@ const modelSettingsSchema = z.looseObject({
   reasoningEffort: z.string().optional(),
 });
 
-const appConfigSchema = z.strictObject({
+const agentSettingsSchema = z.strictObject({
   version: z.literal(1).default(1),
   activeModelId: z.string().default(DEFAULT_MODEL_ID),
   modelSettings: z.record(z.string(), modelSettingsSchema).default({}),
@@ -62,7 +62,7 @@ export const providerSecretsSchema = z.strictObject({
   })).default({}),
 });
 
-export type AppConfig = z.infer<typeof appConfigSchema>;
+export type AgentSettingsConfig = z.infer<typeof agentSettingsSchema>;
 export type ProviderSecrets = z.infer<typeof providerSecretsSchema>;
 
 function resolveModelId(
@@ -79,10 +79,10 @@ function resolveModelId(
 }
 
 export function parseConfig(value: unknown): {
-  config: AppConfig;
+  config: AgentSettingsConfig;
   needsRepair: boolean;
 } {
-  const config = appConfigSchema.parse(value);
+  const config = agentSettingsSchema.parse(value);
   const { modelId, needsRepair } = resolveModelId(config.activeModelId);
   config.activeModelId = modelId;
   return {

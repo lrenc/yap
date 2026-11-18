@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { render } from 'ink-testing-library';
-import { PromptRepository } from '../../../../src/app/settings/prompts.ts';
+import { PromptRepository } from '../../../../src/agent/settings/prompts.ts';
 import { PromptPanel } from '../../../../src/cli/components/command/prompt.tsx';
 
 describe('PromptPanel', () => {

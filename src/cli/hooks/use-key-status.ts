@@ -58,13 +58,13 @@ export function useKeyStatus(
 
     let active = true;
     setChecked({ modelId, providerId, status: 'checking' });
-    void app.secrets.getApiKey(providerId)
-      .then(key => {
+    void app.hasApiKey(providerId)
+      .then(configured => {
         if (active) {
           setChecked({
             modelId,
             providerId,
-            status: key ? 'configured' : 'missing',
+            status: configured ? 'configured' : 'missing',
           });
         }
       })

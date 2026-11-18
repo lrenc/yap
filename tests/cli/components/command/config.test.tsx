@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { render } from 'ink-testing-library';
-import { models } from '../../../../src/app/models.ts';
+import { models } from '../../../../src/agent/models.ts';
 import { ConfigPanel } from '../../../../src/cli/components/command/config.tsx';
 
 describe('ConfigPanel', () => {

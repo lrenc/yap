@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import type { PromptRepository } from '../../../app/settings/prompts.ts';
-import { promptNameSchema } from '../../../app/settings/schema.ts';
+import {
+  promptNameSchema,
+  type PromptSource,
+} from '../../../app/types.ts';
 import { formatError } from '../../error.ts';
 import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
@@ -24,7 +26,7 @@ type View =
   | { type: 'confirmDelete'; name: string };
 
 export interface PromptPanelProps {
-  prompts: Pick<PromptRepository, 'list' | 'read'>;
+  prompts: PromptSource;
   activePrompt: string | undefined;
   trackSave: <T>(save: Promise<T>) => Promise<T>;
   onCreate: (name: string, content: string) => Promise<void>;

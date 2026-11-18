@@ -153,9 +153,9 @@ bun run test:coverage
 | 路径 | 用途 |
 | --- | --- |
 | `src/cli/` | 终端客户端、输入处理和 Markdown 渲染 |
-| `src/app/` | Harness 运行流程编排、命令、模型和本地设置 |
-| `src/agent/` | Agent 运行时、会话、模型与工具循环、流式输出和循环保护 |
+| `src/app/` | Harness 输入流程、终端命令和 Agent 生命周期编排 |
+| `src/agent/` | Agent 配置与能力、Session/Run 生命周期、模型目录和本地设置 |
 | `src/context/` | 对话历史、token 估算和上下文压缩 |
-| `src/model/` | 提供商配置、Responses 客户端和协议适配层 |
+| `src/model/` | Responses 协议类型、HTTP/SSE 客户端和提供商适配层 |
 | `src/tools/` | 内置文件工具和工具定义 |
 | `scripts/` | 构建和发布辅助脚本 |
