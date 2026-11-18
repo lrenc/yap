@@ -252,6 +252,24 @@ describe('Session', () => {
     expect(session.waiting).toBeNull();
   });
 
+  test('requires queue configuration when checking readiness', () => {
+    const client = immediateClient();
+    expect(() => new Session({ tools: [] }, {
+      resolveRunConfig: () => ({
+        model: {
+          id: 'test-model',
+          client,
+          contextWindow: 128_000,
+          params: {
+            max_output_tokens: 1_024,
+          },
+        },
+        instructions: 'Be concise',
+      }),
+      isReady: () => false,
+    })).toThrow('isReady requires resolveQueueConfig');
+  });
+
   test('cancels a waiting run', async () => {
     const session = createSession(immediateClient(), {
       isReady: () => false,

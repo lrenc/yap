@@ -297,15 +297,15 @@ export class Agent {
   async #resolveConfig(signal: AbortSignal): Promise<RunConfigSnapshot> {
     signal.throwIfAborted();
     const config = this.#settings.config;
+    const { activeModelId, activePrompt } = config;
+    const reasoningEffort =
+      config.modelSettings[activeModelId]?.reasoningEffort;
     const [prompt, model] = await Promise.all([
-      this.#loadPrompt(config.activePrompt, signal),
-      this.#clients.getModel(config.activeModelId),
+      this.#loadPrompt(activePrompt, signal),
+      this.#clients.getModel(activeModelId),
     ]);
     signal.throwIfAborted();
-    const reasoningEffort =
-      config.modelSettings[config.activeModelId]?.reasoningEffort;
-    const requestedPrompt = config.activePrompt;
-    const instructions = requestedPrompt !== undefined
+    const instructions = activePrompt !== undefined
       && prompt.missingPrompt === undefined
       ? prompt.content
       : this.instructions.length > 0

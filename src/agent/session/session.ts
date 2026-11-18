@@ -43,6 +43,9 @@ export class Session {
     agent: Pick<{ tools: AgentTool[] }, 'tools'>,
     options: SessionOptions,
   ) {
+    if (options.isReady && !options.resolveQueueConfig) {
+      throw new Error('isReady requires resolveQueueConfig');
+    }
     this.id = options.id ?? 0;
     this.#tools = agent.tools;
     this.#resolveRunConfig = options.resolveRunConfig;

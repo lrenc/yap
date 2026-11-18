@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { Agent, type AgentOptions } from '../../src/agent/agent.ts';
+import type { AgentRuntimeConfig } from '../../src/agent/ports.ts';
 import type { AgentEvent } from '../../src/agent/run/types.ts';
 import type {
   OpenAIClient,
@@ -293,5 +294,84 @@ describe('Agent', () => {
     await collect(agent.runStream('hello').stream);
 
     expect(instructions).toEqual(['Agent instructions']);
+  });
+
+  test('resolves a run from one configuration snapshot', async () => {
+    let request: ResponseCreateParams | undefined;
+    let markModelStarted!: () => void;
+    const modelStarted = new Promise<void>(resolve => {
+      markModelStarted = resolve;
+    });
+    let releaseModel!: () => void;
+    const modelGate = new Promise<void>(resolve => {
+      releaseModel = resolve;
+    });
+    const config: AgentRuntimeConfig = {
+      activeModelId: 'deepseek-flash',
+      activePrompt: 'old',
+      modelSettings: {
+        'deepseek-flash': { reasoningEffort: 'low' },
+        'deepseek-v4-pro': { reasoningEffort: 'max' },
+      },
+    };
+    const testClient = client(params => {
+      request = params;
+    });
+    const agent = createAgent({
+      instructions: 'Agent instructions',
+      settings: {
+        config,
+        warnings: [],
+        load: async () => {},
+        setModel: async modelId => {
+          config.activeModelId = modelId;
+        },
+        setReasoningEffort: async () => {},
+        setActivePrompt: async name => {
+          config.activePrompt = name;
+        },
+      },
+      prompts: {
+        warnings: [],
+        loadSelected: async name => ({
+          content: `Prompt: ${name ?? 'default'}`,
+          missingPrompt: undefined,
+        }),
+        list: async () => [],
+        create: async () => {},
+        update: async () => {},
+        delete: async () => {},
+        read: async () => undefined,
+      },
+      clients: {
+        async getModel(modelId) {
+          markModelStarted();
+          await modelGate;
+          return {
+            id: modelId,
+            contextWindow: 128_000,
+            params: {
+              max_output_tokens: 1_024,
+            },
+            client: testClient,
+          };
+        },
+      },
+    });
+
+    const run = agent.runStream('hello');
+    await modelStarted;
+    await agent.setModel('deepseek-v4-pro');
+    await agent.setActivePrompt(undefined);
+    releaseModel();
+    await collect(run.stream);
+
+    expect(request).toMatchObject({
+      model: 'deepseek-flash',
+      instructions: 'Prompt: old',
+      reasoning: {
+        effort: 'low',
+      },
+    });
   });
 });
