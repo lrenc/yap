@@ -18,15 +18,15 @@
 ---
 
 YAP is a local-first harness for terminal AI agents. The terminal is its primary
-interface, while the core of the project is an interruptible Agent runtime:
-streamed model turns, typed tools, execution guardrails, queued input, and
-bounded context management.
+interface, while the core of the project is an interruptible Agent runtime with
+streamed model output, validated tool calls, loop protection, message
+queueing, and context budgeting.
 
 Around that runtime, YAP provides reusable Prompts, per-model reasoning controls,
-and local provider and credential management. It is designed around the
-capabilities a modern harness needs: explicit execution boundaries,
-reproducible configuration, recoverable sessions, permission-aware actions, and
-room for extensibility.
+and local model and credential management. It is designed to cover the key
+capabilities of a modern Agent harness, including clear execution boundaries,
+reproducible configuration, recoverable sessions, permission-controlled
+actions, and extensible integrations.
 
 ## Features
 
