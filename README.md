@@ -33,34 +33,29 @@ room for extensibility.
 Checked capabilities are available now. Unchecked items describe the next
 harness capabilities on the implementation path.
 
-- [x] **Interruptible Agent execution** — streamed model turns, cancellable
-  requests, and queued follow-up messages.
-- [x] **Tool-aware execution loop** — typed tool contracts, validated arguments,
-  structured results, abort propagation, and repeated no-progress detection.
-- [x] **Bounded context management** — local token estimation, budget checks,
-  and summary-based compaction for long-running work.
-- [x] **Reusable Prompt system** — create, edit, select, and delete local
-  Markdown Prompts, with a built-in default.
-- [x] **Model and provider abstraction** — DeepSeek and Zhipu GLM through a
-  provider-aware Responses protocol, with configurable reasoning effort.
-- [x] **Local-first configuration** — atomic settings writes, private file
-  permissions where supported, and local Prompt and credential storage.
-- [x] **Inspectable run events** — model turns, tool activity, compaction,
-  interruption, and final stop state are exposed as structured events.
-- [x] **Terminal-native transcript** — streamed Markdown, tables, trees, code
-  blocks, and scrollable history without leaving the terminal.
-- [ ] **Permission-aware workspace operations** — scoped read, write, and shell
-  tools with approval policies, process isolation, timeouts, and recovery.
-- [ ] **Durable sessions** — persist conversations, tool state, and checkpoints;
-  resume or branch interrupted work.
-- [ ] **Project-aware context** — load project rules, index a repository, and
-  retrieve relevant code or history within the context budget.
-- [ ] **Extensible integrations** — MCP servers, hooks, plugins, skills, and
-  user-defined tools with stable lifecycle contracts.
-- [ ] **Parallel multi-agent execution** — isolated subagents, shared task
-  coordination, and workspace or worktree orchestration.
-- [ ] **Evaluation and replay** — structured traces, deterministic replay,
-  benchmark tasks, and failure analysis for harness behavior.
+- [x] **Interruptible execution** — Cancel active work or queue follow-up
+  messages.
+- [x] **Tool-aware Agent loop** — Run validated tools and detect stalled
+  execution.
+- [x] **Context management** — Budget tokens and compact long conversations.
+- [x] **Reusable Prompts** — Manage and switch local Markdown Prompts.
+- [x] **Model and provider support** — Use DeepSeek or Zhipu GLM with
+  configurable reasoning.
+- [x] **Local-first configuration** — Keep settings, Prompts, and credentials on
+  your machine.
+- [x] **Structured run events** — Follow model turns, tools, compaction, and
+  completion state.
+- [x] **Terminal transcript** — Read streamed Markdown and browse earlier output.
+- [ ] **Safe workspace operations** — Add approval-controlled file, shell, and
+  recovery tools.
+- [ ] **Durable sessions** — Save and resume conversations, state, and
+  checkpoints.
+- [ ] **Project-aware context** — Load project rules and retrieve relevant
+  repository context.
+- [ ] **Extensible integrations** — Add MCP, hooks, plugins, skills, and custom
+  tools.
+- [ ] **Parallel agents** — Run isolated subagents and coordinate shared work.
+- [ ] **Evaluation and replay** — Trace, replay, and benchmark Agent runs.
 
 ## Quick Start
 
