@@ -4,6 +4,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { render } from 'ink-testing-library';
 import { App } from '../../src/app/app.ts';
+import type { RunAdmission } from '../../src/app/queue.ts';
 import { FileSecretStore } from '../../src/app/settings/secrets.ts';
 import { PromptRepository } from '../../src/app/settings/prompts.ts';
 import { SettingsStore } from '../../src/app/settings/store.ts';
@@ -28,12 +29,13 @@ describe('Terminal', () => {
     }
   });
 
-  async function createApp() {
+  async function createApp(admitRun?: RunAdmission) {
     root = await fs.mkdtemp(join(tmpdir(), 'yap-terminal-'));
     return new App({
       settings: new SettingsStore(root),
       secrets: new FileSecretStore(root),
       prompts: new PromptRepository(root),
+      ...(admitRun === undefined ? {} : { admitRun }),
     });
   }
 
@@ -94,19 +96,54 @@ describe('Terminal', () => {
 
     rendered.stdin.write('hello\r');
     await waitFor(() => (
-      rendered?.lastFrame()?.includes(
-        '1 input queued · waiting for API key'
-      ) === true
+      rendered?.lastFrame()?.includes('! hello') === true
+      && rendered?.lastFrame()?.includes('API key is not configured') === true
+    ));
+    rendered.stdin.write('second\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('! second') === true
     ));
 
-    expect(app.pendingCount).toBe(1);
+    expect(app.pendingCount).toBe(2);
     expect(events).not.toContain('userMessage');
     expect(events).not.toContain('done');
     expect(rendered.lastFrame()).not.toContain('Missing API Key');
     expect(rendered.lastFrame()).toContain('API key is not configured');
     const frame = rendered.lastFrame() ?? '';
-    expect(frame.indexOf('1 input queued')).toBeGreaterThan(
-      frame.indexOf('DeepSeek Flash · high'),
+    expect(frame).not.toContain('input queued');
+    expect(frame.indexOf('! hello')).toBeLessThan(
+      frame.indexOf('! second'),
+    );
+    expect(frame.indexOf('! hello')).toBeLessThan(
+      frame.indexOf('Ask anything...'),
+    );
+  });
+
+  test('shows generic admission blocks above the composer', async () => {
+    const app = await createApp(() => ({
+      type: 'blocked',
+      block: {
+        type: 'otherPrerequisite',
+        message: 'waiting for workspace access',
+      },
+    }));
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
+
+    rendered.stdin.write('hello\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('! hello') === true
+      && rendered?.lastFrame()?.includes(
+        'waiting for workspace access'
+      ) === true
+    ));
+
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).not.toContain('input queued');
+    expect(frame.indexOf('waiting for workspace access')).toBeLessThan(
+      frame.indexOf('Ask anything...'),
     );
   });
 
@@ -152,9 +189,7 @@ describe('Terminal', () => {
 
       rendered.stdin.write('hello\r');
       await waitFor(() => (
-        rendered?.lastFrame()?.includes(
-          '1 input queued · waiting for API key'
-        ) === true
+        rendered?.lastFrame()?.includes('! hello') === true
       ));
 
       rendered.stdin.write('/config\r');
@@ -171,6 +206,20 @@ describe('Terminal', () => {
       await waitFor(() => (
         rendered?.lastFrame()?.includes('Queued response') === true
       ));
+      const blockedFrame = rendered.frames.findIndex(frame => (
+        frame.includes('! hello')
+      ));
+      const completedFrame = rendered.frames.findIndex((
+        frame,
+        index,
+      ) => index > blockedFrame && frame.includes('✓ hello'));
+      expect(blockedFrame).toBeGreaterThan(-1);
+      expect(completedFrame).toBeGreaterThan(blockedFrame);
+      expect(rendered.frames.slice(blockedFrame, completedFrame + 1).every(
+        frame => frame.includes('hello'),
+      )).toBe(true);
+      expect(rendered.lastFrame()).toContain('✓ hello');
+      expect(rendered.lastFrame()).not.toContain('! hello');
 
       expect(events.filter(type => type === 'userMessage')).toHaveLength(1);
       expect(notices).not.toContain(

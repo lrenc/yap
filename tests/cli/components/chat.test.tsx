@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { render } from 'ink-testing-library';
-import { Chat, ChatEntryView } from '../../../src/cli/components/chat.tsx';
+import {
+  Chat,
+  ChatEntryView,
+  QueuedMessages,
+} from '../../../src/cli/components/chat.tsx';
 import type {
   ChatEntry,
   ChatState,
@@ -134,6 +138,8 @@ describe('Chat', () => {
 
   test('renders each user message lifecycle status', async () => {
     const items: ChatEntry[] = [
+      { id: 'queued', type: 'user', content: 'queued', status: 'queued' },
+      { id: 'blocked', type: 'user', content: 'blocked', status: 'blocked' },
       { id: 'running', type: 'user', content: 'running', status: 'running' },
       {
         id: 'completed',
@@ -154,9 +160,28 @@ describe('Chat', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
 
     const frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('○ queued');
+    expect(frame).toContain('! blocked');
     expect(frame).toContain('⠋ running');
     expect(frame).toContain('✓ completed');
     expect(frame).toContain('× failed');
     expect(frame).toContain('− stopped');
+  });
+
+  test('renders queued messages with the current admission state', async () => {
+    rendered = render(
+      <QueuedMessages
+        messages={[
+          { id: 1, content: 'first' },
+          { id: 2, content: 'second' },
+        ]}
+        blocked
+      />,
+    );
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('! first');
+    expect(frame).toContain('! second');
   });
 });

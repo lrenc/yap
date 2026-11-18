@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Box, Text, useAnimation } from 'ink';
+import type { QueuedMessage } from '../../app/app.ts';
 import { ASSISTANT_INDENT } from '../markdown/layout.ts';
 import { MarkdownMessage } from '../markdown/markdown.tsx';
 import { useTheme } from '../theme/index.ts';
@@ -127,6 +128,20 @@ function UserMessagePrefix({
   status: UserMessageStatus;
 }) {
   const theme = useTheme();
+  if (status === 'queued') {
+    return (
+      <Text color={theme.colors.text.muted}>
+        ○
+      </Text>
+    );
+  }
+  if (status === 'blocked') {
+    return (
+      <Text color={theme.colors.feedback.warning}>
+        !
+      </Text>
+    );
+  }
   if (status === 'running') {
     return <RunningMark />;
   }
@@ -156,6 +171,26 @@ function RunningMark() {
   const { frame } = useAnimation({ interval: 80 });
   const mark = RUN_FRAMES[frame % RUN_FRAMES.length];
   return <Text color={theme.colors.role.activity}>{mark} </Text>;
+}
+
+export function QueuedMessages({
+  messages,
+  blocked,
+}: {
+  messages: readonly QueuedMessage[];
+  blocked: boolean;
+}) {
+  return messages.map(message => (
+    <ChatEntryView
+      key={message.id}
+      item={{
+        id: `queued:${message.id}`,
+        type: 'user',
+        content: message.content,
+        status: blocked ? 'blocked' : 'queued',
+      }}
+    />
+  ));
 }
 
 export const CompletedTranscript = memo(function CompletedTranscript({

@@ -18,6 +18,8 @@ export type ChatEvent =
   };
 
 export type UserMessageStatus =
+  | 'queued'
+  | 'blocked'
   | 'running'
   | 'completed'
   | 'failed'

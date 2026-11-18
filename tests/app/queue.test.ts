@@ -100,6 +100,12 @@ describe('queue admission policy', () => {
     )));
     expect(runtime.pendingCount).toBe(1);
     expect(events.some(event => event.type === 'userMessage')).toBe(false);
+    expect(events.some(event => (
+      event.type === 'inputQueue'
+      && event.messages.length === 1
+      && event.messages[0]?.id === 1
+      && event.messages[0].content === 'hello'
+    ))).toBe(true);
 
     runtime.submit('/config');
     await waitFor(() => events.some(event => (
@@ -108,6 +114,30 @@ describe('queue admission policy', () => {
 
     expect(runtime.pendingCount).toBe(1);
     expect(events.some(event => event.type === 'userMessage')).toBe(false);
+    expect(events.some(event => (
+      event.type === 'inputQueue'
+      && event.messages.some(message => message.content === '/config')
+    ))).toBe(false);
+  });
+
+  test('links an accepted run to its queued message', async () => {
+    const events: AppEvent[] = [];
+    const runtime = await createApp(() => ({ type: 'ready' }));
+    runtime.subscribe(event => {
+      events.push(event);
+      if (event.type === 'userMessage') {
+        runtime.cancel();
+      }
+    });
+
+    runtime.submit('hello');
+    await waitFor(() => events.some(event => event.type === 'userMessage'));
+
+    expect(events.find(event => event.type === 'userMessage'))
+      .toMatchObject({
+        queueId: 1,
+        content: 'hello',
+      });
   });
 
   test('cancels an unresolved admission and resumes new commands', async () => {

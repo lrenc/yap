@@ -30,6 +30,11 @@ export interface InitError {
   message: string;
 }
 
+export interface QueuedMessage {
+  id: number;
+  content: string;
+}
+
 export type ConfigChange =
   | 'model'
   | 'reasoningEffort'
@@ -40,6 +45,7 @@ export type AppEvent =
   | (AgentEvent & { runId: number; sessionId: number })
   | {
     type: 'userMessage';
+    queueId: number;
     content: string;
     runId: number;
     sessionId: number;
@@ -66,6 +72,7 @@ export type AppEvent =
     pending: number;
     paused: boolean;
     blocked: QueueBlock | null;
+    messages: readonly QueuedMessage[];
   };
 
 export interface AppOptions {
@@ -81,6 +88,12 @@ interface InputQueueState {
   pending: number;
   paused: boolean;
   blocked: QueueBlock | null;
+  messages: readonly QueuedMessage[];
+}
+
+interface QueuedInput {
+  id: number;
+  input: string;
 }
 
 export class App {
@@ -91,7 +104,7 @@ export class App {
   readonly #clients: ClientFactory;
   readonly #tools: AgentTool[];
   readonly #admitRun: RunAdmission;
-  readonly #inputQueue: string[] = [];
+  readonly #inputQueue: QueuedInput[] = [];
   readonly #listeners = new Set<(event: AppEvent) => void>();
   readonly #idleWaiters = new Set<() => void>();
   readonly #runTasks = new Set<Promise<void>>();
@@ -105,6 +118,7 @@ export class App {
   #sessionId: number | undefined;
   #nextSessionId = 0;
   #nextRunId = 0;
+  #nextInputId = 0;
 
   #panel: AppPanel | null = null;
   #panelSaves = 0;
@@ -222,7 +236,10 @@ export class App {
     if (this.#disposed || !input.trim()) {
       return;
     }
-    this.#inputQueue.push(input);
+    this.#inputQueue.push({
+      id: ++this.#nextInputId,
+      input,
+    });
     this.#notifyQueue();
   }
 
@@ -344,7 +361,7 @@ export class App {
       || (
         !this.#recheckPending
         && this.#blocked !== null
-        && nextCommandIndex(this.#inputQueue, this.#blocked) < 0
+        && this.#nextCommandIndex(this.#blocked) < 0
       )
     ) {
       return;
@@ -415,19 +432,19 @@ export class App {
         if (this.#disposed || this.#panel || this.#panelSaves) {
           break;
         }
-        const input = this.#inputQueue[0];
-        if (input === undefined) {
+        const item = this.#inputQueue[0];
+        if (item === undefined) {
           break;
         }
-        if (isCommand(input)) {
+        if (isCommand(item.input)) {
           this.#inputQueue.shift();
-          if (!(await this.#drainCommand(input))) {
+          if (!(await this.#drainCommand(item.input))) {
             break;
           }
           continue;
         }
 
-        if (!(await this.#drainMessage(input))) {
+        if (!(await this.#drainMessage(item))) {
           break;
         }
       }
@@ -445,10 +462,10 @@ export class App {
     }
   }
 
-  async #drainMessage(input: string): Promise<boolean> {
+  async #drainMessage(item: QueuedInput): Promise<boolean> {
     const generation = this.#generation;
     this.#recheckPending = false;
-    const admission = await this.#runAdmission(input);
+    const admission = await this.#runAdmission(item.input);
     if (
       this.#disposed
       || generation !== this.#generation
@@ -464,17 +481,14 @@ export class App {
       this.#rejectAdmission(admission.error);
       return true;
     }
-    this.#acceptRun(input);
+    this.#acceptRun(item);
     return true;
   }
 
   async #drainBlocked(block: QueueBlock): Promise<boolean> {
     this.#blocked = block;
     this.#emitQueue();
-    const commandIndex = nextCommandIndex(
-      this.#inputQueue,
-      block,
-    );
+    const commandIndex = this.#nextCommandIndex(block);
     if (commandIndex < 0) {
       return false;
     }
@@ -482,7 +496,7 @@ export class App {
     if (command === undefined) {
       return false;
     }
-    return this.#drainCommand(command);
+    return this.#drainCommand(command.input);
   }
 
   #rejectAdmission(error: unknown): void {
@@ -497,11 +511,10 @@ export class App {
     );
   }
 
-  #acceptRun(input: string): void {
+  #acceptRun(item: QueuedInput): void {
     this.#inputQueue.shift();
     this.#blocked = null;
-    this.#emitQueue();
-    this.#startRun(input);
+    this.#startRun(item.input, item.id);
   }
 
   async #runAdmission(input: string): Promise<AdmissionResult> {
@@ -607,7 +620,7 @@ export class App {
     return { type: 'ready' };
   }
 
-  #startRun(input: string): void {
+  #startRun(input: string, queueId: number): void {
     this.#session ??= new Session({ tools: this.#tools }, {
       resolveRunConfig: signal => this.#resolveConfig(signal),
     });
@@ -615,7 +628,7 @@ export class App {
     const sessionId = this.#sessionId;
     const runId = ++this.#nextRunId;
     const stream = this.#session.runStream(input);
-    const task = this.#consumeRun(stream, input, runId, sessionId)
+    const task = this.#consumeRun(stream, input, runId, sessionId, queueId)
       .finally(() => {
         this.#runTasks.delete(task);
         this.#emitQueue();
@@ -631,11 +644,13 @@ export class App {
     input: string,
     runId: number,
     sessionId: number,
+    queueId: number,
   ): Promise<void> {
     let finished = false;
     try {
       this.#emit({
         type: 'userMessage',
+        queueId,
         content: input,
         runId,
         sessionId,
@@ -727,6 +742,12 @@ export class App {
       pending: this.#inputQueue.length,
       paused: this.#panel !== null || this.#panelSaves > 0,
       blocked: this.#blocked === null ? null : { ...this.#blocked },
+      messages: this.#inputQueue
+        .filter(item => !isCommand(item.input))
+        .map(item => ({
+          id: item.id,
+          content: item.input,
+        })),
     };
     const previous = this.#lastQueueState;
     if (
@@ -736,6 +757,7 @@ export class App {
       && previous.paused === next.paused
       && previous.blocked?.type === next.blocked?.type
       && previous.blocked?.message === next.blocked?.message
+      && sameQueuedMessages(previous.messages, next.messages)
     ) {
       return;
     }
@@ -764,7 +786,14 @@ export class App {
       return false;
     }
     return this.#blocked === null
-      || nextCommandIndex(this.#inputQueue, this.#blocked) >= 0;
+      || this.#nextCommandIndex(this.#blocked) >= 0;
+  }
+
+  #nextCommandIndex(block: QueueBlock): number {
+    return nextCommandIndex(
+      this.#inputQueue.map(item => item.input),
+      block,
+    );
   }
 
   #isIdle(): boolean {
@@ -787,4 +816,18 @@ export class App {
     }
     this.#idleWaiters.clear();
   }
+}
+
+function sameQueuedMessages(
+  previous: readonly QueuedMessage[],
+  next: readonly QueuedMessage[],
+): boolean {
+  return previous.length === next.length && previous.every((
+    message,
+    index,
+  ) => {
+    const candidate = next[index];
+    return candidate?.id === message.id
+      && candidate.content === message.content;
+  });
 }

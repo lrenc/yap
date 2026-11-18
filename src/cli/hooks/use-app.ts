@@ -1,5 +1,11 @@
 import { useEffect, useReducer } from 'react';
-import type { App, AppEvent, AppPanel, InitError } from '../../app/app.ts';
+import type {
+  App,
+  AppEvent,
+  AppPanel,
+  InitError,
+  QueuedMessage,
+} from '../../app/app.ts';
 import type { QueueBlock } from '../../app/queue.ts';
 import {
   applyChatEvent,
@@ -17,8 +23,7 @@ export interface AppUiState {
   panel: AppPanel | null;
   feedback: AppFeedback[];
   chat: ChatState;
-  pending: number;
-  paused: boolean;
+  queuedMessages: readonly QueuedMessage[];
   blocked: QueueBlock | null;
   ready: boolean;
   initErrors: readonly InitError[];
@@ -32,8 +37,7 @@ const INITIAL_STATE: AppUiState = {
   panel: null,
   feedback: [],
   chat: INITIAL_CHAT_STATE,
-  pending: 0,
-  paused: false,
+  queuedMessages: [],
   blocked: null,
   ready: false,
   initErrors: [],
@@ -51,6 +55,19 @@ function reduceAppState(
     };
   }
   const { event } = action;
+  if (event.type === 'userMessage') {
+    const {
+      queueId,
+      ...chatEvent
+    } = event;
+    return {
+      ...state,
+      queuedMessages: state.queuedMessages.filter(
+        message => message.id !== queueId,
+      ),
+      chat: applyChatEvent(state.chat, chatEvent),
+    };
+  }
   if (
     event.type === 'sessionBoundary'
     || (event.type !== 'notice' && 'runId' in event)
@@ -86,8 +103,7 @@ function reduceAppState(
     case 'inputQueue': {
       return {
         ...state,
-        pending: event.pending,
-        paused: event.paused,
+        queuedMessages: event.messages,
         blocked: event.blocked,
       };
     }

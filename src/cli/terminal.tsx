@@ -12,7 +12,11 @@ import { ModelPanel } from './components/command/model.tsx';
 import { Panel } from './components/command/panel.tsx';
 import { PromptPanel } from './components/command/prompt.tsx';
 import { Suggestions } from './components/command/suggestions.tsx';
-import { Chat, CompletedTranscript } from './components/chat.tsx';
+import {
+  Chat,
+  CompletedTranscript,
+  QueuedMessages,
+} from './components/chat.tsx';
 import { Composer } from './components/input/composer.tsx';
 import { KeyNotice } from './components/key-notice.tsx';
 import { Scroller } from './components/scroller.tsx';
@@ -72,12 +76,6 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
     ].join(' · ')
     : undefined;
   const pathStatus = currentModel ? displayPath(runtime.cwd) : undefined;
-  let pendingStatus = '';
-  if (state.blocked) {
-    pendingStatus = ` · ${state.blocked.message}`;
-  } else if (state.paused) {
-    pendingStatus = ' · waiting for panel';
-  }
   const submit = (value: string) => {
     if (!value.trim()) {
       return;
@@ -205,6 +203,10 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
         </Box>
         <CompletedTranscript items={state.chat.completed} />
         <Chat chat={state.chat} />
+        <QueuedMessages
+          messages={state.queuedMessages}
+          blocked={state.blocked !== null}
+        />
       </Scroller>
       <Feedback feedback={state.feedback} />
       {state.initErrors.filter(error => (
@@ -214,6 +216,13 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
           <Text color={theme.colors.feedback.error}>{error.message}</Text>
         </Box>
       ))}
+      {state.blocked && state.blocked.type !== 'missingApiKey' ? (
+        <Box paddingX={1}>
+          <Text color={theme.colors.feedback.warning} wrap='truncate-end'>
+            {state.blocked.message}
+          </Text>
+        </Box>
+      ) : null}
       {key.status === 'missing' ? (
         <KeyNotice ignored={key.ignored} />
       ) : null}
@@ -246,14 +255,6 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
               {pathStatus ? (
                 <Text color={theme.colors.role.path}>{pathStatus}</Text>
               ) : null}
-            </Text>
-          </Box>
-        ) : null}
-        {state.pending > 0 ? (
-          <Box paddingX={1}>
-            <Text color={theme.colors.text.muted}>
-              {state.pending} input{state.pending === 1 ? '' : 's'} queued
-              {pendingStatus}
             </Text>
           </Box>
         ) : null}
