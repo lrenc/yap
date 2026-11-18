@@ -3,7 +3,7 @@
 
   <h1>YAP</h1>
 
-  <p><strong>A focused terminal AI assistant.</strong></p>
+  <p><strong>A local-first harness for terminal AI agents.</strong></p>
 
   <p>
     <img alt="Early development" src="https://img.shields.io/badge/status-early%20development-orange?style=flat-square" />
@@ -17,28 +17,56 @@
 
 ---
 
-YAP is a local-first AI coding assistant for the terminal. It provides an
-interruptible agent runtime, reusable prompts, and simple controls for models
-and credentials.
+YAP is a local-first harness for terminal AI agents. The terminal is its primary
+interface, while the core of the project is an interruptible Agent runtime:
+streamed model turns, typed tools, execution guardrails, queued input, and
+bounded context management.
 
-> [!NOTE]
-> YAP is still in early development. Session persistence is not complete.
+Around that runtime, YAP provides reusable Prompts, per-model reasoning controls,
+and local provider and credential management. It is designed around the
+capabilities a modern harness needs: explicit execution boundaries,
+reproducible configuration, recoverable sessions, permission-aware actions, and
+room for extensibility.
 
 ## Features
 
-- Interruptible, streamed conversations with queued follow-up messages.
-- Terminal-friendly Markdown, tables, directory trees, and code blocks.
-- Context compaction and token budgeting for long conversations.
-- Local Prompt management and configurable model reasoning effort.
-- Built-in tools for reading files and directories.
-- Provider-aware Responses API support for DeepSeek and Zhipu GLM.
+Checked capabilities are available now. Unchecked items describe the next
+harness capabilities on the implementation path.
+
+- [x] **Interruptible Agent execution** — streamed model turns, cancellable
+  requests, and queued follow-up messages.
+- [x] **Tool-aware execution loop** — typed tool contracts, validated arguments,
+  structured results, abort propagation, and repeated no-progress detection.
+- [x] **Bounded context management** — local token estimation, budget checks,
+  and summary-based compaction for long-running work.
+- [x] **Reusable Prompt system** — create, edit, select, and delete local
+  Markdown Prompts, with a built-in default.
+- [x] **Model and provider abstraction** — DeepSeek and Zhipu GLM through a
+  provider-aware Responses protocol, with configurable reasoning effort.
+- [x] **Local-first configuration** — atomic settings writes, private file
+  permissions where supported, and local Prompt and credential storage.
+- [x] **Inspectable run events** — model turns, tool activity, compaction,
+  interruption, and final stop state are exposed as structured events.
+- [x] **Terminal-native transcript** — streamed Markdown, tables, trees, code
+  blocks, and scrollable history without leaving the terminal.
+- [ ] **Permission-aware workspace operations** — scoped read, write, and shell
+  tools with approval policies, process isolation, timeouts, and recovery.
+- [ ] **Durable sessions** — persist conversations, tool state, and checkpoints;
+  resume or branch interrupted work.
+- [ ] **Project-aware context** — load project rules, index a repository, and
+  retrieve relevant code or history within the context budget.
+- [ ] **Extensible integrations** — MCP servers, hooks, plugins, skills, and
+  user-defined tools with stable lifecycle contracts.
+- [ ] **Parallel multi-agent execution** — isolated subagents, shared task
+  coordination, and workspace or worktree orchestration.
+- [ ] **Evaluation and replay** — structured traces, deterministic replay,
+  benchmark tasks, and failure analysis for harness behavior.
 
 ## Quick Start
 
-You need [Node.js](https://nodejs.org/) 22 or newer and an API key for DeepSeek
-or [Zhipu GLM](https://docs.bigmodel.cn/cn/guide/develop/responses/introduction).
+Requires Node.js 22 or newer.
+
 Run YAP in an interactive terminal; redirected input and output are rejected.
-The package is available on [npm](https://www.npmjs.com/package/@lrenc/yap).
 
 ```bash
 npm install -g @lrenc/yap
@@ -69,11 +97,12 @@ On the first run:
 
 Type `/` to open the command palette.
 
-## Conversation
+## Interaction and Run Control
 
 Type a message and press Enter to send it. Use Shift+Enter or Alt+Enter for a
-new line. Follow-up messages can be entered while a run is active; Escape
-cancels queued and running conversation work without exiting YAP. Ctrl+C exits.
+new line. Follow-up messages can be entered while a run is active and become
+part of the current conversation. Escape cancels queued and running Agent work
+without exiting YAP. Ctrl+C exits.
 
 The transcript renders assistant Markdown, including headings, lists, quotes,
 tables, directory trees, code blocks, and inline formatting. It also shows
@@ -160,16 +189,10 @@ For coverage, run `bun run test:coverage`.
 
 | Path | Purpose |
 | --- | --- |
-| `src/cli/` | Ink terminal UI, input handling, and Markdown rendering |
-| `src/app/` | Application state, commands, models, and local settings |
-| `src/agent/` | Session, Run, streaming, and tool execution |
+| `src/cli/` | Terminal client, input handling, and Markdown rendering |
+| `src/app/` | Harness orchestration, commands, models, and local settings |
+| `src/agent/` | Agent runtime, sessions, model-tool loops, streaming, and guardrails |
 | `src/context/` | Conversation history, tokens, and context compaction |
 | `src/model/` | Provider configuration, Responses clients, and protocol adapters |
 | `src/tools/` | Built-in file tools and tool definitions |
 | `scripts/` | Build and release helper scripts |
-
-### Roadmap
-
-- [ ] Virtualize the transcript and preserve the reader's resize position with
-  a stable message key plus row offset. Invalidate wrapped item heights when
-  the terminal width changes; do not anchor to DOM child indexes.
