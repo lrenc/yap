@@ -19,7 +19,7 @@ export type RunAdmission = (
   context: AdmissionContext,
 ) => AdmissionResult | Promise<AdmissionResult>;
 
-export function overtakingCommandIndex(
+export function nextCommandIndex(
   queue: readonly string[],
   blocked: QueueBlock | null,
 ): number {

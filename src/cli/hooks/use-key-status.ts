@@ -41,7 +41,7 @@ export function useKeyStatus(
   }, [modelId, providerId]);
 
   useEffect(() => app.subscribe(event => {
-    if (event.type === 'configurationChanged') {
+    if (event.type === 'configChanged') {
       setAttempted(false);
       setRevision(value => value + 1);
     }

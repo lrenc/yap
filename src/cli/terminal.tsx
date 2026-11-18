@@ -22,7 +22,7 @@ import { useKeyStatus } from './hooks/use-key-status.ts';
 import { useSelection } from './hooks/use-selection.ts';
 import { useTheme } from './theme/index.ts';
 
-const MAX_SUGGESTION_FOOTER_ROWS = 7;
+const MAX_SUGGESTION_ROWS = 7;
 const MAX_FOOTER_ROWS = 16;
 
 function displayPath(path: string): string {
@@ -53,14 +53,8 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
   const liveRows = Math.max(1, rows);
   const maxFooterRows = state.panel
     ? Math.max(1, Math.min(MAX_FOOTER_ROWS, liveRows - 4))
-    : Math.max(1, Math.min(MAX_SUGGESTION_FOOTER_ROWS, liveRows - 4));
-  const config = (() => {
-    try {
-      return runtime.settings.config;
-    } catch {
-      return null;
-    }
-  })();
+    : Math.max(1, Math.min(MAX_SUGGESTION_ROWS, liveRows - 4));
+  const config = runtime.config;
   const currentModel = config
     ? models.find(model => model.id === config.activeModelId) ?? null
     : null;
@@ -112,7 +106,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
     }
   };
 
-  const navigateSuggestions = (direction: 'up' | 'down'): boolean => {
+  const moveSuggestions = (direction: 'up' | 'down'): boolean => {
     if (state.panel || !commands.length) {
       return false;
     }
@@ -227,7 +221,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
         focus={state.panel === null}
         newOutput={hasNewOutput && state.panel === null}
         onDraftChange={changeDraft}
-        onNavigate={navigateSuggestions}
+        onNavigate={moveSuggestions}
         placeholder={
           !state.ready
             ? 'Loading configuration...'

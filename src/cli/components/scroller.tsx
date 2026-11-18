@@ -46,7 +46,7 @@ export function Scroller({
   const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
-  const previousContentHeightRef = useRef(content.height);
+  const previousHeightRef = useRef(content.height);
   const followingRef = useRef(following);
   followingRef.current = following;
   const maxOffset = Math.max(0, content.height - viewport.clientHeight);
@@ -67,12 +67,12 @@ export function Scroller({
 
   useLayoutEffect(() => {
     if (
-      content.height > previousContentHeightRef.current
+      content.height > previousHeightRef.current
       && !followingRef.current
     ) {
       setHasNewOutput(true);
     }
-    previousContentHeightRef.current = content.height;
+    previousHeightRef.current = content.height;
   }, [content.height]);
 
   useLayoutEffect(() => {

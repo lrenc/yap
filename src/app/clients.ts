@@ -1,7 +1,7 @@
 import { createClient } from '../model/provider/openai/client.ts';
 import type { OpenAIClient } from '../model/provider/openai/types.ts';
 import type { AgentModel } from '../model/types.ts';
-import { models } from './models.ts';
+import { requireModel } from './models.ts';
 import { providers } from './providers.ts';
 import type { SecretStore } from './settings/secrets.ts';
 
@@ -53,10 +53,7 @@ export class ClientFactory {
   }
 
   async getModel(modelId: string): Promise<AgentModel> {
-    const model = models.find(item => item.id === modelId);
-    if (!model) {
-      throw new Error('Unknown model; select a model with /model.');
-    }
+    const model = requireModel(modelId);
     return {
       id: model.id,
       contextWindow: model.contextWindow,

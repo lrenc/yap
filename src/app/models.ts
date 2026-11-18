@@ -47,3 +47,14 @@ export const models: readonly Model[] = [
     },
   },
 ];
+
+const UNKNOWN_MODEL_MESSAGE =
+  'Unknown model; select a model with /model.';
+
+export function requireModel(modelId: string): Model {
+  const model = models.find(item => item.id === modelId);
+  if (!model) {
+    throw new Error(UNKNOWN_MODEL_MESSAGE);
+  }
+  return model;
+}

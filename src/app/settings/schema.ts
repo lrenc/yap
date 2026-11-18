@@ -18,8 +18,8 @@ function firstModelId(catalog: readonly Model[]): string {
   return model.id;
 }
 
-const invalidFileNameChars = /[<>:"/\\|?*\p{Cc}]/u;
-const windowsReservedName = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
+const invalidNameChars = /[<>:"/\\|?*\p{Cc}]/u;
+const reservedName = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
 
 function isValidPromptName(name: string): boolean {
   const length = Array.from(name).length;
@@ -31,8 +31,8 @@ function isValidPromptName(name: string): boolean {
     && name !== '..'
     && !name.endsWith('.')
     && !name.endsWith(' ')
-    && !invalidFileNameChars.test(name)
-    && !windowsReservedName.test(name)
+    && !invalidNameChars.test(name)
+    && !reservedName.test(name)
   );
 }
 

@@ -590,7 +590,7 @@ describe('Terminal', () => {
     rendered.stdin.write('\x1b[B');
     await waitFor(() => rendered?.lastFrame()?.includes('› DeepSeek Pro') === true);
     rendered.stdin.write('\r');
-    await waitFor(() => app.settings.config.activeModelId === 'deepseek-v4-pro');
+    await waitFor(() => app.config?.activeModelId === 'deepseek-v4-pro');
 
     expect(rendered.lastFrame()).not.toContain('DeepSeek Flash');
     expect(rendered.lastFrame()).toContain('DeepSeek Pro · high');
@@ -650,7 +650,7 @@ describe('Terminal', () => {
     rendered.stdin.write('\x1b[B');
     rendered.stdin.write('\r');
     await waitFor(() => (
-      app.settings.config.modelSettings['deepseek-flash']?.reasoningEffort
+      app.config?.modelSettings['deepseek-flash']?.reasoningEffort
       === 'none'
     ));
     await waitFor(() => (

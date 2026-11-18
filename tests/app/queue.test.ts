@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { App } from '../../src/app/app.ts';
-import { overtakingCommandIndex } from '../../src/app/queue.ts';
+import { nextCommandIndex } from '../../src/app/queue.ts';
 import { FileSecretStore } from '../../src/app/settings/secrets.ts';
 import { PromptRepository } from '../../src/app/settings/prompts.ts';
 import { SettingsStore } from '../../src/app/settings/store.ts';
@@ -58,7 +58,7 @@ describe('queue admission policy', () => {
   }
 
   test('keeps normal input in FIFO order', () => {
-    expect(overtakingCommandIndex(
+    expect(nextCommandIndex(
       ['/model', 'hello'],
       null,
     )).toBe(-1);
@@ -69,14 +69,14 @@ describe('queue admission policy', () => {
       type: 'someOtherPrerequisite',
       message: 'waiting for another prerequisite',
     };
-    expect(overtakingCommandIndex(
+    expect(nextCommandIndex(
       ['hello', 'another message', '/config'],
       blocked,
     )).toBe(2);
   });
 
   test('does not treat the blocked head as an overtaking command', () => {
-    expect(overtakingCommandIndex(
+    expect(nextCommandIndex(
       ['/config', 'hello'],
       { type: 'blocked', message: 'waiting' },
     )).toBe(-1);
@@ -195,7 +195,7 @@ describe('queue admission policy', () => {
     const changes: string[] = [];
     const runtime = await createApp(() => ({ type: 'ready' }));
     runtime.subscribe(event => {
-      if (event.type === 'configurationChanged') {
+      if (event.type === 'configChanged') {
         changes.push(event.change);
       }
     });

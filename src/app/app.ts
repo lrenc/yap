@@ -4,10 +4,11 @@ import { readFileTool } from '../tools/files/read-file.ts';
 import { readDirectoryTool } from '../tools/files/read-directory.ts';
 import { ClientFactory } from './clients.ts';
 import { executeCommand, isCommand } from './commands.ts';
-import { models } from './models.ts';
-import { overtakingCommandIndex } from './queue.ts';
+import { requireModel } from './models.ts';
+import { nextCommandIndex } from './queue.ts';
 import { PromptRepository } from './settings/prompts.ts';
 import { FileSecretStore } from './settings/secrets.ts';
+import type { AppConfig } from './settings/schema.ts';
 import { SettingsStore } from './settings/store.ts';
 
 import type { AgentEvent } from '../agent/run/types.ts';
@@ -29,7 +30,7 @@ export interface InitError {
   message: string;
 }
 
-export type ConfigurationChange =
+export type ConfigChange =
   | 'model'
   | 'reasoningEffort'
   | 'prompt'
@@ -57,8 +58,8 @@ export type AppEvent =
     sessionId: number;
   }
   | {
-    type: 'configurationChanged';
-    change: ConfigurationChange;
+    type: 'configChanged';
+    change: ConfigChange;
   }
   | {
     type: 'inputQueue';
@@ -76,11 +77,17 @@ export interface AppOptions {
   admitRun?: RunAdmission;
 }
 
+interface InputQueueState {
+  pending: number;
+  paused: boolean;
+  blocked: QueueBlock | null;
+}
+
 export class App {
   readonly cwd: string;
-  readonly settings: SettingsStore;
   readonly secrets: FileSecretStore;
   readonly prompts: PromptRepository;
+  readonly #settings: SettingsStore;
   readonly #clients: ClientFactory;
   readonly #tools: AgentTool[];
   readonly #admitRun: RunAdmission;
@@ -90,6 +97,7 @@ export class App {
   readonly #runTasks = new Set<Promise<void>>();
   readonly #warnings = new Set<string>();
 
+  #config: AppConfig | null = null;
   #errors: InitError[] = [];
   #initialized = false;
   #initializing: Promise<void> | null = null;
@@ -107,11 +115,12 @@ export class App {
   #draining = false;
   #disposed = false;
   #generation = 0;
+  #lastQueueState: InputQueueState | undefined;
 
   constructor(options: AppOptions = {}) {
     this.cwd = resolve(options.cwd ?? process.cwd());
     this.secrets = options.secrets ?? new FileSecretStore();
-    this.settings = options.settings ?? new SettingsStore();
+    this.#settings = options.settings ?? new SettingsStore();
     this.prompts = options.prompts ?? new PromptRepository();
     this.#admitRun = options.admitRun ?? (() => this.#checkApiKeyAdmission());
     this.#clients = new ClientFactory(this.secrets);
@@ -127,51 +136,54 @@ export class App {
     return this.#inputQueue.length;
   }
 
-  async setModel(modelId: string): Promise<void> {
-    await this.settings.setModel(modelId);
-    this.#configChanged('model');
+  setModel(modelId: string): Promise<void> {
+    return this.#updateConfig('model', () =>
+      this.#settings.setModel(modelId));
   }
 
-  async setReasoningEffort(
+  setReasoningEffort(
     modelId: string,
     effort: string | undefined,
   ): Promise<void> {
-    await this.settings.setReasoningEffort(modelId, effort);
-    this.#configChanged('reasoningEffort');
+    return this.#updateConfig('reasoningEffort', () =>
+      this.#settings.setReasoningEffort(modelId, effort));
   }
 
-  async setActivePrompt(name: string | undefined): Promise<void> {
-    await this.settings.setActivePrompt(name);
-    this.#configChanged('prompt');
+  setActivePrompt(name: string | undefined): Promise<void> {
+    return this.#updateConfig('prompt', () =>
+      this.#settings.setActivePrompt(name));
   }
 
-  async createPrompt(name: string, content: string): Promise<void> {
-    await this.prompts.create(name, content);
-    this.#configChanged('prompt');
+  createPrompt(name: string, content: string): Promise<void> {
+    return this.#updateConfig('prompt', () =>
+      this.prompts.create(name, content));
   }
 
-  async updatePrompt(name: string, content: string): Promise<void> {
-    await this.prompts.update(name, content);
-    this.#configChanged('prompt');
+  updatePrompt(name: string, content: string): Promise<void> {
+    return this.#updateConfig('prompt', () =>
+      this.prompts.update(name, content));
   }
 
-  async deletePrompt(name: string): Promise<void> {
-    await this.prompts.delete(name);
-    this.#configChanged('prompt');
+  deletePrompt(name: string): Promise<void> {
+    return this.#updateConfig('prompt', () => this.prompts.delete(name));
   }
 
-  async setApiKey(providerId: string, apiKey: string): Promise<void> {
-    await this.secrets.setApiKey(providerId, apiKey);
-    this.#configChanged('apiKey');
+  setApiKey(providerId: string, apiKey: string): Promise<void> {
+    return this.#updateConfig('apiKey', () =>
+      this.secrets.setApiKey(providerId, apiKey));
   }
 
-  async clearApiKey(providerId: string): Promise<void> {
-    await this.secrets.clearApiKey(providerId);
-    this.#configChanged('apiKey');
+  clearApiKey(providerId: string): Promise<void> {
+    return this.#updateConfig('apiKey', () =>
+      this.secrets.clearApiKey(providerId));
   }
 
   get panel(): AppPanel | null {
     return this.#panel ? { ...this.#panel } : null;
+  }
+
+  get config(): AppConfig | null {
+    return this.#config;
   }
 
   get initErrors(): readonly InitError[] {
@@ -211,24 +223,19 @@ export class App {
       return;
     }
     this.#inputQueue.push(input);
-    this.#emitQueue();
-    this.#schedule();
+    this.#notifyQueue();
   }
 
   closePanel(): void {
     if (!this.#panel) {
       return;
     }
-    this.#panel = null;
-    this.#emit({ type: 'panel', panel: null });
-    this.#emitQueue();
-    this.#schedule();
-    this.#settleIdle();
+    this.#updatePanel(null, true);
   }
 
   trackPanelSave<T>(save: Promise<T>): Promise<T> {
     this.#panelSaves += 1;
-    this.#emitQueue();
+    this.#notifyQueue();
     const tracked = save.finally(() => {
       this.#panelSaves -= 1;
       this.#recheckQueue();
@@ -266,8 +273,7 @@ export class App {
     this.#admissionController = null;
     this.#session?.cancel();
     this.closePanel();
-    this.#emitQueue();
-    this.#settleIdle();
+    this.#notifyQueue({ settle: true });
   }
 
   dispose(): void {
@@ -281,13 +287,23 @@ export class App {
   }
 
   async #load(sources: InitError['source'][]): Promise<void> {
+    if (sources.includes('settings')) {
+      this.#config = null;
+    }
     const results = await Promise.allSettled(sources.map(source => {
       return Promise.resolve().then(() =>
-        source === 'settings' ? this.settings.load() : this.secrets.load?.(),
+        source === 'settings' ? this.#settings.load() : this.secrets.load?.(),
       )
     }));
     this.#initialized = true;
     this.#errors = [];
+    const settingsIndex = sources.indexOf('settings');
+    if (
+      settingsIndex >= 0
+      && results[settingsIndex]?.status === 'fulfilled'
+    ) {
+      this.#config = this.#readConfig();
+    }
     for (const [index, result] of results.entries()) {
       const source = sources[index]!;
       if (result.status === 'rejected') {
@@ -298,7 +314,7 @@ export class App {
         this.#notice(message, 'error');
       }
     }
-    this.#reportWarnings(this.settings.warnings);
+    this.#reportWarnings(this.#settings.warnings);
     this.#reportWarnings(this.secrets.warnings ?? []);
     if (
       !this.#disposed
@@ -306,7 +322,7 @@ export class App {
       && !this.#errors.some(error => error.source === 'settings')
     ) {
       try {
-        await this.#loadPrompt(this.settings.config.activePrompt);
+        await this.#loadPrompt(this.#config?.activePrompt);
       } catch (error) {
         this.#notice(
           error instanceof Error
@@ -328,7 +344,7 @@ export class App {
       || (
         !this.#recheckPending
         && this.#blocked !== null
-        && overtakingCommandIndex(this.#inputQueue, this.#blocked) < 0
+        && nextCommandIndex(this.#inputQueue, this.#blocked) < 0
       )
     ) {
       return;
@@ -338,18 +354,53 @@ export class App {
   }
 
   #recheckQueue(): void {
-    this.#recheckPending = this.#inputQueue.length > 0;
-    this.#emitQueue();
-    this.#schedule();
-    this.#settleIdle();
+    this.#notifyQueue({ recheck: true, force: true, settle: true });
   }
 
-  #configChanged(change: ConfigurationChange): void {
+  async #updateConfig(
+    change: ConfigChange,
+    update: () => Promise<void>,
+  ): Promise<void> {
+    await update();
+    this.#config = this.#readConfig();
+    this.#configChanged(change);
+  }
+
+  #readConfig(): AppConfig | null {
+    try {
+      return this.#settings.config;
+    } catch {
+      return null;
+    }
+  }
+
+  #configChanged(change: ConfigChange): void {
     this.#emit({
-      type: 'configurationChanged',
+      type: 'configChanged',
       change,
     });
     this.#recheckQueue();
+  }
+
+  #notifyQueue(options: {
+    recheck?: boolean;
+    force?: boolean;
+    settle?: boolean;
+  } = {}): void {
+    if (options.recheck) {
+      this.#recheckPending = this.#inputQueue.length > 0;
+    }
+    this.#emitQueue(options.force);
+    this.#schedule();
+    if (options.settle) {
+      this.#settleIdle();
+    }
+  }
+
+  #updatePanel(panel: AppPanel | null, settle = false): void {
+    this.#panel = panel;
+    this.#emit({ type: 'panel', panel: this.panel });
+    this.#notifyQueue({ settle });
   }
 
   async #drain(): Promise<void> {
@@ -376,56 +427,9 @@ export class App {
           continue;
         }
 
-        const generation = this.#generation;
-        this.#recheckPending = false;
-        const admission = await this.#runAdmission(input);
-        if (
-          this.#disposed
-          || generation !== this.#generation
-          || this.#panel
-          || this.#panelSaves
-        ) {
+        if (!(await this.#drainMessage(input))) {
           break;
         }
-
-        if (admission.type === 'blocked') {
-          this.#blocked = admission.block;
-          this.#emitQueue();
-          const commandIndex = overtakingCommandIndex(
-            this.#inputQueue,
-            admission.block,
-          );
-          if (commandIndex < 0) {
-            break;
-          }
-          const [command] = this.#inputQueue.splice(commandIndex, 1);
-          if (command === undefined) {
-            break;
-          }
-          this.#emitQueue();
-          if (!(await this.#drainCommand(command))) {
-            break;
-          }
-          continue;
-        }
-
-        if (admission.type === 'rejected') {
-          this.#inputQueue.shift();
-          this.#blocked = null;
-          this.#emitQueue();
-          this.#notice(
-            admission.error instanceof Error
-              ? admission.error.message
-              : 'Cannot start the conversation.',
-            'error',
-          );
-          continue;
-        }
-
-        this.#inputQueue.shift();
-        this.#blocked = null;
-        this.#emitQueue();
-        this.#startRun(input);
       }
     } catch (error) {
       this.#notice(
@@ -437,10 +441,67 @@ export class App {
       if (!this.#inputQueue.length) {
         this.#recheckPending = false;
       }
-      this.#emitQueue();
-      this.#schedule();
-      this.#settleIdle();
+      this.#notifyQueue({ settle: true });
     }
+  }
+
+  async #drainMessage(input: string): Promise<boolean> {
+    const generation = this.#generation;
+    this.#recheckPending = false;
+    const admission = await this.#runAdmission(input);
+    if (
+      this.#disposed
+      || generation !== this.#generation
+      || this.#panel
+      || this.#panelSaves
+    ) {
+      return false;
+    }
+    if (admission.type === 'blocked') {
+      return this.#drainBlocked(admission.block);
+    }
+    if (admission.type === 'rejected') {
+      this.#rejectAdmission(admission.error);
+      return true;
+    }
+    this.#acceptRun(input);
+    return true;
+  }
+
+  async #drainBlocked(block: QueueBlock): Promise<boolean> {
+    this.#blocked = block;
+    this.#emitQueue();
+    const commandIndex = nextCommandIndex(
+      this.#inputQueue,
+      block,
+    );
+    if (commandIndex < 0) {
+      return false;
+    }
+    const [command] = this.#inputQueue.splice(commandIndex, 1);
+    if (command === undefined) {
+      return false;
+    }
+    return this.#drainCommand(command);
+  }
+
+  #rejectAdmission(error: unknown): void {
+    this.#inputQueue.shift();
+    this.#blocked = null;
+    this.#emitQueue();
+    this.#notice(
+      error instanceof Error
+        ? error.message
+        : 'Cannot start the conversation.',
+      'error',
+    );
+  }
+
+  #acceptRun(input: string): void {
+    this.#inputQueue.shift();
+    this.#blocked = null;
+    this.#emitQueue();
+    this.#startRun(input);
   }
 
   async #runAdmission(input: string): Promise<AdmissionResult> {
@@ -448,7 +509,7 @@ export class App {
     const controller = new AbortController();
     this.#admissionController = controller;
     let onAbort!: () => void;
-    const aborted = new Promise<AdmissionResult>((_resolve, reject) => {
+    const aborted = new Promise<never>((_resolve, reject) => {
       onAbort = () => reject(controller.signal.reason);
       controller.signal.addEventListener('abort', onAbort, { once: true });
     });
@@ -493,6 +554,12 @@ export class App {
     if (this.#disposed || generation !== this.#generation) {
       return;
     }
+    this.#applyCommandResult(result);
+  }
+
+  #applyCommandResult(
+    result: Awaited<ReturnType<typeof executeCommand>>,
+  ): void {
     this.#reportPromptWarnings();
     if (result.type === 'notice') {
       this.#emit(result);
@@ -504,39 +571,26 @@ export class App {
         type: 'sessionBoundary', sessionId,
       });
     } else if (result.type === 'panelRequest') {
+      let panel: AppPanel;
       if (result.panel === 'config') {
-        const modelId = this.settings.config.activeModelId;
-        const model = models.find(item => item.id === modelId);
-        if (!model) {
-          throw new Error(
-            'Unknown model; select a model with /model.'
-          );
-        }
-        this.#panel = {
+        const modelId = this.#settings.config.activeModelId;
+        const model = requireModel(modelId);
+        panel = {
           type: 'config',
           modelId,
           providerId: model.providerId,
         };
       } else {
-        this.#panel = { type: result.panel };
+        panel = { type: result.panel };
       }
-      this.#emit({ type: 'panel', panel: this.panel });
-      this.#emitQueue();
+      this.#updatePanel(panel);
     }
   }
 
   async #checkApiKeyAdmission(): Promise<AdmissionResult> {
-    const modelId = this.settings.config.activeModelId;
-    const model = models.find(item => item.id === modelId);
-    if (!model) {
-      return {
-        type: 'rejected',
-        error: new Error(
-          'Unknown model; select a model with /model.'
-        ),
-      };
-    }
+    const modelId = this.#settings.config.activeModelId;
     try {
+      const model = requireModel(modelId);
       const key = await this.secrets.getApiKey(model.providerId);
       if (!key) {
         return {
@@ -604,7 +658,7 @@ export class App {
 
   async #resolveConfig(signal: AbortSignal): Promise<RunConfigSnapshot> {
     signal.throwIfAborted();
-    const config = this.settings.config;
+    const config = this.#settings.config;
     const [prompt, model] = await Promise.all([
       this.#loadPrompt(config.activePrompt, signal),
       this.#clients.getModel(config.activeModelId),
@@ -650,12 +704,27 @@ export class App {
     }
   }
 
-  #emitQueue(): void {
-    this.#emit({
-      type: 'inputQueue',
+  #emitQueue(force = false): void {
+    const next: InputQueueState = {
       pending: this.#inputQueue.length,
       paused: this.#panel !== null || this.#panelSaves > 0,
       blocked: this.#blocked === null ? null : { ...this.#blocked },
+    };
+    const previous = this.#lastQueueState;
+    if (
+      !force
+      && previous !== undefined
+      && previous.pending === next.pending
+      && previous.paused === next.paused
+      && previous.blocked?.type === next.blocked?.type
+      && previous.blocked?.message === next.blocked?.message
+    ) {
+      return;
+    }
+    this.#lastQueueState = next;
+    this.#emit({
+      type: 'inputQueue',
+      ...next,
     });
   }
 
@@ -677,7 +746,7 @@ export class App {
       return false;
     }
     return this.#blocked === null
-      || overtakingCommandIndex(this.#inputQueue, this.#blocked) >= 0;
+      || nextCommandIndex(this.#inputQueue, this.#blocked) >= 0;
   }
 
   #isIdle(): boolean {
