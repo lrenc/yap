@@ -17,11 +17,18 @@ export type ChatEvent =
     sessionId: number;
   };
 
+export type UserMessageStatus =
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'stopped';
+
 export type ChatEntry =
   | {
     id: string;
     type: 'user';
     content: string;
+    status: UserMessageStatus;
   }
   | {
     id: string;
@@ -80,9 +87,10 @@ export function applyChatEvent(
   switch (event.type) {
     case 'userMessage': {
       return appendItem(state, {
-        id: `user:${event.sessionId}:${event.runId}`,
+        id: userId(event.sessionId, event.runId),
         type: 'user',
         content: event.content,
+        status: 'running',
       });
     }
     case 'turnStart': {
@@ -223,14 +231,20 @@ function finishRun(
 ): ChatState {
   const sameRun = state.active?.runId === event.runId;
   const active = sameRun ? state.active : null;
+  const entries = updateUserStatus(
+    state.completed,
+    event.sessionId,
+    event.runId,
+    userStatus(event.result.stopReason),
+  );
   const completed = active?.text
-    ? [...state.completed, {
+    ? [...entries, {
       id: active.id,
       type: 'assistant' as const,
       content: active.text,
       refusal: active.refusal,
     }]
-    : state.completed;
+    : entries;
   const notice = resultNotice(event.result, event.sessionId, event.runId);
   return {
     completed: notice ? [...completed, notice] : completed,
@@ -290,10 +304,37 @@ function assistantId(
   return `assistant:${sessionId}:${runId}:${turn}`;
 }
 
-function appendItem(
-  state: ChatState,
-  item: ChatEntry,
-): ChatState {
+function userId(sessionId: number, runId: number): string {
+  return `user:${sessionId}:${runId}`;
+}
+
+function updateUserStatus(
+  entries: readonly ChatEntry[],
+  sessionId: number,
+  runId: number,
+  status: UserMessageStatus,
+): ChatEntry[] {
+  const id = userId(sessionId, runId);
+  return entries.map(entry => (
+    entry.type === 'user' && entry.id === id
+      ? { ...entry, status }
+      : entry
+  ));
+}
+
+function userStatus(
+  stopReason: AgentResult['stopReason'],
+): UserMessageStatus {
+  if (stopReason === 'completed') {
+    return 'completed';
+  }
+  if (stopReason === 'error') {
+    return 'failed';
+  }
+  return 'stopped';
+}
+
+function appendItem(state: ChatState, item: ChatEntry): ChatState {
   return {
     ...state,
     completed: [...state.completed, item],

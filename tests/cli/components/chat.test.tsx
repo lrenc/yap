@@ -17,7 +17,12 @@ describe('Chat', () => {
   test('renders completed messages, tools, and streaming text', async () => {
     const chat: ChatState = {
       completed: [
-        { id: 'user', type: 'user', content: 'question' },
+        {
+          id: 'user',
+          type: 'user',
+          content: 'question',
+          status: 'completed',
+        },
         {
           id: 'assistant',
           type: 'assistant',
@@ -60,7 +65,7 @@ describe('Chat', () => {
     expect(frame).not.toContain('You');
     expect(frame).not.toContain('YAP');
     expect(frame).toContain('streaming▌');
-    expect(frame).toContain('› question');
+    expect(frame).toContain('✓ question');
     const lines = frame.split('\n');
     const questionLine = lines.find(line => line.includes('question'))!;
     const answerLine = lines.find(line => line.includes('answer'))!;
@@ -125,5 +130,33 @@ describe('Chat', () => {
     expect(frame.indexOf('second line')).toBeLessThan(
       frame.indexOf('latest line▌'),
     );
+  });
+
+  test('renders each user message lifecycle status', async () => {
+    const items: ChatEntry[] = [
+      { id: 'running', type: 'user', content: 'running', status: 'running' },
+      {
+        id: 'completed',
+        type: 'user',
+        content: 'completed',
+        status: 'completed',
+      },
+      { id: 'failed', type: 'user', content: 'failed', status: 'failed' },
+      { id: 'stopped', type: 'user', content: 'stopped', status: 'stopped' },
+    ];
+    rendered = render(
+      <>
+        {items.map(item => (
+          <ChatEntryView key={item.id} item={item} />
+        ))}
+      </>,
+    );
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('⠋ running');
+    expect(frame).toContain('✓ completed');
+    expect(frame).toContain('× failed');
+    expect(frame).toContain('− stopped');
   });
 });

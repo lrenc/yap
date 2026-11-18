@@ -632,6 +632,7 @@ export class App {
     runId: number,
     sessionId: number,
   ): Promise<void> {
+    let finished = false;
     try {
       this.#emit({
         type: 'userMessage',
@@ -640,13 +641,30 @@ export class App {
         sessionId,
       });
       for await (const event of stream) {
+        if (event.type === 'done') {
+          finished = true;
+        }
         this.#emit({ ...event, runId, sessionId });
       }
+      if (!finished) {
+        throw new Error('Conversation ended without a result.');
+      }
     } catch (error) {
-      this.#notice(
-        error instanceof Error ? error.message : 'Cannot run the conversation.',
-        'error',
-      );
+      if (!finished) {
+        this.#emit({
+          type: 'done',
+          result: {
+            stopReason: 'error',
+            response: null,
+            turns: 0,
+            error: error instanceof Error
+              ? error
+              : new Error('Cannot run the conversation.'),
+          },
+          runId,
+          sessionId,
+        });
+      }
     }
   }
 

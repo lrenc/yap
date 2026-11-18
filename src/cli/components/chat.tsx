@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Box, Text } from 'ink';
+import { Box, Text, useAnimation } from 'ink';
 import { ASSISTANT_INDENT } from '../markdown/layout.ts';
 import { MarkdownMessage } from '../markdown/markdown.tsx';
 import { useTheme } from '../theme/index.ts';
@@ -7,7 +7,13 @@ import type {
   ChatActivity,
   ChatEntry,
   ChatState,
+  UserMessageStatus,
 } from '../state/chat.ts';
+
+const RUN_FRAMES = [
+  '⠋', '⠙', '⠹', '⠸', '⠼',
+  '⠴', '⠦', '⠧', '⠇', '⠏',
+] as const;
 
 export function Chat({
   chat,
@@ -57,7 +63,7 @@ export const ChatEntryView = memo(function ChatEntryView({
       >
         <Box alignItems='flex-start' flexDirection='row'>
           <Box width={2} flexShrink={0}>
-            <Text color={theme.colors.role.userPrompt}>{'› '}</Text>
+            <UserMessagePrefix status={item.status} />
           </Box>
           <Box flexDirection='column' flexGrow={1} minWidth={0}>
             <Text color={theme.colors.text.primary} wrap='wrap'>
@@ -114,6 +120,43 @@ export const ChatEntryView = memo(function ChatEntryView({
   }
   return null;
 });
+
+function UserMessagePrefix({
+  status,
+}: {
+  status: UserMessageStatus;
+}) {
+  const theme = useTheme();
+  if (status === 'running') {
+    return <RunningMark />;
+  }
+  if (status === 'completed') {
+    return (
+      <Text color={theme.colors.text.muted}>
+        ✓
+      </Text>
+    );
+  }
+  if (status === 'failed') {
+    return (
+      <Text color={theme.colors.feedback.error}>
+        ×
+      </Text>
+    );
+  }
+  return (
+    <Text color={theme.colors.feedback.warning}>
+      −
+    </Text>
+  );
+}
+
+function RunningMark() {
+  const theme = useTheme();
+  const { frame } = useAnimation({ interval: 80 });
+  const mark = RUN_FRAMES[frame % RUN_FRAMES.length];
+  return <Text color={theme.colors.role.activity}>{mark} </Text>;
+}
 
 export const CompletedTranscript = memo(function CompletedTranscript({
   items,

@@ -255,6 +255,7 @@ describe('Terminal', () => {
 
       expect(rendered.lastFrame()).not.toContain('You');
       expect(rendered.lastFrame()).toContain('hello');
+      expect(rendered.lastFrame()).toContain('✓ hello');
       expect(rendered.lastFrame()?.match(/Hello world/g)).toHaveLength(1);
     } finally {
       globalThis.fetch = originalFetch;

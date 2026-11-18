@@ -68,6 +68,115 @@ describe('chat state', () => {
     });
   });
 
+  test('tracks the user message lifecycle until the run finishes', () => {
+    const running = apply([{
+      type: 'userMessage',
+      content: 'hello',
+      runId: 1,
+      sessionId: 1,
+    }]);
+    expect(running.completed[0]).toMatchObject({
+      id: 'user:1:1',
+      status: 'running',
+    });
+
+    const completed = applyChatEvent(running, {
+      type: 'done',
+      result: {
+        stopReason: 'completed',
+        response: null,
+        turns: 1,
+      },
+      runId: 1,
+      sessionId: 1,
+    });
+    expect(completed.completed[0]).toMatchObject({
+      id: 'user:1:1',
+      status: 'completed',
+    });
+  });
+
+  test('maps unsuccessful run outcomes to failed and stopped', () => {
+    const failed = apply([
+      {
+        type: 'userMessage',
+        content: 'failed',
+        runId: 1,
+        sessionId: 1,
+      },
+      {
+        type: 'done',
+        result: {
+          stopReason: 'error',
+          response: null,
+          turns: 1,
+          error: new Error('provider failed'),
+        },
+        runId: 1,
+        sessionId: 1,
+      },
+    ]);
+    expect(failed.completed[0]).toMatchObject({ status: 'failed' });
+
+    for (const stopReason of ['cancelled', 'interrupted', 'stalled'] as const) {
+      const stopped = apply([
+        {
+          type: 'userMessage',
+          content: stopReason,
+          runId: 1,
+          sessionId: 1,
+        },
+        {
+          type: 'done',
+          result: { stopReason, response: null, turns: 0 },
+          runId: 1,
+          sessionId: 1,
+        },
+      ]);
+      expect(stopped.completed[0]).toMatchObject({ status: 'stopped' });
+    }
+  });
+
+  test('updates the user message matching the completed run', () => {
+    const state = apply([
+      {
+        type: 'userMessage',
+        content: 'first',
+        runId: 1,
+        sessionId: 1,
+      },
+      {
+        type: 'done',
+        result: { stopReason: 'completed', response: null, turns: 1 },
+        runId: 1,
+        sessionId: 1,
+      },
+      {
+        type: 'userMessage',
+        content: 'second',
+        runId: 2,
+        sessionId: 1,
+      },
+      {
+        type: 'done',
+        result: {
+          stopReason: 'error',
+          response: null,
+          turns: 1,
+          error: new Error('failed'),
+        },
+        runId: 2,
+        sessionId: 1,
+      },
+    ]);
+
+    expect(state.completed.filter(item => item.type === 'user'))
+      .toMatchObject([
+        { id: 'user:1:1', status: 'completed' },
+        { id: 'user:1:2', status: 'failed' },
+      ]);
+  });
+
   test('uses the final response text when deltas are incomplete', () => {
     const state = apply([
       {
@@ -374,6 +483,7 @@ describe('chat state', () => {
       id: 'user:1:1',
       type: 'user',
       content: 'previous',
+      status: 'running',
     }]);
   });
 });
