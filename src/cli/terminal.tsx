@@ -7,7 +7,6 @@ import { App } from '../app/app.ts';
 import { isCommand, suggestCommands } from '../app/commands.ts';
 import { models } from '../app/models.ts';
 import { ConfigPanel } from './components/command/config.tsx';
-import { Feedback } from './components/command/feedback.tsx';
 import { ModelPanel } from './components/command/model.tsx';
 import { Panel } from './components/command/panel.tsx';
 import { PromptPanel } from './components/command/prompt.tsx';
@@ -18,8 +17,10 @@ import {
   QueuedMessages,
 } from './components/chat.tsx';
 import { Composer } from './components/input/composer.tsx';
-import { KeyNotice } from './components/key-notice.tsx';
-import { NoticeArea } from './components/notice-area.tsx';
+import {
+  Notice,
+  type NoticeItem,
+} from './components/notice.tsx';
 import { Scroller } from './components/scroller.tsx';
 import { StartUp } from './components/startup.tsx';
 import { useApp } from './hooks/use-app.ts';
@@ -77,6 +78,37 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
     ].join(' · ')
     : undefined;
   const pathStatus = currentModel ? displayPath(runtime.cwd) : undefined;
+  const notices: NoticeItem[] = [
+    ...state.feedback.map(item => ({
+      key: `feedback:${item.id}`,
+      level: item.level,
+      message: item.message,
+    })),
+    ...state.initErrors
+      .filter(error => !state.feedback.some(
+        item => item.message === error.message
+      ))
+      .map(error => ({
+        key: `init:${error.source}:${error.message}`,
+        level: 'error' as const,
+        message: error.message,
+      })),
+    ...(state.blocked
+      && state.blocked.type !== 'missingApiKey'
+      ? [{
+        key: `blocked:${state.blocked.type}:${state.blocked.message}`,
+        level: 'warning' as const,
+        message: state.blocked.message,
+      }]
+      : []),
+    ...(key.status === 'missing'
+      ? [{
+        key: 'missing-api-key',
+        level: key.ignored ? 'error' as const : 'warning' as const,
+        message: 'API key is not configured. Run /config to set it.',
+      }]
+      : []),
+  ];
   const submit = (value: string) => {
     if (!value.trim()) {
       return;
@@ -209,24 +241,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
           blocked={state.blocked !== null}
         />
       </Scroller>
-      <NoticeArea>
-        <Feedback feedback={state.feedback} />
-        {state.initErrors.filter(error => (
-          !state.feedback.some(item => item.message === error.message)
-        )).map(error => (
-          <Box key={`${error.source}-${error.message}`}>
-            <Text color={theme.colors.feedback.error}>{error.message}</Text>
-          </Box>
-        ))}
-        {state.blocked && state.blocked.type !== 'missingApiKey' ? (
-          <Text color={theme.colors.feedback.warning} wrap='truncate-end'>
-            {state.blocked.message}
-          </Text>
-        ) : null}
-        {key.status === 'missing' ? (
-          <KeyNotice ignored={key.ignored} />
-        ) : null}
-      </NoticeArea>
+      <Notice notices={notices} />
       <Composer
         focus={state.panel === null}
         newOutput={hasNewOutput && state.panel === null}
