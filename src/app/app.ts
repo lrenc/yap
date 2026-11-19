@@ -148,31 +148,36 @@ export class App {
   }
 
   setModel(modelId: string): Promise<void> {
-    return this.#updateConfig('model', () =>
-      this.#agent.setModel(modelId));
+    return this.#updateConfig('model', () => (
+      this.#agent.setModel(modelId)
+    ));
   }
 
   setReasoningEffort(
     modelId: string,
     effort: string | undefined,
   ): Promise<void> {
-    return this.#updateConfig('reasoningEffort', () =>
-      this.#agent.setReasoningEffort(modelId, effort));
+    return this.#updateConfig('reasoningEffort', () => (
+      this.#agent.setReasoningEffort(modelId, effort)
+    ));
   }
 
   setActivePrompt(name: string | undefined): Promise<void> {
-    return this.#updateConfig('prompt', () =>
-      this.#agent.setActivePrompt(name));
+    return this.#updateConfig('prompt', () => (
+      this.#agent.setActivePrompt(name)
+    ));
   }
 
   createPrompt(name: string, content: string): Promise<void> {
-    return this.#updateConfig('prompt', () =>
-      this.#agent.createPrompt(name, content));
+    return this.#updateConfig('prompt', () => (
+      this.#agent.createPrompt(name, content)
+    ));
   }
 
   updatePrompt(name: string, content: string): Promise<void> {
-    return this.#updateConfig('prompt', () =>
-      this.#agent.updatePrompt(name, content));
+    return this.#updateConfig('prompt', () => (
+      this.#agent.updatePrompt(name, content)
+    ));
   }
 
   deletePrompt(name: string): Promise<void> {
@@ -192,13 +197,15 @@ export class App {
   }
 
   setApiKey(providerId: string, apiKey: string): Promise<void> {
-    return this.#updateConfig('apiKey', () =>
-      this.#agent.setApiKey(providerId, apiKey));
+    return this.#updateConfig('apiKey', () => (
+      this.#agent.setApiKey(providerId, apiKey)
+    ));
   }
 
   clearApiKey(providerId: string): Promise<void> {
-    return this.#updateConfig('apiKey', () =>
-      this.#agent.clearApiKey(providerId));
+    return this.#updateConfig('apiKey', () => (
+      this.#agent.clearApiKey(providerId)
+    ))
   }
 
   get panel(): AppPanel | null {
@@ -311,11 +318,11 @@ export class App {
 
   async #load(sources: InitError['source'][]): Promise<void> {
     const results = await Promise.allSettled(sources.map(source => {
-      return Promise.resolve().then(() =>
+      return Promise.resolve().then(() => (
         source === 'settings'
           ? this.#agent.loadSettings()
-          : this.#agent.loadSecrets(),
-      )
+          : this.#agent.loadSecrets()
+      ))
     }));
     this.#initialized = true;
     this.#errors = [];
@@ -372,7 +379,9 @@ export class App {
   }
 
   #recheckQueue(): void {
-    this.#notifyQueue({ recheck: true, force: true, settle: true });
+    this.#notifyQueue({
+      recheck: true, force: true, settle: true,
+    });
   }
 
   async #updateConfig(
@@ -583,7 +592,9 @@ export class App {
       if (result.panel === 'config') {
         const model = this.#agent.currentModel;
         if (!model) {
-          this.#notice('Unknown model; select a model with /model.', 'error');
+          this.#notice(
+            'Unknown model; select a model with /model.', 'error',
+          );
           return;
         }
         panel = {
