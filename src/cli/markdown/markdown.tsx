@@ -3,7 +3,7 @@ import { Box } from 'ink';
 import { MarkdownBlockView } from './block.tsx';
 import { MarkdownCursor } from './cursor.tsx';
 import { blockSpacing } from './layout.ts';
-import { useMarkdownStream } from '../hooks/use-markdown-stream.ts';
+import { useMarkdownStream } from '../hooks/use-markdown.ts';
 import type { MarkdownBlock } from './types.ts';
 
 interface MarkdownMessageProps {

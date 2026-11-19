@@ -15,6 +15,8 @@ const MIN_DELAY = 40;
 const MAX_DELAY = 160;
 const COST_FACTOR = 4;
 
+type Timer = ReturnType<typeof setTimeout>;
+
 export function useMarkdownStream(
   source: string,
   streaming: boolean,
@@ -26,55 +28,51 @@ export function useMarkdownStream(
   const initial = cacheRef.current.view;
   const [blocks, setBlocks] = useState(initial);
   const latestRef = useRef(source);
-  const doneRef = useRef(source);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
+  const parsedRef = useRef(source);
+  const finalizedRef = useRef<string | undefined>(
+    streaming ? undefined : source,
   );
+  const timerRef = useRef<Timer | undefined>(undefined);
   const costRef = useRef(0);
   latestRef.current = source;
+
+  const update = (): void => {
+    timerRef.current = undefined;
+    const text = latestRef.current;
+    if (parsedRef.current === text) {
+      return;
+    }
+    const started = performance.now();
+    const next = appendMarkdown(cacheRef.current!, text);
+    costRef.current = performance.now() - started;
+    cacheRef.current = next;
+    parsedRef.current = text;
+    setBlocks(next.view);
+    if (latestRef.current !== text) {
+      timerRef.current = setTimeout(update, delay(costRef.current));
+    }
+  };
 
   useEffect(() => {
     if (!streaming) {
       clearTimer(timerRef);
-      if (doneRef.current === source) {
+      if (finalizedRef.current === source) {
         return;
       }
       const next = finishMarkdown(source);
       cacheRef.current = next;
-      doneRef.current = source;
+      parsedRef.current = source;
+      finalizedRef.current = source;
       setBlocks(next.view);
       return;
     }
-    if (doneRef.current === source) {
-      return;
+    finalizedRef.current = undefined;
+    if (
+      parsedRef.current !== source
+      && timerRef.current === undefined
+    ) {
+      timerRef.current = setTimeout(update, delay(costRef.current));
     }
-
-    function arm(wait: number): void {
-      if (timerRef.current !== undefined) {
-        return;
-      }
-      timerRef.current = setTimeout(run, wait);
-    }
-
-    function run(): void {
-      timerRef.current = undefined;
-      const text = latestRef.current;
-      if (doneRef.current === text) {
-        return;
-      }
-      const start = performance.now();
-      const next = appendMarkdown(cacheRef.current!, text);
-      const cost = performance.now() - start;
-      cacheRef.current = next;
-      doneRef.current = text;
-      costRef.current = cost;
-      setBlocks(next.view);
-      if (latestRef.current !== text) {
-        arm(delay(cost));
-      }
-    }
-
-    arm(delay(costRef.current));
   }, [source, streaming]);
 
   useEffect(() => () => clearTimer(timerRef), []);
@@ -90,7 +88,7 @@ function delay(cost: number): number {
 }
 
 function clearTimer(
-  timer: React.RefObject<ReturnType<typeof setTimeout> | undefined>,
+  timer: React.RefObject<Timer | undefined>,
 ): void {
   if (timer.current !== undefined) {
     clearTimeout(timer.current);

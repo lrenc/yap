@@ -153,6 +153,30 @@ describe('MarkdownMessage', () => {
     );
   });
 
+  test('finishes an incrementally parsed source when streaming ends', async () => {
+    const source = '[site]\n\nheading\n\n[site]: https://example.com';
+    const tree = (text: string, streaming: boolean) => (
+      <MarkdownMessage
+        messageId='active'
+        source={text}
+        streaming={streaming}
+      />
+    );
+    rendered = render(tree('[site]\n\nheading', true));
+    await renderTicks();
+
+    rendered.rerender(tree(source, true));
+    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(rendered.lastFrame()).toContain('[site]');
+
+    rendered.rerender(tree(source, false));
+    await renderTicks();
+
+    expect(rendered.lastFrame()).toContain(
+      'site (https://example.com)',
+    );
+  });
+
   test('stacks a wide table when the terminal is too narrow', async () => {
     rendered = render(
       <MarkdownMessage
