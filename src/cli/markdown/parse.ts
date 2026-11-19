@@ -1,12 +1,74 @@
-import { marked, type Token, type Tokens } from 'marked';
+import {
+  marked,
+  type Links,
+  type Token,
+  type Tokens,
+  type TokensList,
+} from 'marked';
 import type { InlineNode, MarkdownBlock } from './types.ts';
 
+export interface MarkdownTail {
+  head: MarkdownBlock[];
+  tail: MarkdownBlock[];
+  cut: number;
+  links: Links;
+}
+
 export function parseMarkdown(source: string): MarkdownBlock[] {
-  const tokens = marked.lexer(source, {
+  return normalizeBlocks(lex(source));
+}
+
+export function parseMarkdownTail(
+  source: string,
+  links?: Links,
+): MarkdownTail {
+  const tokens = lex(source, links);
+  let at = tokens.length - 1;
+  while (at >= 0 && tokens[at]?.type === 'space') {
+    at -= 1;
+  }
+  if (at < 0) {
+    return {
+      head: [],
+      tail: [],
+      cut: source.length,
+      links: tokens.links,
+    };
+  }
+  const headTokens = tokens.slice(0, at);
+  const cut = headTokens.reduce(
+    (size, token) => size + token.raw.length,
+    0,
+  );
+  return {
+    head: normalizeBlocks(headTokens),
+    tail: normalizeBlocks(tokens.slice(at)),
+    cut: sourceOffset(source, cut),
+    links: tokens.links,
+  };
+}
+
+function lex(source: string, links?: Links): TokensList {
+  const options = {
     breaks: false,
     gfm: true,
-  });
-  return normalizeBlocks(tokens);
+  };
+  if (links === undefined) {
+    return marked.lexer(source, options);
+  }
+  const lexer = new marked.Lexer(options);
+  Object.assign(lexer.tokens.links, links);
+  return lexer.lex(source);
+}
+
+function sourceOffset(source: string, length: number): number {
+  let at = 0;
+  for (let index = 0; index < length; index += 1) {
+    at += source[at] === '\r' && source[at + 1] === '\n'
+      ? 2
+      : 1;
+  }
+  return at;
 }
 
 function normalizeBlocks(tokens: readonly Token[]): MarkdownBlock[] {

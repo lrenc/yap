@@ -1,11 +1,10 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { Box } from 'ink';
 import { MarkdownBlockView } from './block.tsx';
 import { MarkdownCursor } from './cursor.tsx';
 import { blockSpacing } from './layout.ts';
-import { parseMarkdown } from './parse.ts';
-import { useBlocks } from '../hooks/use-blocks.ts';
-import { useStream } from '../hooks/use-stream.ts';
+import { useMarkdownStream } from '../hooks/use-markdown-stream.ts';
+import type { MarkdownBlock } from './types.ts';
 
 interface MarkdownMessageProps {
   messageId: string;
@@ -20,12 +19,28 @@ export const MarkdownMessage = memo(function MarkdownMessage({
   streaming = false,
   color,
 }: MarkdownMessageProps) {
-  const displaySource = useStream(source, streaming);
-  const parsed = useMemo(
-    () => parseMarkdown(displaySource),
-    [displaySource],
+  const blocks = useMarkdownStream(source, streaming);
+  return (
+    <MarkdownBlocks
+      messageId={messageId}
+      blocks={blocks}
+      streaming={streaming}
+      color={color}
+    />
   );
-  const blocks = useBlocks(parsed);
+});
+
+const MarkdownBlocks = memo(function MarkdownBlocks({
+  messageId,
+  blocks,
+  streaming,
+  color,
+}: {
+  messageId: string;
+  blocks: readonly MarkdownBlock[];
+  streaming: boolean;
+  color?: string | undefined;
+}) {
   if (blocks.length === 0) {
     return streaming
       ? (

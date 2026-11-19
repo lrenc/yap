@@ -110,6 +110,49 @@ describe('MarkdownMessage', () => {
     expect(rendered.lastFrame()).not.toContain('**');
   });
 
+  test('coalesces rapid updates into the latest source', async () => {
+    const tree = (source: string) => (
+      <MarkdownMessage
+        messageId='active'
+        source={source}
+        streaming
+      />
+    );
+    rendered = render(tree('first'));
+    await renderTicks();
+
+    rendered.rerender(tree('first\n\nsecond'));
+    rendered.rerender(tree('first\n\nsecond\n\nthird'));
+    await new Promise(resolve => setTimeout(resolve, 80));
+
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('first');
+    expect(frame).toContain('second');
+    expect(frame).toContain('third▌');
+  });
+
+  test('reconciles Markdown when streaming finishes', async () => {
+    const tree = (source: string, streaming: boolean) => (
+      <MarkdownMessage
+        messageId='active'
+        source={source}
+        streaming={streaming}
+      />
+    );
+    rendered = render(tree('[site]\n\nheading', true));
+    await renderTicks();
+
+    rendered.rerender(tree(
+      '[site]\n\nheading\n\n[site]: https://example.com',
+      false,
+    ));
+    await renderTicks();
+
+    expect(rendered.lastFrame()).toContain(
+      'site (https://example.com)',
+    );
+  });
+
   test('stacks a wide table when the terminal is too narrow', async () => {
     rendered = render(
       <MarkdownMessage
