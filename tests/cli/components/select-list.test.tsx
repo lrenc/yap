@@ -34,4 +34,66 @@ describe('SelectList', () => {
     expect(frame).toContain('active');
     expect(frame).toContain('✓');
   });
+
+  test('keeps the selected item visible within a stable window', async () => {
+    const items = Array.from(
+      { length: 20 },
+      (_value, index) => ({
+        key: `item-${index}`,
+        label: `Item ${index}`,
+      }),
+    );
+    rendered = render(
+      <SelectList
+        items={items}
+        selectedIndex={0}
+        maxRows={5}
+      />,
+    );
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    for (let index = 1; index < 15; index += 1) {
+      rendered.rerender(
+        <SelectList
+          items={items}
+          selectedIndex={index}
+          maxRows={5}
+        />,
+      );
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    let frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('› Item 14');
+    expect(frame).toContain('  Item 10');
+    expect(frame).not.toContain('Item 9');
+
+    rendered.rerender(
+      <SelectList
+        items={items}
+        selectedIndex={12}
+        maxRows={5}
+      />,
+    );
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('› Item 12');
+    expect(frame).toContain('  Item 10');
+    expect(frame).toContain('  Item 14');
+
+    rendered.rerender(
+      <SelectList
+        items={items}
+        selectedIndex={9}
+        maxRows={5}
+      />,
+    );
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    frame = rendered.lastFrame() ?? '';
+    expect(frame).toContain('› Item 9');
+    expect(frame).toContain('  Item 13');
+    expect(frame).not.toContain('Item 14');
+  });
 });

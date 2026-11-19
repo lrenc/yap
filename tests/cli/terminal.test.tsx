@@ -956,4 +956,51 @@ describe('Terminal', () => {
     ));
     expect(rendered.lastFrame()).not.toContain('Prompt changed');
   });
+
+  test('keeps the selected Prompt visible in a long Prompt list', async () => {
+    const app = await createApp();
+    await app.initialize();
+    for (let index = 1; index <= 18; index += 1) {
+      const name = `prompt-${String(index).padStart(2, '0')}`;
+      await app.createPrompt(name, `Instructions ${index}`);
+    }
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('Ask anything...') === true
+    ));
+
+    rendered.stdin.write('/prompt\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('↑/↓ move · a add') === true
+      && rendered?.lastFrame()?.includes('› default') === true
+    ));
+    await flush();
+
+    for (let index = 1; index <= 18; index += 1) {
+      rendered.stdin.write('\x1b[B');
+      const name = `prompt-${String(index).padStart(2, '0')}`;
+      await waitFor(() => (
+        rendered?.lastFrame()?.includes(`› ${name}`) === true
+      ));
+    }
+
+    expect(rendered.lastFrame()).toContain('› prompt-18');
+    expect(rendered.lastFrame()).not.toContain('default');
+
+    Object.defineProperty(rendered.stdout, 'columns', {
+      configurable: true,
+      value: 32,
+    });
+    Object.defineProperty(rendered.stdout, 'rows', {
+      configurable: true,
+      value: 12,
+    });
+    rendered.stdout.emit('resize');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› prompt-18') === true
+    ));
+
+    rendered.stdin.write('\r');
+    await waitFor(() => app.config?.activePrompt === 'prompt-18');
+  });
 });

@@ -26,6 +26,7 @@ type View =
 interface PromptPanelProps {
   prompts: PromptSource;
   activePrompt: string | undefined;
+  maxBodyRows?: number | undefined;
   trackSave: <T>(save: Promise<T>) => Promise<T>;
   onCreate: (name: string, content: string) => Promise<void>;
   onUpdate: (name: string, content: string) => Promise<void>;
@@ -38,6 +39,7 @@ interface PromptPanelProps {
 export function PromptPanel({
   prompts,
   activePrompt,
+  maxBodyRows,
   trackSave,
   onCreate,
   onUpdate,
@@ -56,6 +58,15 @@ export function PromptPanel({
   const [error, setError] = useState<string | undefined>();
   const entries = ['default', ...names];
   const list = useSelection(entries.length);
+  const maxListRows = maxBodyRows === undefined
+    ? undefined
+    : Math.max(
+      1,
+      maxBodyRows
+        - (loading ? 1 : 0)
+        - (saveLock.locked ? 1 : 0)
+        - (error === undefined ? 0 : 1),
+    );
 
   const changeView = (next: View) => {
     viewRef.current = next;
@@ -256,6 +267,7 @@ export function PromptPanel({
               checked: (active ?? 'default') === entry,
             }))}
             selectedIndex={list.index}
+            maxRows={maxListRows}
           />
         </Box>
       ) : null}

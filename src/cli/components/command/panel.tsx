@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Box, Text } from 'ink';
 import { useTheme } from '../../theme/index.ts';
 
+export const PANEL_CHROME_ROWS = 3;
+
 export function Panel({
   children,
   footer,

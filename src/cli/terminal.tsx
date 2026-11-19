@@ -7,7 +7,10 @@ import { App } from '../app/app.ts';
 import { isCommand, suggestCommands } from '../app/commands.ts';
 import { ConfigPanel } from './components/command/config.tsx';
 import { ModelPanel } from './components/command/model.tsx';
-import { Panel } from './components/command/panel.tsx';
+import {
+  PANEL_CHROME_ROWS,
+  Panel,
+} from './components/command/panel.tsx';
 import { PromptPanel } from './components/command/prompt.tsx';
 import { Suggestions } from './components/command/suggestions.tsx';
 import {
@@ -67,6 +70,12 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
   const currentModel = config
     ? runtime.models.find(model => model.id === config.activeModelId) ?? null
     : null;
+  const maxPanelBodyRows = Math.max(
+    1,
+    maxFooterRows
+      - PANEL_CHROME_ROWS
+      - (currentModel === null ? 0 : 1),
+  );
   const key = useKeyStatus(runtime, currentModel, state.ready);
   const reasoningEffort = currentModel
     ? config?.modelSettings[currentModel.id]?.reasoningEffort
@@ -209,6 +218,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
       <PromptPanel
         prompts={promptSource}
         activePrompt={config?.activePrompt}
+        maxBodyRows={maxPanelBodyRows}
         trackSave={save => runtime.trackPanelSave(save)}
         onCreate={(name, content) => runtime.createPrompt(name, content)}
         onUpdate={(name, content) => runtime.updatePrompt(name, content)}
