@@ -92,6 +92,10 @@ On the first run:
 
 Type `/` to open the command palette.
 
+Only the commands above are interpreted as commands. Other text beginning with
+`/` is sent as a message. Prefix `/` with another `/` to send command text
+literally.
+
 ## Interaction and Run Control
 
 Type a message and press Enter to send it. Use Shift+Enter or Alt+Enter for a

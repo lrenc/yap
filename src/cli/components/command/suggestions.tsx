@@ -1,5 +1,8 @@
 import { Text } from 'ink';
-import type { CommandInfo } from '../../../app/commands.ts';
+import {
+  isCommandDraft,
+  type CommandInfo,
+} from '../../../app/commands.ts';
 import { useTheme } from '../../theme/index.ts';
 import { Panel } from './panel.tsx';
 import { SelectList } from '../select-list.tsx';
@@ -16,7 +19,7 @@ export function Suggestions({
   selectedIndex: number;
 }) {
   const theme = useTheme();
-  if (!input.startsWith('/') || /\s/u.test(input)) {
+  if (!isCommandDraft(input)) {
     return null;
   }
   const suggestions = commands.slice(0, VISIBLE_COMMANDS);

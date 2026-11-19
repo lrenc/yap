@@ -56,4 +56,19 @@ describe('Suggestions', () => {
 
     expect(rendered.lastFrame()).toContain('No matching commands');
   });
+
+  test('hides suggestions for escaped slash text', async () => {
+    rendered = render(
+      <Suggestions
+        input='//new'
+        commands={suggestCommands('//new')}
+        selectedIndex={0}
+      />,
+    );
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame).not.toContain('/model');
+    expect(frame).not.toContain('No matching commands');
+  });
 });

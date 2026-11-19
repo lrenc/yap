@@ -1,6 +1,55 @@
 import { describe, expect, test } from 'bun:test';
-import { executeCommand, suggestCommands } from '../../src/app/commands.ts';
+import {
+  executeCommand,
+  parseInput,
+  suggestCommands,
+} from '../../src/app/commands.ts';
 import { models } from '../../src/agent/models.ts';
+
+function cmd(input: string) {
+  const item = parseInput(input);
+  if (item.type !== 'command') {
+    throw new Error(`Not a command: ${input}`);
+  }
+  return item;
+}
+
+describe('input parsing', () => {
+  test('recognizes exact command names', () => {
+    expect(parseInput('/new')).toEqual({
+      type: 'command',
+      name: '/new',
+      args: [],
+    });
+    expect(parseInput('/model deepseek')).toEqual({
+      type: 'command',
+      name: '/model',
+      args: ['deepseek'],
+    });
+  });
+
+  test('keeps other slash text as messages', () => {
+    expect(parseInput('/usr/local/bin')).toEqual({
+      type: 'message',
+      text: '/usr/local/bin',
+    });
+    expect(parseInput('/unknown')).toEqual({
+      type: 'message',
+      text: '/unknown',
+    });
+    expect(parseInput('/model-copy')).toEqual({
+      type: 'message',
+      text: '/model-copy',
+    });
+  });
+
+  test('unescapes double-slash messages', () => {
+    expect(parseInput('//new')).toEqual({
+      type: 'message',
+      text: '/new',
+    });
+  });
+});
 
 describe('command suggestions', () => {
   test('lists every command after a slash', () => {
@@ -25,6 +74,7 @@ describe('command suggestions', () => {
     expect(suggestCommands('model')).toEqual([]);
     expect(suggestCommands('/model ')).toEqual([]);
     expect(suggestCommands('/unknown')).toEqual([]);
+    expect(suggestCommands('//new')).toEqual([]);
   });
 
   test('applies configuration commands without emitting notices', async () => {
@@ -46,9 +96,9 @@ describe('command suggestions', () => {
       },
     };
 
-    expect(await executeCommand(`/model ${modelId}`, dependencies))
+    expect(await executeCommand(cmd(`/model ${modelId}`), dependencies))
       .toEqual({ type: 'noop' });
-    expect(await executeCommand('/prompt reviewer', dependencies))
+    expect(await executeCommand(cmd('/prompt reviewer'), dependencies))
       .toEqual({ type: 'noop' });
     expect(selectedModel).toBe(modelId);
     expect(selectedPrompt).toBe('reviewer');
@@ -56,7 +106,7 @@ describe('command suggestions', () => {
 
   test('rejects Prompt names containing whitespace', async () => {
     let selectedPrompt: string | undefined;
-    const result = await executeCommand('/prompt my prompt', {
+    const result = await executeCommand(cmd('/prompt my prompt'), {
       models,
       settings: {
         setModel: async () => {},

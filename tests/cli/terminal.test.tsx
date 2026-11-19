@@ -124,6 +124,33 @@ describe('Terminal', () => {
     );
   });
 
+  test('queues slash text and escaped commands as messages', async () => {
+    const app = await createApp();
+    const events: string[] = [];
+    app.subscribe(event => events.push(event.type));
+    rendered = render(<Terminal app={app} />);
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('API key is not configured') === true
+    ));
+
+    rendered.stdin.write('/usr/local/bin\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('! /usr/local/bin') === true
+    ));
+    rendered.stdin.write('//new\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('! /new') === true
+    ));
+
+    expect(app.pendingCount).toBe(2);
+    expect(events).not.toContain('userMessage');
+    expect(events).not.toContain('sessionBoundary');
+    const frame = rendered.lastFrame() ?? '';
+    expect(frame.indexOf('! /usr/local/bin')).toBeLessThan(
+      frame.indexOf('! /new'),
+    );
+  });
+
   test('shows generic admission blocks above the composer', async () => {
     const app = await createApp(() => ({
       type: 'blocked',

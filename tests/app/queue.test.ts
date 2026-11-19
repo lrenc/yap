@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { App } from '../../src/app/app.ts';
+import { parseInput } from '../../src/app/commands.ts';
 import { nextCommandIndex } from '../../src/app/queue.ts';
 import { FileSecretStore } from '../../src/agent/settings/secrets.ts';
 import { PromptRepository } from '../../src/agent/settings/prompts.ts';
@@ -57,9 +58,11 @@ describe('queue admission policy', () => {
     ]);
   }
 
+  const inputs = (...values: string[]) => values.map(parseInput);
+
   test('keeps normal input in FIFO order', () => {
     expect(nextCommandIndex(
-      ['/model', 'hello'],
+      inputs('/model', 'hello'),
       null,
     )).toBe(-1);
   });
@@ -70,14 +73,21 @@ describe('queue admission policy', () => {
       message: 'waiting for another prerequisite',
     };
     expect(nextCommandIndex(
-      ['hello', 'another message', '/config'],
+      inputs('hello', 'another message', '/config'),
       blocked,
     )).toBe(2);
   });
 
   test('does not treat the blocked head as an overtaking command', () => {
     expect(nextCommandIndex(
-      ['/config', 'hello'],
+      inputs('/config', 'hello'),
+      { type: 'blocked', message: 'waiting' },
+    )).toBe(-1);
+  });
+
+  test('does not let slash messages overtake a blocked queue', () => {
+    expect(nextCommandIndex(
+      inputs('hello', '/usr/local/bin', '/api/v1'),
       { type: 'blocked', message: 'waiting' },
     )).toBe(-1);
   });
@@ -118,6 +128,77 @@ describe('queue admission policy', () => {
       event.type === 'inputQueue'
       && event.messages.some(message => message.content === '/config')
     ))).toBe(false);
+  });
+
+  test('keeps slash messages in the visible queue', async () => {
+    const events: AppEvent[] = [];
+    const runtime = await createApp(() => ({
+      type: 'blocked',
+      block: {
+        type: 'someOtherPrerequisite',
+        message: 'waiting for another prerequisite',
+      },
+    }));
+    runtime.subscribe(event => events.push(event));
+
+    runtime.submit('/usr/local/bin');
+    runtime.submit('//new');
+    await waitFor(() => events.some(event => (
+      event.type === 'inputQueue'
+      && event.messages.length === 2
+    )));
+
+    const messages = events
+      .filter(event => event.type === 'inputQueue')
+      .at(-1)?.messages.map(message => message.content);
+    expect(messages).toEqual(['/usr/local/bin', '/new']);
+    expect(runtime.pendingCount).toBe(2);
+    expect(events.some(event => event.type === 'sessionBoundary')).toBe(false);
+  });
+
+  test('runs slash text as a message', async () => {
+    const events: AppEvent[] = [];
+    let input: string | undefined;
+    const runtime = await createApp(context => {
+      input = context.input;
+      return { type: 'ready' };
+    });
+    runtime.subscribe(event => {
+      events.push(event);
+      if (event.type === 'userMessage') {
+        runtime.cancel();
+      }
+    });
+
+    runtime.submit('/usr/local/bin');
+    await waitFor(() => events.some(event => event.type === 'userMessage'));
+
+    expect(input).toBe('/usr/local/bin');
+    expect(events.find(event => event.type === 'userMessage')?.content)
+      .toBe('/usr/local/bin');
+  });
+
+  test('runs escaped command text as a message', async () => {
+    const events: AppEvent[] = [];
+    let input: string | undefined;
+    const runtime = await createApp(context => {
+      input = context.input;
+      return { type: 'ready' };
+    });
+    runtime.subscribe(event => {
+      events.push(event);
+      if (event.type === 'userMessage') {
+        runtime.cancel();
+      }
+    });
+
+    runtime.submit('//new');
+    await waitFor(() => events.some(event => event.type === 'userMessage'));
+
+    expect(input).toBe('/new');
+    expect(events.find(event => event.type === 'userMessage')?.content)
+      .toBe('/new');
+    expect(events.some(event => event.type === 'sessionBoundary')).toBe(false);
   });
 
   test('links an accepted run to its queued message', async () => {

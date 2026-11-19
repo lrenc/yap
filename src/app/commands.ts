@@ -23,7 +23,7 @@ export interface CommandInfo {
   readonly description: string;
 }
 
-const COMMANDS: readonly CommandInfo[] = [
+const COMMANDS = [
   {
     name: '/model',
     usage: '/model [id]',
@@ -44,7 +44,15 @@ const COMMANDS: readonly CommandInfo[] = [
     usage: '/new',
     description: 'Start a new conversation',
   },
-];
+] as const satisfies readonly CommandInfo[];
+
+export type CommandName = (typeof COMMANDS)[number]['name'];
+
+export type Input =
+  | { type: 'message'; text: string }
+  | { type: 'command'; name: CommandName; args: readonly string[] };
+
+const NAMES = new Set<string>(COMMANDS.map(command => command.name));
 
 const HELP = `Commands: ${COMMANDS.map(command => command.usage).join(', ')}.`;
 
@@ -56,28 +64,37 @@ function failure(message: string): CommandResult {
   };
 }
 
-export function isCommand(input: string): boolean {
-  return input.startsWith('/');
+export function parseInput(raw: string): Input {
+  if (raw.startsWith('//')) {
+    return { type: 'message', text: raw.slice(1) };
+  }
+  const [name = '', ...args] = raw.trimEnd().split(/\s+/u);
+  if (NAMES.has(name)) {
+    return { type: 'command', name: name as CommandName, args };
+  }
+  return { type: 'message', text: raw };
+}
+
+export function isCommandDraft(input: string): boolean {
+  return input.startsWith('/')
+    && !input.startsWith('//')
+    && !/\s/u.test(input);
 }
 
 export function suggestCommands(input: string): readonly CommandInfo[] {
-  if (!isCommand(input) || /\s/u.test(input)) {
+  if (!isCommandDraft(input)) {
     return [];
   }
   return COMMANDS.filter(command => command.name.startsWith(input));
 }
 
 export async function executeCommand(
-  input: string,
+  { name, args }: Extract<Input, { type: 'command' }>,
   { models, settings, prompts }: Dependencies,
 ): Promise<CommandResult> {
-  if (!isCommand(input)) {
-    return { type: 'noop' };
-  }
-  const [command, ...args] = input.trimEnd().split(/\s+/u);
   const argument = args[0];
   try {
-    switch (command) {
+    switch (name) {
       case '/model': {
         if (args.length > 1) {
           return failure('/model accepts at most one model ID.');
@@ -137,6 +154,7 @@ export async function executeCommand(
         };
       }
       default: {
+        name satisfies never;
         return failure('Unknown command.');
       }
     }

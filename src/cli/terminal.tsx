@@ -4,7 +4,7 @@ import { Box, Text, useWindowSize } from 'ink';
 import { homedir } from 'node:os';
 import { sep } from 'node:path';
 import { App } from '../app/app.ts';
-import { isCommand, suggestCommands } from '../app/commands.ts';
+import { parseInput, suggestCommands } from '../app/commands.ts';
 import { ConfigPanel } from './components/command/config.tsx';
 import { ModelPanel } from './components/command/model.tsx';
 import {
@@ -133,7 +133,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
       runtime.submit(selected.name);
       return;
     }
-    if (!isCommand(value)) {
+    if (parseInput(value).type === 'message') {
       key.markAttempted();
     }
     runtime.submit(value);

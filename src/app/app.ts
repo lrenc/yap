@@ -4,7 +4,11 @@ import type { AgentRuntimeConfig } from '../agent/ports.ts';
 import { FileSecretStore } from '../agent/settings/secrets.ts';
 import { PromptRepository } from '../agent/settings/prompts.ts';
 import { SettingsStore } from '../agent/settings/store.ts';
-import { executeCommand, isCommand } from './commands.ts';
+import {
+  executeCommand,
+  parseInput,
+  type Input,
+} from './commands.ts';
 import { nextCommandIndex } from './queue.ts';
 
 import type {
@@ -88,10 +92,9 @@ interface InputQueueState {
   messages: readonly QueuedMessage[];
 }
 
-interface QueuedInput {
-  id: number;
-  input: string;
-}
+type QueuedInput = Input & { id: number };
+type MessageItem = Extract<QueuedInput, { type: 'message' }>;
+type CommandItem = Extract<QueuedInput, { type: 'command' }>;
 
 export class App {
   readonly cwd: string;
@@ -248,9 +251,10 @@ export class App {
     if (this.#disposed || !input.trim()) {
       return;
     }
+    const item = parseInput(input);
     this.#inputQueue.push({
       id: ++this.#nextInputId,
-      input,
+      ...item,
     });
     this.#notifyQueue();
   }
@@ -437,9 +441,9 @@ export class App {
         if (item === undefined) {
           break;
         }
-        if (isCommand(item.input)) {
+        if (item.type === 'command') {
           this.#inputQueue.shift();
-          if (!(await this.#drainCommand(item.input))) {
+          if (!(await this.#drainCommand(item))) {
             break;
           }
           continue;
@@ -463,10 +467,10 @@ export class App {
     }
   }
 
-  async #drainMessage(item: QueuedInput): Promise<boolean> {
+  async #drainMessage(item: MessageItem): Promise<boolean> {
     const generation = this.#generation;
     this.#recheckPending = false;
-    const admission = await this.#runAdmission(item.input);
+    const admission = await this.#runAdmission(item.text);
     if (
       this.#disposed
       || generation !== this.#generation
@@ -493,11 +497,11 @@ export class App {
     if (commandIndex < 0) {
       return false;
     }
-    const [command] = this.#inputQueue.splice(commandIndex, 1);
-    if (command === undefined) {
+    const [item] = this.#inputQueue.splice(commandIndex, 1);
+    if (item?.type !== 'command') {
       return false;
     }
-    return this.#drainCommand(command.input);
+    return this.#drainCommand(item);
   }
 
   #rejectAdmission(error: unknown): void {
@@ -512,10 +516,10 @@ export class App {
     );
   }
 
-  #acceptRun(item: QueuedInput): void {
+  #acceptRun(item: MessageItem): void {
     this.#inputQueue.shift();
     this.#blocked = null;
-    this.#startRun(item.input, item.id);
+    this.#startRun(item.text, item.id);
   }
 
   async #runAdmission(input: string): Promise<AdmissionResult> {
@@ -545,20 +549,20 @@ export class App {
     }
   }
 
-  async #drainCommand(input: string): Promise<boolean> {
+  async #drainCommand(item: CommandItem): Promise<boolean> {
     this.#emitQueue();
     const generation = this.#generation;
     await this.#waitForRuns();
     if (this.#disposed || generation !== this.#generation) {
       return false;
     }
-    await this.#command(input);
+    await this.#command(item);
     return true;
   }
 
-  async #command(input: string): Promise<void> {
+  async #command(item: CommandItem): Promise<void> {
     const generation = this.#generation;
-    const result = await executeCommand(input, {
+    const result = await executeCommand(item, {
       models: this.#agent.models,
       settings: {
         setModel: modelId => this.setModel(modelId),
@@ -692,10 +696,10 @@ export class App {
       pending: this.#inputQueue.length,
       blocked: this.#blocked === null ? null : { ...this.#blocked },
       messages: this.#inputQueue
-        .filter(item => !isCommand(item.input))
+        .filter((item): item is MessageItem => item.type === 'message')
         .map(item => ({
           id: item.id,
-          content: item.input,
+          content: item.text,
         })),
     };
     const previous = this.#lastQueueState;
@@ -738,10 +742,7 @@ export class App {
   }
 
   #nextCommandIndex(block: QueueBlock): number {
-    return nextCommandIndex(
-      this.#inputQueue.map(item => item.input),
-      block,
-    );
+    return nextCommandIndex(this.#inputQueue, block);
   }
 
   #isIdle(): boolean {
