@@ -1,4 +1,4 @@
-import type { Provider } from './types.ts';
+import type { Provider } from '../model/types.ts';
 
 export const providers: readonly Provider[] = [
   {

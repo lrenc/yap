@@ -32,15 +32,18 @@ const EMPTY_LAYOUT: InputLayout = {
   activeColumn: 0,
 };
 
-export interface InputProps {
+interface InputProps {
   draft: Draft;
   focus: boolean;
   placeholder: string;
   maxRows?: number;
-  onDraftChange?: (draft: Draft, reason: DraftChangeReason) => void;
-  onEscape?: () => void;
-  onNavigate?: (direction: 'up' | 'down') => boolean;
-  onSubmit?: (value: string) => void;
+  onDraftChange?: ((
+    draft: Draft,
+    reason: DraftChangeReason,
+  ) => void) | undefined;
+  onEscape?: (() => void) | undefined;
+  onNavigate?: ((direction: 'up' | 'down') => boolean) | undefined;
+  onSubmit?: ((value: string) => void) | undefined;
 }
 
 export function Input({

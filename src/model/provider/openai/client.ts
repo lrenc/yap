@@ -75,7 +75,7 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
       const idleTimeout = requestOptions?.idleTimeout;
       return streamResponse(
         response.body,
-        idleTimeout === undefined ? {} : { idleTimeout },
+        { idleTimeout },
         adapter,
       );
     },
@@ -84,7 +84,7 @@ export function createClient(options: OpenAIClientOptions): OpenAIClient {
 
 function streamResponse(
   body: ReadableStream<Uint8Array>,
-  options: { idleTimeout?: number },
+  options: { idleTimeout?: number | undefined },
   adapter: ResponsesAdapter,
 ): AsyncGenerator<ResponseStreamEvent> {
   const source = readSSE(body, options);

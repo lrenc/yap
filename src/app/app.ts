@@ -7,13 +7,13 @@ import { SettingsStore } from '../agent/settings/store.ts';
 import { executeCommand, isCommand } from './commands.ts';
 import { nextCommandIndex } from './queue.ts';
 
-import type { AgentEvent } from '../agent/run/types.ts';
-import type { AgentTool } from '../tools/types.ts';
 import type {
   AdmissionResult,
   QueueBlock,
   RunAdmission,
-} from './queue.ts';
+} from '../agent/admission.ts';
+import type { AgentEvent } from '../agent/run/types.ts';
+import type { AgentTool } from '../tools/types.ts';
 
 export type AppPanel =
   | { type: 'model' }
@@ -30,7 +30,7 @@ export interface QueuedMessage {
   content: string;
 }
 
-export type ConfigChange =
+type ConfigChange =
   | 'model'
   | 'reasoningEffort'
   | 'prompt'
@@ -73,13 +73,13 @@ export type AppEvent =
     messages: readonly QueuedMessage[];
   };
 
-export interface AppOptions {
+interface AppOptions {
   cwd?: string;
   settings?: SettingsStore;
   secrets?: FileSecretStore;
   prompts?: PromptRepository;
-  tools?: AgentTool[];
-  admitRun?: RunAdmission;
+  tools?: AgentTool[] | undefined;
+  admitRun?: RunAdmission | undefined;
 }
 
 interface InputQueueState {
@@ -128,7 +128,7 @@ export class App {
       settings,
       secrets,
       prompts,
-      ...(options.tools === undefined ? {} : { tools: options.tools }),
+      tools: options.tools,
       onNotice: (message, level) => this.#notice(message, level),
     });
     this.#admitRun = options.admitRun

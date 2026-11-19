@@ -18,6 +18,7 @@ export function testModel(
     id: 'test-model',
     client,
     contextWindow: 128_000,
+    reasoningEfforts: [],
     params: {
       max_output_tokens: 1_024,
     },

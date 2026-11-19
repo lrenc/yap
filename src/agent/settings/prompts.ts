@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { writeFileAtomic } from '../../utils/write.ts';
 import { ensureDirectory, repairPermissions } from './permissions.ts';
 import { DEFAULT_PROMPT, promptNameSchema } from './schema.ts';
+import type { AgentPrompts } from '../ports.ts';
 
 function validateContent(content: string, path: string): void {
   if (!content.trim().length) {
@@ -11,7 +12,7 @@ function validateContent(content: string, path: string): void {
   }
 }
 
-export class PromptRepository {
+export class PromptRepository implements AgentPrompts {
   readonly directoryPath: string;
 
   #warningMessages: string[] = [];

@@ -10,6 +10,7 @@ import {
   validateReasoningEffort,
   type AgentSettingsConfig,
 } from './schema.ts';
+import type { AgentSettings } from '../ports.ts';
 
 function loadError(path: string, error: unknown): Error {
   let detail = 'cannot read file';
@@ -42,7 +43,7 @@ function loadError(path: string, error: unknown): Error {
   );
 }
 
-export class SettingsStore {
+export class SettingsStore implements AgentSettings {
   readonly filePath: string;
 
   #current: AgentSettingsConfig | null = null;

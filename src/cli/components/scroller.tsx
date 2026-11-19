@@ -19,12 +19,12 @@ const WHEEL_STEP = 1;
 const WHEEL_FRAME = 16;
 const WHEEL_MAX_PENDING = 9;
 
-export interface ScrollerProps {
+interface ScrollerProps {
   children: ReactNode;
-  maxHeight?: number;
+  maxHeight?: number | undefined;
   onNewOutputChange?: (hasNewOutput: boolean) => void;
   scrollActive?: boolean;
-  wheelEvents?: EventEmitter;
+  wheelEvents?: EventEmitter | undefined;
 }
 
 export function Scroller({
@@ -221,7 +221,7 @@ export function Scroller({
       flexShrink={1}
       minHeight={0}
       overflow='hidden'
-      {...(maxHeight === undefined ? {} : { maxHeight })}
+      maxHeight={maxHeight}
     >
       <Box
         flexDirection='column'

@@ -52,7 +52,7 @@ export type ChatEntry =
     message: string;
   };
 
-export interface ActiveResponse {
+interface ActiveResponse {
   id: string;
   runId: number;
   turn: number;

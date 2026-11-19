@@ -41,9 +41,9 @@ function displayPath(path: string): string {
   return path;
 }
 
-export interface TerminalProps {
+interface TerminalProps {
   app?: App;
-  wheelEvents?: EventEmitter;
+  wheelEvents?: EventEmitter | undefined;
 }
 
 export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
@@ -187,9 +187,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
       return (
         <ConfigPanel
           model={model}
-          {...(effort === undefined ? {} : {
-            currentEffort: effort,
-          })}
+          currentEffort={effort}
           hasApiKey={async () => Boolean(
             await runtime.hasApiKey(panel.providerId)
           )}
@@ -232,7 +230,7 @@ export function Terminal({ app, wheelEvents }: TerminalProps = {}) {
         maxHeight={liveRows}
         onNewOutputChange={setHasNewOutput}
         scrollActive={state.panel === null}
-        {...(wheelEvents === undefined ? {} : { wheelEvents })}
+        wheelEvents={wheelEvents}
       >
         <Box flexDirection='column'>
           <StartUp />

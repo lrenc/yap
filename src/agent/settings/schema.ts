@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { models } from '../models.ts';
-import type { Model } from '../types.ts';
+import { isValidPromptName } from '../../prompt/validation.ts';
+import type { Model } from '../../model/types.ts';
 
 const DEFAULT_MODEL_ID = firstModelId(models);
 
@@ -16,24 +17,6 @@ function firstModelId(catalog: readonly Model[]): string {
     throw new Error('At least one model is required');
   }
   return model.id;
-}
-
-const invalidNameChars = /[<>:"/\\|?*\p{Cc}]/u;
-const reservedName = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
-
-function isValidPromptName(name: string): boolean {
-  const length = Array.from(name).length;
-  return (
-    length >= 1
-    && length <= 16
-    && name !== 'default'
-    && name !== '.'
-    && name !== '..'
-    && !name.endsWith('.')
-    && !name.endsWith(' ')
-    && !invalidNameChars.test(name)
-    && !reservedName.test(name)
-  );
 }
 
 export const promptNameSchema = z.string().refine(
@@ -103,7 +86,7 @@ export function validateReasoningEffort(
   }
   if (
     effort !== undefined
-    && !model.reasoningEfforts?.includes(effort)
+    && !model.reasoningEfforts.includes(effort)
   ) {
     throw new Error(
       `Unsupported reasoning effort for model ${modelId}`

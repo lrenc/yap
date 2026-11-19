@@ -8,7 +8,7 @@ export interface SSEEvent {
 }
 
 export interface ReadSSEOptions {
-  idleTimeout?: number;
+  idleTimeout?: number | undefined;
 }
 
 export function readSSE(

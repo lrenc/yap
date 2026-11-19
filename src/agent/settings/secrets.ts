@@ -4,14 +4,9 @@ import { ZodError } from 'zod';
 import { readJson, writeJson } from '../../utils/json.ts';
 import { ensureDirectory, repairPermissions } from './permissions.ts';
 import { providerSecretsSchema, type ProviderSecrets } from './schema.ts';
+import type { AgentSecrets } from '../ports.ts';
 
-export interface SecretStore {
-  getApiKey(providerId: string): Promise<string | undefined>;
-  setApiKey(providerId: string, apiKey: string): Promise<void>;
-  clearApiKey(providerId: string): Promise<void>;
-}
-
-export class FileSecretStore implements SecretStore {
+export class FileSecretStore implements AgentSecrets {
   readonly filePath: string;
   #current: ProviderSecrets | null = null;
   #warningMessages: string[] = [];

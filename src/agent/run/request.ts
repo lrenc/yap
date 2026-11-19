@@ -50,10 +50,7 @@ export function buildRequest(
   input: ResponseInputItem[],
 ): ResponseCreateParams {
   const params: ResponseCreateParams = {
-    ...buildModelParams(
-      model,
-      reasoningEffort === undefined ? {} : { reasoningEffort },
-    ),
+    ...buildModelParams(model, { reasoningEffort }),
     model: model.id,
     instructions,
     input,

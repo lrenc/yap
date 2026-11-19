@@ -15,7 +15,8 @@ import type {
   AgentSettings,
 } from './ports.ts';
 import type { SessionRun } from './session/types.ts';
-import type { Model, RunConfigSnapshot } from './types.ts';
+import type { RunConfigSnapshot } from './types.ts';
+import type { Model } from '../model/types.ts';
 import type { AgentTool } from '../tools/types.ts';
 
 type NoticeLevel = 'info' | 'warning' | 'error';
@@ -26,12 +27,12 @@ export interface AgentOptions {
   settings?: AgentSettings;
   secrets?: AgentSecrets;
   prompts?: AgentPrompts;
-  tools?: AgentTool[];
+  tools?: AgentTool[] | undefined;
   clients?: Pick<ClientFactory, 'getModel'>;
   onNotice?: (message: string, level: NoticeLevel) => void;
 }
 
-export interface AgentRun extends SessionRun {
+interface AgentRun extends SessionRun {
   readonly sessionId: number;
 }
 
@@ -311,11 +312,14 @@ export class Agent {
       : this.instructions.length > 0
         ? this.instructions
         : prompt.content;
-    return {
+    const snapshot: RunConfigSnapshot = {
       model,
       instructions,
-      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
     };
+    if (reasoningEffort !== undefined) {
+      snapshot.reasoningEffort = reasoningEffort;
+    }
+    return snapshot;
   }
 
   async #loadPrompt(name: string | undefined, signal?: AbortSignal) {

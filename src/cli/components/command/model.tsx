@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useInput } from 'ink';
-import type { Model } from '../../../app/types.ts';
+import type { Model } from '../../../model/types.ts';
 import { formatError } from '../../error.ts';
 import { useLock } from '../../hooks/use-lock.ts';
 import { useSelection } from '../../hooks/use-selection.ts';
 import { SelectList } from '../select-list.tsx';
 import { Panel, PanelStatus } from './panel.tsx';
 
-export interface ModelPanelProps {
+interface ModelPanelProps {
   models: readonly Model[];
   currentModelId: string;
   onSave: (modelId: string) => Promise<void>;

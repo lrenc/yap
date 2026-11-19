@@ -1,4 +1,4 @@
-import type { Model } from '../agent/types.ts';
+import type { Model } from '../model/types.ts';
 
 type CommandResult =
   | { type: 'notice'; level: 'error'; message: string }

@@ -140,7 +140,7 @@ function code(
     <Box
       {...blockSpacing(compact)}
       backgroundColor={markdown.codeBackground}
-      {...(compact ? { paddingX: 1 } : {})}
+      paddingX={compact ? 1 : undefined}
       flexDirection='column'
     >
       <Text color={color ?? markdown.codeText} wrap='wrap'>

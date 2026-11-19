@@ -1,7 +1,7 @@
 import { Box, Text } from 'ink';
 import { useTheme } from '../theme/index.ts';
 
-export interface SelectListItem {
+interface SelectListItem {
   key: string;
   label: string;
   detail?: string;

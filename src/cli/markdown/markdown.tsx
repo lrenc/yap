@@ -7,11 +7,11 @@ import { parseMarkdown } from './parse.ts';
 import { useBlocks } from '../hooks/use-blocks.ts';
 import { useStream } from '../hooks/use-stream.ts';
 
-export interface MarkdownMessageProps {
+interface MarkdownMessageProps {
   messageId: string;
   source: string;
   streaming?: boolean;
-  color?: string;
+  color?: string | undefined;
 }
 
 export const MarkdownMessage = memo(function MarkdownMessage({

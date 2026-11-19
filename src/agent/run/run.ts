@@ -166,14 +166,15 @@ export class Run {
         }
         this.#turns += 1;
         const effort = captured.params.reasoning?.effort;
-        this.#emit({
+        const turnStart: Extract<AgentEvent, { type: 'turnStart' }> = {
           type: 'turnStart',
           turn: this.#turns,
           modelId: captured.params.model,
-          ...(effort === undefined ? {} : {
-            reasoningEffort: effort,
-          }),
-        });
+        };
+        if (effort !== undefined) {
+          turnStart.reasoningEffort = effort;
+        }
+        this.#emit(turnStart);
         const next = await this.#requestModel(client, captured.params);
         // 请求返回后仍有一次异步调度，接纳前需再次确认运行状态。
         if (!next || this.signal.aborted || this.#interrupted) {

@@ -10,7 +10,7 @@ export interface OpenAIClientOptions {
 export interface RequestOptions {
   signal?: AbortSignal;
   timeout?: number;
-  idleTimeout?: number;
+  idleTimeout?: number | undefined;
 }
 
 export interface OpenAIClient {

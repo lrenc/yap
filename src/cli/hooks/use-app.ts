@@ -6,20 +6,20 @@ import type {
   InitError,
   QueuedMessage,
 } from '../../app/app.ts';
-import type { QueueBlock } from '../../app/queue.ts';
+import type { QueueBlock } from '../../agent/admission.ts';
 import {
   applyChatEvent,
   INITIAL_CHAT_STATE,
   type ChatState,
 } from '../state/chat.ts';
 
-export interface AppFeedback {
+interface AppFeedback {
   id: number;
   level: 'info' | 'warning' | 'error';
   message: string;
 }
 
-export interface AppUiState {
+interface AppUiState {
   panel: AppPanel | null;
   feedback: AppFeedback[];
   chat: ChatState;

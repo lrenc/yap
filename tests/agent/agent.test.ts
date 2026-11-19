@@ -112,6 +112,7 @@ function createAgent(
         return {
           id: modelId,
           contextWindow: 128_000,
+          reasoningEfforts: [],
           params: {
             max_output_tokens: 1_024,
           },
@@ -350,6 +351,7 @@ describe('Agent', () => {
           return {
             id: modelId,
             contextWindow: 128_000,
+            reasoningEfforts: [],
             params: {
               max_output_tokens: 1_024,
             },

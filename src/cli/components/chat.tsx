@@ -30,9 +30,9 @@ export function Chat({
           messageId={chat.active.id}
           source={chat.active.text}
           streaming
-          {...(chat.active.refusal
-            ? { color: theme.colors.role.refusal }
-            : {})}
+          color={chat.active.refusal
+            ? theme.colors.role.refusal
+            : undefined}
         />
       ) : null}
       {chat.activity ? (
@@ -80,7 +80,7 @@ export const ChatEntryView = memo(function ChatEntryView({
       <MarkdownMessage
         messageId={item.id}
         source={item.content}
-        {...(item.refusal ? { color: theme.colors.role.refusal } : {})}
+        color={item.refusal ? theme.colors.role.refusal : undefined}
       />
     );
   }

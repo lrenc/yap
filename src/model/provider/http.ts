@@ -22,7 +22,7 @@ export class HttpError extends Error {
   }
 }
 
-export interface PostJsonOptions {
+interface PostJsonOptions {
   headers?: HeadersInit;
   signal?: AbortSignal | null;
   fetch?: typeof globalThis.fetch;

@@ -1,13 +1,6 @@
 import { isCommand } from './commands.ts';
 import type { QueueBlock } from '../agent/admission.ts';
 
-export type {
-  AdmissionContext,
-  AdmissionResult,
-  QueueBlock,
-  RunAdmission,
-} from '../agent/admission.ts';
-
 export function nextCommandIndex(
   queue: readonly string[],
   blocked: QueueBlock | null,

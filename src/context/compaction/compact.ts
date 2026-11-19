@@ -29,7 +29,7 @@ export async function compact({
   requestConfig?: Pick<
     ResponseCreateParams,
     'instructions' | 'include' | 'reasoning'
-  >;
+  > | undefined;
   buildRequest: (input: ResponseInputItem[]) => ResponseCreateParams;
 }): Promise<CompactionResult> {
   try {
@@ -61,9 +61,7 @@ export async function compact({
       summary: plan.summary,
       margin: budget.margin,
       signal,
-      ...(requestConfig === undefined
-        ? {}
-        : { requestConfig }),
+      requestConfig,
     });
     signal.throwIfAborted();
     if (

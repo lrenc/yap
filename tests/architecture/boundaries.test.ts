@@ -34,6 +34,23 @@ async function importsFrom(
   return violations;
 }
 
+async function runtimeExportsFromTypeModules(): Promise<string[]> {
+  const violations: string[] = [];
+  for (const path of await sourceFiles(root)) {
+    if (!path.endsWith('/types.ts')) {
+      continue;
+    }
+    const source = await fs.readFile(path, 'utf8');
+    if (
+      /export\s*\{/u.test(source)
+      || /export\s+(?:const|let|var|function|class|enum|default)\b/u.test(source)
+    ) {
+      violations.push(path);
+    }
+  }
+  return violations;
+}
+
 describe('module boundaries', () => {
   test('App does not depend on Session or Run implementations', async () => {
     expect(await importsFrom(join(root, 'app'), [
@@ -81,5 +98,9 @@ describe('module boundaries', () => {
       await expect(fs.stat(join(root, path))).rejects.toBeInstanceOf(Error);
     }
     expect(dirname(join(root, 'agent/models.ts'))).toBe(join(root, 'agent'));
+  });
+
+  test('type modules do not export runtime values or re-exports', async () => {
+    expect(await runtimeExportsFromTypeModules()).toEqual([]);
   });
 });

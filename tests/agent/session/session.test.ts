@@ -64,6 +64,7 @@ function createSession(
     id: 'test-model',
     client,
     contextWindow,
+    reasoningEfforts: [],
     params: {
       max_output_tokens: 1_024,
     },
@@ -260,6 +261,7 @@ describe('Session', () => {
           id: 'test-model',
           client,
           contextWindow: 128_000,
+          reasoningEfforts: [],
           params: {
             max_output_tokens: 1_024,
           },
@@ -307,6 +309,7 @@ describe('Session', () => {
       id: 'test-model',
       client: immediateClient(),
       contextWindow: 128_000,
+      reasoningEfforts: [],
       params: {
         max_output_tokens: 1_024,
       },

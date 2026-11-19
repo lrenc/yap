@@ -2,12 +2,12 @@ import stringWidth from 'string-width';
 import type { Key } from 'ink';
 import type { Draft } from '../types.ts';
 
-export interface CursorStop {
+interface CursorStop {
   column: number;
   sourceIndex: number;
 }
 
-export interface InputRow {
+interface InputRow {
   text: string;
   cursor: number;
   stops: CursorStop[];

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import type { Model } from '../../../app/types.ts';
+import type { Model } from '../../../model/types.ts';
 import { formatError } from '../../error.ts';
 import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
@@ -19,9 +19,9 @@ type View =
   | { type: 'effort' }
   | { type: 'confirmClear' };
 
-export interface ConfigPanelProps {
+interface ConfigPanelProps {
   model: Model;
-  currentEffort?: string;
+  currentEffort?: string | undefined;
   hasApiKey: () => Promise<boolean>;
   onSaveApiKey: (apiKey: string) => Promise<void>;
   onClearApiKey: () => Promise<void>;
@@ -47,7 +47,7 @@ export function ConfigPanel({
   const effort = currentEffort;
   const saveLock = useLock();
   const [status, setStatus] = useState<Partial<Record<Field, string>>>({});
-  const efforts = ['default', ...(model.reasoningEfforts ?? [])];
+  const efforts = ['default', ...model.reasoningEfforts];
   const fields = useSelection(2);
   const effortOptions = useSelection(efforts.length);
 

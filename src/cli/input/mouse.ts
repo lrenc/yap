@@ -8,7 +8,7 @@ export const DISABLE_MOUSE = '\x1b[?1006l\x1b[?1000l';
 const MOUSE_SEQUENCE =
   /\x1b\[(?:<(\d+);\d+;\d+[Mm]|M([\s\S])[\s\S]{2})/gu;
 
-export interface FilteredMouseInput {
+interface FilteredMouseInput {
   text: string;
   pending: string;
 }
@@ -38,7 +38,7 @@ export function filterMouseInput(
   };
 }
 
-export interface MouseInput {
+interface MouseInput {
   readonly stdin: NodeJS.ReadableStream;
   readonly events: EventEmitter;
   dispose: () => void;

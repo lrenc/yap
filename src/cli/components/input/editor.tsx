@@ -2,7 +2,7 @@ import { Box, Text } from 'ink';
 import type { Draft } from '../../types.ts';
 import { Input } from './input.tsx';
 
-export interface EditorProps {
+interface EditorProps {
   draft: Draft;
   focus: boolean;
   maxRows: number;
@@ -29,8 +29,8 @@ export function Editor({
         focus={focus}
         maxRows={maxRows}
         onDraftChange={onDraftChange}
-        {...(onEscape ? { onEscape } : {})}
-        {...(onSubmit ? { onSubmit } : {})}
+        onEscape={onEscape}
+        onSubmit={onSubmit}
         placeholder={placeholder}
       />
     </Box>

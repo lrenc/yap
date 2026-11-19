@@ -57,11 +57,7 @@ export class ClientFactory {
       id: model.id,
       contextWindow: model.contextWindow,
       params: structuredClone(model.params),
-      ...(model.reasoningEfforts === undefined
-        ? {}
-        : {
-          reasoningEfforts: [...model.reasoningEfforts],
-        }),
+      reasoningEfforts: [...model.reasoningEfforts],
       client: await this.getClient(model.providerId),
     };
   }

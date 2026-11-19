@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import {
-  promptNameSchema,
-  type PromptSource,
-} from '../../../app/types.ts';
+import type { PromptSource } from '../../../app/types.ts';
+import { isValidPromptName } from '../../../prompt/validation.ts';
 import { formatError } from '../../error.ts';
 import { createDraft } from '../../state/input.ts';
 import type { Draft } from '../../types.ts';
@@ -25,7 +23,7 @@ type View =
   }
   | { type: 'confirmDelete'; name: string };
 
-export interface PromptPanelProps {
+interface PromptPanelProps {
   prompts: PromptSource;
   activePrompt: string | undefined;
   trackSave: <T>(save: Promise<T>) => Promise<T>;
@@ -275,7 +273,7 @@ export function PromptPanel({
             onDraftChange={value => changeView({ type: 'name', value })}
             onEscape={() => changeView({ type: 'list' })}
             onSubmit={name => {
-              if (!promptNameSchema.safeParse(name).success) {
+              if (!isValidPromptName(name)) {
                 setError(
                   'Use a valid file name up to 16 characters; "default" is reserved.'
                 );

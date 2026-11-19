@@ -5,7 +5,7 @@ import { createDraft } from '../../state/input.ts';
 import { useTheme } from '../../theme/index.ts';
 import type { Draft, DraftChangeReason } from '../../types.ts';
 
-export interface ComposerProps {
+interface ComposerProps {
   focus?: boolean;
   initialValue?: string;
   newOutput?: boolean;
@@ -62,9 +62,9 @@ export function Composer({
           focus={focus}
           maxRows={maxRows}
           placeholder={placeholder}
-          {...(onSubmit ? { onSubmit } : {})}
-          {...(onNavigate ? { onNavigate } : {})}
-          {...(onEscape ? { onEscape } : {})}
+          onSubmit={onSubmit}
+          onNavigate={onNavigate}
+          onEscape={onEscape}
           onDraftChange={(next, reason) => {
             setDraft(next);
             onDraftChange?.(next.value, reason);

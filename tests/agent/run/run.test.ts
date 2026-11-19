@@ -95,6 +95,7 @@ function createRun(onRequest?: () => void): Run {
     id: 'test-model',
     client,
     contextWindow: 128_000,
+    reasoningEfforts: [],
     params: {
       max_output_tokens: 100,
     },
@@ -126,6 +127,7 @@ function createRunWith(
     id: 'test-model',
     client,
     contextWindow: 128_000,
+    reasoningEfforts: [],
     params: {
       max_output_tokens: 100,
     },
@@ -353,6 +355,7 @@ describe('Run', () => {
       id: 'test-model',
       client,
       contextWindow: 30_000,
+      reasoningEfforts: [],
       params: {
         max_output_tokens: 16_384,
       },
@@ -456,6 +459,7 @@ describe('Run', () => {
       id: 'test-model',
       client,
       contextWindow: 128_000,
+      reasoningEfforts: [],
       params: {
         max_output_tokens: 100,
       },

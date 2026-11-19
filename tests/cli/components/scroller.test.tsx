@@ -19,7 +19,7 @@ function view(
     <Box height={8} flexDirection='column'>
       <Scroller
         maxHeight={7}
-        {...(wheelEvents === undefined ? {} : { wheelEvents })}
+        wheelEvents={wheelEvents}
       >
         {items.map(item => (
           <Text key={item}>{item}</Text>

@@ -34,7 +34,7 @@ function ControlledInput({
         onChange?.(next);
       }}
       placeholder=''
-      {...(onSubmit ? { onSubmit } : {})}
+      onSubmit={onSubmit}
     />
   );
 }

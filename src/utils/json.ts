@@ -3,7 +3,7 @@ import { writeFileAtomic } from './write.ts';
 import type { AtomicWriteOptions } from './write.ts';
 import { isObject } from './guards.ts';
 
-export type JsonParse<T> = (value: unknown) => T;
+type JsonParse<T> = (value: unknown) => T;
 
 function serializeJson(path: string, data: unknown): string {
   try {

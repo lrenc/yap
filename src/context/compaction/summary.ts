@@ -55,7 +55,7 @@ export async function summarize({
   requestConfig?: Pick<
     ResponseCreateParams,
     'instructions' | 'include' | 'reasoning'
-  >;
+  > | undefined;
 }): Promise<string> {
   signal.throwIfAborted();
   const messages = prefix.filter(item => item.type !== 'reasoning');
@@ -73,10 +73,6 @@ export async function summarize({
       })
     ),
     model: modelId,
-    ...(requestConfig === undefined
-      ? { instructions: INSTRUCTIONS }
-      : {}
-    ),
     input: requestConfig === undefined ? source : [
       {
         role: 'developer',
@@ -90,6 +86,9 @@ export async function summarize({
     max_output_tokens: maxSummaryTokens,
     store: false,
   };
+  if (requestConfig === undefined) {
+    request.instructions = INSTRUCTIONS;
+  }
   if (estimateTokens(request) + maxSummaryTokens + margin > contextWindow) {
     throw new Error('Summary input exceeds the context budget');
   }

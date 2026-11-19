@@ -27,7 +27,7 @@ export interface AgentSecrets {
   clearApiKey(providerId: string): Promise<void>;
 }
 
-export interface AgentPromptSelection {
+interface AgentPromptSelection {
   readonly content: string;
   readonly missingPrompt: string | undefined;
 }

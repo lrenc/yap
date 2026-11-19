@@ -4,7 +4,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { render } from 'ink-testing-library';
 import { App } from '../../src/app/app.ts';
-import type { RunAdmission } from '../../src/app/queue.ts';
+import type { RunAdmission } from '../../src/agent/admission.ts';
 import { FileSecretStore } from '../../src/agent/settings/secrets.ts';
 import { PromptRepository } from '../../src/agent/settings/prompts.ts';
 import { SettingsStore } from '../../src/agent/settings/store.ts';
@@ -35,7 +35,7 @@ describe('Terminal', () => {
       settings: new SettingsStore(root),
       secrets: new FileSecretStore(root),
       prompts: new PromptRepository(root),
-      ...(admitRun === undefined ? {} : { admitRun }),
+      admitRun,
     });
   }
 

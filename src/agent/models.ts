@@ -1,4 +1,4 @@
-import type { Model } from './types.ts';
+import type { Model } from '../model/types.ts';
 
 export const models: readonly Model[] = [
   {

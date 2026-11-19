@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { App } from '../../app/app.ts';
-import type { Model } from '../../app/types.ts';
+import type { Model } from '../../model/types.ts';
 
-export type KeyStatus = 'checking' | 'configured' | 'missing' | 'error';
+type KeyStatus = 'checking' | 'configured' | 'missing' | 'error';
 
 interface CheckedKey {
   modelId: string;

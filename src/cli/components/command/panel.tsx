@@ -18,7 +18,7 @@ export function Panel({
       marginTop={1}
       paddingX={1}
       flexShrink={0}
-      {...(height === undefined ? {} : { height })}
+      height={height}
     >
       <Box flexDirection='column'>
         {children}

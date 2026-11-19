@@ -13,7 +13,7 @@ import {
   useKeyStatus,
   type KeyStatusResult,
 } from '../../../src/cli/hooks/use-key-status.ts';
-import type { Model } from '../../../src/agent/types.ts';
+import type { Model } from '../../../src/model/types.ts';
 
 describe('useKeyStatus', () => {
   let rendered: ReturnType<typeof render> | null = null;
