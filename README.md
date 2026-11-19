@@ -123,9 +123,9 @@ to open the picker.
 ## Prompts
 
 Prompts are plain Markdown files and can be created, edited, selected, or
-deleted with `/prompt`. Names are limited to 16 characters, must be safe file
-names, and cannot use the reserved name `default`. Selecting `default` restores
-the built-in system Prompt.
+deleted with `/prompt`. Names are limited to 16 characters, cannot contain
+whitespace, must be safe file names, and cannot use the reserved name
+`default`. Selecting `default` restores the built-in system Prompt.
 
 ## Configuration and Data
 

@@ -95,7 +95,7 @@ YAP 使用终端的备用屏幕显示对话记录。退出后会恢复终端原�
 
 ## Prompt
 
-Prompt 以纯 Markdown 文件保存，可通过 `/prompt` 创建、编辑、选择或删除。名称最多 16 个字符，必须是安全的文件名，且不能使用保留名称 `default`。选择 `default` 会恢复内置的系统 Prompt。
+Prompt 以纯 Markdown 文件保存，可通过 `/prompt` 创建、编辑、选择或删除。名称最多 16 个字符，不能包含空白字符，必须是安全的文件名，且不能使用保留名称 `default`。选择 `default` 会恢复内置的系统 Prompt。
 
 ## 配置与数据
 

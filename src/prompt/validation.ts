@@ -1,4 +1,4 @@
-const invalidNameChars = /[<>:"/\\|?*\p{Cc}]/u;
+const invalidNameChars = /[<>:"/\\|?*\p{Cc}\s]/u;
 const reservedName = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
 
 export function isValidPromptName(name: string): boolean {
@@ -10,7 +10,6 @@ export function isValidPromptName(name: string): boolean {
     && name !== '.'
     && name !== '..'
     && !name.endsWith('.')
-    && !name.endsWith(' ')
     && !invalidNameChars.test(name)
     && !reservedName.test(name)
   );

@@ -53,4 +53,29 @@ describe('command suggestions', () => {
     expect(selectedModel).toBe(modelId);
     expect(selectedPrompt).toBe('reviewer');
   });
+
+  test('rejects Prompt names containing whitespace', async () => {
+    let selectedPrompt: string | undefined;
+    const result = await executeCommand('/prompt my prompt', {
+      models,
+      settings: {
+        setModel: async () => {},
+        setActivePrompt: async (name: string | undefined) => {
+          selectedPrompt = name;
+        },
+      },
+      prompts: {
+        read: async () => 'Prompt',
+      },
+    });
+
+    expect(result).toMatchObject({
+      type: 'notice',
+      level: 'error',
+      message: expect.stringContaining(
+        '/prompt accepts at most one Prompt name.'
+      ),
+    });
+    expect(selectedPrompt).toBeUndefined();
+  });
 });

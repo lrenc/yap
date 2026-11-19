@@ -276,7 +276,7 @@ export function PromptPanel({
         <Box flexDirection='column'>
           <Text>New Prompt name</Text>
           <Text color={theme.colors.text.muted}>
-            Up to 16 characters; must be a valid file name.
+            Up to 16 characters; no whitespace; must be a valid file name.
           </Text>
           <Editor
             draft={view.value}
@@ -287,7 +287,7 @@ export function PromptPanel({
             onSubmit={name => {
               if (!isValidPromptName(name)) {
                 setError(
-                  'Use a valid file name up to 16 characters; "default" is reserved.'
+                  'Use a valid file name up to 16 characters without whitespace; "default" is reserved.'
                 );
                 return;
               }
