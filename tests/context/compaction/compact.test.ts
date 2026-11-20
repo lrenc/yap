@@ -3,6 +3,7 @@ import { Context } from '../../../src/context/context.ts';
 import { compact } from '../../../src/context/compaction/compact.ts';
 import type { CompactionBudget } from '../../../src/context/types.ts';
 import { estimateTokens } from '../../../src/context/tokens.ts';
+import type { ResponseCreateParams } from '../../../src/model/provider/openai/types.ts';
 import {
   buildRequest,
   clientWithCreate,
@@ -154,6 +155,64 @@ describe('compact', () => {
     expect(context.requiredInput()).toHaveLength(2);
     expect(estimateTokens(buildRequest(context.toInput())))
       .toBeLessThanOrEqual(budget.threshold);
+  });
+
+  test('summarizes code-heavy history as native input items', async () => {
+    const context = new Context();
+    const line = 'const value = { path: "src/file.ts", text: "quote \\\\ slash" };\n';
+    let code = '';
+    while (Buffer.byteLength(code) < 38_400) {
+      code += line;
+    }
+    for (let index = 0; index < 70; index += 1) {
+      context.addUserMessage(`Read file ${index}`);
+      const call = {
+        type: 'function_call' as const,
+        id: `call-item-${index}`,
+        call_id: `call-${index}`,
+        name: 'read',
+        arguments: '{}',
+      };
+      context.addResponse({
+        id: `tool-response-${index}`,
+        status: 'completed',
+        output: [call],
+      });
+      context.addToolResult(call, code);
+    }
+    context.addUserMessage('continue');
+    let requests = 0;
+    let input: ResponseCreateParams['input'] | undefined;
+
+    const result = await compact({
+      context,
+      budget: {
+        reserveTokens: 16_384,
+        keepRecentTokens: 20_000,
+        maxSummaryTokens: 4_096,
+        threshold: 1_000_000 - 16_384,
+        margin: 0,
+      },
+      client: clientWithCreate(async params => {
+        requests += 1;
+        input = params.input;
+        return textResponse('summary', 'short summary');
+      }),
+      modelId: 'test-model',
+      contextWindow: 1_000_000,
+      signal: new AbortController().signal,
+      requestConfig,
+      buildRequest,
+    });
+
+    expect(result).toEqual({ status: 'completed' });
+    expect(requests).toBe(1);
+    expect(context.contextStart).toBeGreaterThan(0);
+    expect(Array.isArray(input)).toBe(true);
+    const items = Array.isArray(input) ? input : [];
+    expect(items.filter(item => item.type === 'function_call')).toHaveLength(
+      items.filter(item => item.type === 'function_call_output').length
+    );
   });
 
   test('does not commit when the summary is too large', async () => {

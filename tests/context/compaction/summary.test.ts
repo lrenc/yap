@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { summarize } from '../../../src/context/compaction/summary.ts';
+import { summaryMessages } from '../../../src/context/history.ts';
 import type {
   OpenAIResponse,
   ResponseCreateParams,
@@ -40,10 +41,36 @@ describe('summarize', () => {
     expect(request.model).toBe('test-model');
     expect(request.store).toBe(false);
     expect(request.max_output_tokens).toBe(4_096);
-    const input = JSON.parse(String(request.input)) as {
-      messages: ResponseInputItem[];
-    };
-    expect(input.messages).toEqual([user]);
+    expect(request.instructions).toContain(
+      'Create a concise continuation brief from the supplied conversation records.'
+    );
+    expect(request.input).toEqual([user]);
+  });
+
+  test('passes a previous summary and native history in order', async () => {
+    let request!: ResponseCreateParams;
+    const client = clientWithCreate(async params => {
+      request = params;
+      return textResponse('summary', 'Consolidated summary');
+    });
+
+    await summarize({
+      client,
+      modelId: 'test-model',
+      contextWindow: 128_000,
+      prefix: [user, reasoning],
+      summary: 'previous summary',
+      maxSummaryTokens: 4_096,
+      margin: 8_192,
+      signal: new AbortController().signal,
+      requestConfig: { instructions: 'Main task instructions' },
+    });
+
+    expect(request.input).toEqual([
+      ...summaryMessages('previous summary'),
+      user,
+    ]);
+    expect(request.instructions).not.toContain('Main task instructions');
   });
 
   test('rejects empty source material without calling the client', async () => {
