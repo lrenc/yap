@@ -9,6 +9,13 @@ import {
   parseInput,
   type Input,
 } from './commands.ts';
+import type {
+  AppEvent,
+  AppPanel,
+  ConfigChange,
+  InitError,
+  QueuedMessage,
+} from './types.ts';
 
 import type {
   AdmissionResult,
@@ -17,64 +24,6 @@ import type {
 } from '../agent/admission.ts';
 import type { AgentEvent } from '../agent/run/types.ts';
 import type { AgentTool } from '../tools/types.ts';
-
-export type AppPanel =
-  | { type: 'model' }
-  | { type: 'config'; modelId: string; providerId: string }
-  | { type: 'prompt' };
-
-export interface InitError {
-  source: 'settings' | 'secrets';
-  message: string;
-}
-
-export interface QueuedMessage {
-  id: number;
-  content: string;
-}
-
-type ConfigChange =
-  | 'model'
-  | 'reasoningEffort'
-  | 'prompt'
-  | 'apiKey';
-
-export type AppEvent =
-  | (AgentEvent & { runId: number; sessionId: number })
-  | {
-    type: 'userMessage';
-    queueId: number;
-    content: string;
-    runId: number;
-    sessionId: number;
-  }
-  | {
-    type: 'notice';
-    level: 'info' | 'warning' | 'error';
-    message: string;
-  }
-  | {
-    type: 'initErrors';
-    errors: readonly InitError[];
-  }
-  | {
-    type: 'panel';
-    panel: AppPanel | null;
-  }
-  | {
-    type: 'sessionBoundary';
-    sessionId: number;
-  }
-  | {
-    type: 'configChanged';
-    change: ConfigChange;
-  }
-  | {
-    type: 'inputQueue';
-    pending: number;
-    blocked: QueueBlock | null;
-    messages: readonly QueuedMessage[];
-  };
 
 interface AppOptions {
   cwd?: string;
@@ -127,9 +76,9 @@ export class App {
     const prompts = options.prompts ?? new PromptRepository();
     this.#agent = new Agent({
       cwd: this.cwd,
-      settings,
       secrets,
       prompts,
+      settings,
       tools: options.tools,
       onNotice: (message, level) => this.#notice(message, level),
     });
@@ -396,16 +345,13 @@ export class App {
   }
 
   #configChanged(change: ConfigChange): void {
-    this.#emit({
-      type: 'configChanged',
-      change,
-    });
+    this.#emit({ type: 'configChanged', change });
     this.#recheckQueue();
   }
 
   #notifyQueue(options: {
-    recheck?: boolean;
     force?: boolean;
+    recheck?: boolean;
     settle?: boolean;
   } = {}): void {
     if (options.recheck) {
@@ -578,7 +524,8 @@ export class App {
       const sessionId = this.#agent.newSession();
       if (sessionId !== undefined) {
         this.#emit({
-          type: 'sessionBoundary', sessionId,
+          type: 'sessionBoundary',
+          sessionId,
         });
       }
     } else if (result.type === 'panelRequest') {
@@ -611,12 +558,11 @@ export class App {
       run.runId,
       run.sessionId,
       queueId,
-    )
-      .finally(() => {
-        this.#runTasks.delete(task);
-        this.#emitQueue();
-        this.#settleIdle();
-      });
+    ).finally(() => {
+      this.#runTasks.delete(task);
+      this.#emitQueue();
+      this.#settleIdle();
+    });
     this.#runTasks.add(task);
     this.#emitQueue();
     void task.catch(() => {});
@@ -704,10 +650,7 @@ export class App {
       return;
     }
     this.#lastQueueState = next;
-    this.#emit({
-      type: 'inputQueue',
-      ...next,
-    });
+    this.#emit({ type: 'inputQueue', ...next });
   }
 
   #emit(event: AppEvent): void {
@@ -717,9 +660,7 @@ export class App {
     for (const listener of this.#listeners) {
       try {
         listener(event);
-      } catch {
-        // Observers own their errors.
-      }
+      } catch { }
     }
   }
 
@@ -732,11 +673,10 @@ export class App {
   }
 
   #nextCommandIndex(): number {
-    // The blocked message stays at the head of the queue.
-    for (let index = 1; index < this.#inputQueue.length; index += 1) {
-      const item = this.#inputQueue[index];
+    for (let i = 1; i < this.#inputQueue.length; i += 1) {
+      const item = this.#inputQueue[i];
       if (item?.type === 'command') {
-        return index;
+        return i;
       }
     }
     return -1;
@@ -768,12 +708,18 @@ function sameQueuedMessages(
   previous: readonly QueuedMessage[],
   next: readonly QueuedMessage[],
 ): boolean {
-  return previous.length === next.length && previous.every((
-    message,
-    index,
-  ) => {
+  if (previous.length !== next.length) {
+    return false;
+  }
+
+  return previous.every((message, index) => {
     const candidate = next[index];
-    return candidate?.id === message.id
-      && candidate.content === message.content;
+    if (candidate === undefined || candidate.id !== message.id) {
+      return false;
+    } else if (candidate.content !== message.content) {
+      return false;
+    } else {
+      return true;
+    }
   });
 }

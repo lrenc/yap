@@ -1,7 +1,6 @@
 import { memo } from 'react';
 import { Box, Text, useAnimation } from 'ink';
-import type { QueuedMessage } from '../../app/app.ts';
-import { ASSISTANT_INDENT } from '../markdown/layout.ts';
+import type { QueuedMessage } from '../../app/types.ts';
 import { MarkdownMessage } from '../markdown/markdown.tsx';
 import { useTheme } from '../theme/index.ts';
 import type {
@@ -37,8 +36,8 @@ export function Chat({
       ) : null}
       {chat.activity ? (
         <Box
-          paddingLeft={ASSISTANT_INDENT.left}
-          paddingRight={ASSISTANT_INDENT.right}
+          paddingLeft={3}
+          paddingRight={2}
         >
           <Activity activity={chat.activity} />
         </Box>
@@ -87,8 +86,8 @@ export const ChatEntryView = memo(function ChatEntryView({
   if (item.type === 'tool') {
     return (
       <Box
-        paddingLeft={ASSISTANT_INDENT.left}
-        paddingRight={ASSISTANT_INDENT.right}
+        paddingLeft={3}
+        paddingRight={2}
         marginBottom={1}
         flexDirection='column'
       >
@@ -109,8 +108,8 @@ export const ChatEntryView = memo(function ChatEntryView({
   if (item.type === 'notice') {
     return (
       <Box
-        paddingLeft={ASSISTANT_INDENT.left}
-        paddingRight={ASSISTANT_INDENT.right}
+        paddingLeft={3}
+        paddingRight={2}
         marginBottom={1}
       >
         <Text color={theme.colors.feedback[item.level]} wrap='wrap'>

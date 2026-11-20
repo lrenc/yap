@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import type { Model } from '../../../model/types.ts';
 import { formatError } from '../../error.ts';
 import { createDraft } from '../../state/input.ts';
-import type { Draft } from '../../types.ts';
 import { useLock } from '../../hooks/use-lock.ts';
 import { useSelection } from '../../hooks/use-selection.ts';
 import { useTheme } from '../../theme/index.ts';
 import { Editor } from '../input/editor.tsx';
 import { SelectList } from '../select-list.tsx';
 import { Panel, PanelStatus } from './panel.tsx';
+import type { Model } from '../../../model/types.ts';
+import type { Draft } from '../../types.ts';
 
 type Field = 'apiKey' | 'reasoningEffort';
 
@@ -149,7 +149,10 @@ export function ConfigPanel({
       }
       if (key.return) {
         if (fields.current() === 0) {
-          changeView({ type: 'apiKey', draft: createDraft('') });
+          changeView({
+            type: 'apiKey',
+            draft: createDraft(''),
+          });
         } else {
           const selected = effort
             ? Math.max(0, efforts.indexOf(effort))
@@ -254,7 +257,10 @@ export function ConfigPanel({
             draft={view.draft}
             focus={!saveLock.locked}
             maxRows={1}
-            onDraftChange={draft => changeView({ type: 'apiKey', draft })}
+            onDraftChange={draft => changeView({
+              type: 'apiKey',
+              draft,
+            })}
             onEscape={() => {
               fields.select(0);
               changeView({ type: 'fields' });
@@ -286,7 +292,9 @@ export function ConfigPanel({
             Clear the stored API Key? Press Enter to confirm.
           </Text>
           {apiStatus ? (
-            <Text color={theme.colors.feedback.error}>{apiStatus}</Text>
+            <Text color={theme.colors.feedback.error}>
+              {apiStatus}
+            </Text>
           ) : null}
         </>
       ) : null}

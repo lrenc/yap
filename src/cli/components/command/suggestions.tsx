@@ -40,7 +40,9 @@ export function Suggestions({
           selectedIndex={selectedIndex}
         />
       ) : (
-        <Text color={theme.colors.text.muted}>No matching commands</Text>
+        <Text color={theme.colors.text.muted}>
+          No matching commands
+        </Text>
       )}
       {Array.from(
         { length: VISIBLE_COMMANDS - visibleRows },

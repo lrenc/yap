@@ -1,11 +1,11 @@
 import { useEffect, useReducer } from 'react';
+import type { App } from '../../app/app.ts';
 import type {
-  App,
   AppEvent,
   AppPanel,
   InitError,
   QueuedMessage,
-} from '../../app/app.ts';
+} from '../../app/types.ts';
 import type { QueueBlock } from '../../agent/admission.ts';
 import {
   applyChatEvent,

@@ -156,7 +156,6 @@ export function Input({
       submitDraft();
       return;
     }
-    // Ink may deliver text and Enter bytes together in one input event.
     const parts = input.split(/\r\n?/u);
     if (parts.length > 1) {
       for (const [index, part] of parts.entries()) {
@@ -186,7 +185,13 @@ export function Input({
   } : undefined);
 
   return (
-    <Box ref={ref} flexDirection='column' flexGrow={1} flexBasis={0} minWidth={0}>
+    <Box
+      ref={ref}
+      flexDirection='column'
+      flexGrow={1}
+      flexBasis={0}
+      minWidth={0}
+    >
       {rows.slice(start, start + maxRows).map((line, index) => {
         const text = line.text || ' ';
         return (

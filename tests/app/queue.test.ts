@@ -6,7 +6,7 @@ import { App } from '../../src/app/app.ts';
 import { FileSecretStore } from '../../src/agent/settings/secrets.ts';
 import { PromptRepository } from '../../src/agent/settings/prompts.ts';
 import { SettingsStore } from '../../src/agent/settings/store.ts';
-import type { AppEvent } from '../../src/app/app.ts';
+import type { AppEvent } from '../../src/app/types.ts';
 import type { RunAdmission } from '../../src/agent/admission.ts';
 
 describe('queue admission policy', () => {
