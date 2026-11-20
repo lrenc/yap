@@ -9,7 +9,6 @@ import {
   parseInput,
   type Input,
 } from './commands.ts';
-import { nextCommandIndex } from './queue.ts';
 
 import type {
   AdmissionResult,
@@ -373,7 +372,7 @@ export class App {
       || (
         !this.#recheckPending
         && this.#blocked !== null
-        && this.#nextCommandIndex(this.#blocked) < 0
+        && this.#nextCommandIndex() < 0
       )
     ) {
       return;
@@ -493,7 +492,7 @@ export class App {
   async #drainBlocked(block: QueueBlock): Promise<boolean> {
     this.#blocked = block;
     this.#emitQueue();
-    const commandIndex = this.#nextCommandIndex(block);
+    const commandIndex = this.#nextCommandIndex();
     if (commandIndex < 0) {
       return false;
     }
@@ -729,11 +728,18 @@ export class App {
       return false;
     }
     return this.#blocked === null
-      || this.#nextCommandIndex(this.#blocked) >= 0;
+      || this.#nextCommandIndex() >= 0;
   }
 
-  #nextCommandIndex(block: QueueBlock): number {
-    return nextCommandIndex(this.#inputQueue, block);
+  #nextCommandIndex(): number {
+    // The blocked message stays at the head of the queue.
+    for (let index = 1; index < this.#inputQueue.length; index += 1) {
+      const item = this.#inputQueue[index];
+      if (item?.type === 'command') {
+        return index;
+      }
+    }
+    return -1;
   }
 
   #isIdle(): boolean {

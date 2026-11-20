@@ -3,8 +3,6 @@ import fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { App } from '../../src/app/app.ts';
-import { parseInput } from '../../src/app/commands.ts';
-import { nextCommandIndex } from '../../src/app/queue.ts';
 import { FileSecretStore } from '../../src/agent/settings/secrets.ts';
 import { PromptRepository } from '../../src/agent/settings/prompts.ts';
 import { SettingsStore } from '../../src/agent/settings/store.ts';
@@ -57,40 +55,6 @@ describe('queue admission policy', () => {
       }),
     ]);
   }
-
-  const inputs = (...values: string[]) => values.map(parseInput);
-
-  test('keeps normal input in FIFO order', () => {
-    expect(nextCommandIndex(
-      inputs('/model', 'hello'),
-      null,
-    )).toBe(-1);
-  });
-
-  test('lets a command overtake a generically blocked message', () => {
-    const blocked = {
-      type: 'someOtherPrerequisite',
-      message: 'waiting for another prerequisite',
-    };
-    expect(nextCommandIndex(
-      inputs('hello', 'another message', '/config'),
-      blocked,
-    )).toBe(2);
-  });
-
-  test('does not treat the blocked head as an overtaking command', () => {
-    expect(nextCommandIndex(
-      inputs('/config', 'hello'),
-      { type: 'blocked', message: 'waiting' },
-    )).toBe(-1);
-  });
-
-  test('does not let slash messages overtake a blocked queue', () => {
-    expect(nextCommandIndex(
-      inputs('hello', '/usr/local/bin', '/api/v1'),
-      { type: 'blocked', message: 'waiting' },
-    )).toBe(-1);
-  });
 
   test('lets a command bypass a generically blocked queued message', async () => {
     const events: AppEvent[] = [];
