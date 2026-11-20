@@ -4,7 +4,6 @@ import {
   parseInput,
   suggestCommands,
 } from '../../src/app/commands.ts';
-import { models } from '../../src/agent/models.ts';
 
 function cmd(input: string) {
   const item = parseInput(input);
@@ -15,16 +14,16 @@ function cmd(input: string) {
 }
 
 describe('input parsing', () => {
-  test('recognizes exact command names', () => {
+  test('recognizes command names', () => {
     expect(parseInput('/new')).toEqual({
       type: 'command',
       name: '/new',
       args: [],
     });
-    expect(parseInput('/model deepseek')).toEqual({
+    expect(parseInput('/prompt')).toEqual({
       type: 'command',
-      name: '/model',
-      args: ['deepseek'],
+      name: '/prompt',
+      args: [],
     });
   });
 
@@ -77,55 +76,41 @@ describe('command suggestions', () => {
     expect(suggestCommands('//new')).toEqual([]);
   });
 
-  test('applies configuration commands without emitting notices', async () => {
-    const modelId = models[0]!.id;
-    let selectedModel: string | undefined;
-    let selectedPrompt: string | undefined;
-    const dependencies = {
-      models,
-      settings: {
-        setModel: async (id: string) => {
-          selectedModel = id;
-        },
-        setActivePrompt: async (name: string | undefined) => {
-          selectedPrompt = name;
-        },
-      },
-      prompts: {
-        read: async () => 'Prompt',
-      },
-    };
-
-    expect(await executeCommand(cmd(`/model ${modelId}`), dependencies))
-      .toEqual({ type: 'noop' });
-    expect(await executeCommand(cmd('/prompt reviewer'), dependencies))
-      .toEqual({ type: 'noop' });
-    expect(selectedModel).toBe(modelId);
-    expect(selectedPrompt).toBe('reviewer');
+  test('opens the model picker and rejects arguments', () => {
+    expect(executeCommand(cmd('/model')))
+      .toEqual({ type: 'panelRequest', panel: 'model' });
+    expect(executeCommand(cmd('/model ')))
+      .toEqual({ type: 'panelRequest', panel: 'model' });
+    expect(executeCommand(cmd('/model deepseek-flash')))
+      .toMatchObject({
+        type: 'notice',
+        level: 'error',
+        message: expect.stringContaining('/model does not accept arguments.'),
+      });
   });
 
-  test('rejects Prompt names containing whitespace', async () => {
-    let selectedPrompt: string | undefined;
-    const result = await executeCommand(cmd('/prompt my prompt'), {
-      models,
-      settings: {
-        setModel: async () => {},
-        setActivePrompt: async (name: string | undefined) => {
-          selectedPrompt = name;
-        },
-      },
-      prompts: {
-        read: async () => 'Prompt',
-      },
-    });
+  test('opens the Prompt panel and rejects arguments', () => {
+    expect(executeCommand(cmd('/prompt')))
+      .toEqual({ type: 'panelRequest', panel: 'prompt' });
+    expect(executeCommand(cmd('/prompt ')))
+      .toEqual({ type: 'panelRequest', panel: 'prompt' });
 
-    expect(result).toMatchObject({
+    for (const input of ['/prompt reviewer', '/prompt default']) {
+      expect(executeCommand(cmd(input))).toMatchObject({
+        type: 'notice',
+        level: 'error',
+        message: expect.stringContaining('/prompt does not accept arguments.'),
+      });
+    }
+  });
+
+  test('rejects direct Prompt selection with multiple arguments', () => {
+    expect(executeCommand(cmd('/prompt my prompt'))).toMatchObject({
       type: 'notice',
       level: 'error',
       message: expect.stringContaining(
-        '/prompt accepts at most one Prompt name.'
+        '/prompt does not accept arguments.'
       ),
     });
-    expect(selectedPrompt).toBeUndefined();
   });
 });

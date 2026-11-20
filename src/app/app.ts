@@ -556,22 +556,13 @@ export class App {
     if (this.#disposed || generation !== this.#generation) {
       return false;
     }
-    await this.#command(item);
+    this.#command(item);
     return true;
   }
 
-  async #command(item: CommandItem): Promise<void> {
+  #command(item: CommandItem): void {
     const generation = this.#generation;
-    const result = await executeCommand(item, {
-      models: this.#agent.models,
-      settings: {
-        setModel: modelId => this.setModel(modelId),
-        setActivePrompt: name => this.setActivePrompt(name),
-      },
-      prompts: {
-        read: name => this.#agent.readPrompt(name),
-      },
-    });
+    const result = executeCommand(item);
     if (this.#disposed || generation !== this.#generation) {
       return;
     }
@@ -579,7 +570,7 @@ export class App {
   }
 
   #applyCommandResult(
-    result: Awaited<ReturnType<typeof executeCommand>>,
+    result: ReturnType<typeof executeCommand>,
   ): void {
     this.#reportPromptWarnings();
     if (result.type === 'notice') {

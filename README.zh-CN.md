@@ -69,8 +69,8 @@ npx @lrenc/yap
 | 命令 | 说明 |
 | --- | --- |
 | `/config` | 管理 API Key 和推理强度。 |
-| `/model [id]` | 打开模型选择器，或直接指定模型。 |
-| `/prompt [name\|default]` | 管理 Prompt，或直接切换到指定 Prompt。 |
+| `/model` | 打开模型选择器。 |
+| `/prompt` | 管理和选择 Prompt。 |
 | `/new` | 开始新对话。 |
 
 输入 `/` 可打开命令面板。
@@ -94,7 +94,7 @@ YAP 使用终端的备用屏幕显示对话记录。退出后会恢复终端原�
 - DeepSeek Pro（`deepseek-v4-pro`）
 - GLM-5.3（`glm-5.3`）
 
-可以使用 `/model <id>` 直接选择模型，或运行不带参数的 `/model` 打开模型选择器。
+使用 `/model` 打开模型选择器。
 
 ## Prompt
 

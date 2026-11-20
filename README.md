@@ -86,8 +86,8 @@ On the first run:
 | Command | Description |
 | --- | --- |
 | `/config` | Manage the API key and reasoning effort. |
-| `/model [id]` | Open the model picker or select a model directly. |
-| `/prompt [name\|default]` | Manage prompts or select one directly. |
+| `/model` | Open the model picker. |
+| `/prompt` | Manage and select prompts. |
 | `/new` | Start a new conversation. |
 
 Type `/` to open the command palette.
@@ -121,8 +121,7 @@ Supported models:
 - DeepSeek Pro (`deepseek-v4-pro`)
 - GLM-5.3 (`glm-5.3`)
 
-Select a model directly with `/model <id>` or use `/model` without an argument
-to open the picker.
+Use `/model` to open the model picker.
 
 ## Prompts
 

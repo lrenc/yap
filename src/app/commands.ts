@@ -1,48 +1,34 @@
-import type { Model } from '../model/types.ts';
-
 type CommandResult =
   | { type: 'notice'; level: 'error'; message: string }
   | { type: 'panelRequest'; panel: 'model' | 'config' | 'prompt' }
-  | { type: 'newSession' }
-  | { type: 'noop' };
-
-type Dependencies = {
-  models: readonly Model[];
-  settings: {
-    setModel(modelId: string): Promise<void>;
-    setActivePrompt(name: string | undefined): Promise<void>;
-  };
-  prompts: {
-    read(name: string): Promise<string | undefined>;
-  };
-};
+  | { type: 'newSession' };
 
 export interface CommandInfo {
-  readonly name: string;
-  readonly usage: string;
-  readonly description: string;
+  name: string;
+  usage: string;
+  description: string;
 }
 
 const COMMANDS = [
   {
     name: '/model',
-    usage: '/model [id]',
+    usage: '/model',
     description: 'Select a model',
   },
   {
     name: '/config',
     usage: '/config',
-    description: 'Configure credentials and reasoning effort',
+    description: 'Open configuration settings',
   },
   {
     name: '/prompt',
-    usage: '/prompt [name|default]',
-    description: 'Select or manage Prompts',
+    usage: '/prompt',
+    description: 'Manage Prompts',
   },
   {
     name: '/new',
     usage: '/new',
-    description: 'Start a new conversation',
+    description: 'Start a new chat',
   },
 ] as const satisfies readonly CommandInfo[];
 
@@ -88,79 +74,48 @@ export function suggestCommands(input: string): readonly CommandInfo[] {
   return COMMANDS.filter(command => command.name.startsWith(input));
 }
 
-export async function executeCommand(
+export function executeCommand(
   { name, args }: Extract<Input, { type: 'command' }>,
-  { models, settings, prompts }: Dependencies,
-): Promise<CommandResult> {
-  const argument = args[0];
-  try {
-    switch (name) {
-      case '/model': {
-        if (args.length > 1) {
-          return failure('/model accepts at most one model ID.');
-        }
-        if (argument === undefined) {
-          return {
-            type: 'panelRequest',
-            panel: 'model',
-          };
-        }
-        if (!models.some(model => model.id === argument)) {
-          return failure(
-            `Unknown model ID. Available models: ${models.map(model => model.id).join(', ')}.`
-          );
-        }
-        await settings.setModel(argument);
-        return { type: 'noop' };
+): CommandResult {
+  switch (name) {
+    case '/model': {
+      if (args.length > 0) {
+        return failure('/model does not accept arguments.');
       }
-      case '/config': {
-        if (args.length > 0) {
-          return failure('/config does not accept arguments.');
-        }
-        return {
-          type: 'panelRequest',
-          panel: 'config',
-        };
-      }
-      case '/prompt': {
-        if (args.length > 1) {
-          return failure('/prompt accepts at most one Prompt name.');
-        }
-        if (argument === undefined) {
-          return {
-            type: 'panelRequest',
-            panel: 'prompt',
-          };
-        }
-        if (
-          argument !== 'default'
-          && await prompts.read(argument) === undefined
-        ) {
-          return failure(
-            'Prompt not found. Use /prompt to choose an existing Prompt.'
-          );
-        }
-        await settings.setActivePrompt(
-          argument === 'default' ? undefined : argument
-        );
-        return { type: 'noop' };
-      }
-      case '/new': {
-        if (args.length > 0) {
-          return failure('/new does not accept arguments.');
-        }
-        return {
-          type: 'newSession',
-        };
-      }
-      default: {
-        name satisfies never;
-        return failure('Unknown command.');
-      }
+      return {
+        type: 'panelRequest',
+        panel: 'model',
+      };
     }
-  } catch (error) {
-    return failure(
-      error instanceof Error ? error.message : 'Command failed.'
-    );
+    case '/config': {
+      if (args.length > 0) {
+        return failure('/config does not accept arguments.');
+      }
+      return {
+        type: 'panelRequest',
+        panel: 'config',
+      };
+    }
+    case '/prompt': {
+      if (args.length > 0) {
+        return failure('/prompt does not accept arguments.');
+      }
+      return {
+        type: 'panelRequest',
+        panel: 'prompt',
+      };
+    }
+    case '/new': {
+      if (args.length > 0) {
+        return failure('/new does not accept arguments.');
+      }
+      return {
+        type: 'newSession',
+      };
+    }
+    default: {
+      name satisfies never;
+      return failure('Unknown command.');
+    }
   }
 }

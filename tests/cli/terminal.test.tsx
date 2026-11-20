@@ -975,7 +975,17 @@ describe('Terminal', () => {
     expect(await app.readPrompt('reviewer')).toBe('Review carefully');
 
     await flush();
-    rendered.stdin.write('/prompt reviewer\r');
+    rendered.stdin.write('/prompt\r');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('↑/↓ move · a add') === true
+      && rendered?.lastFrame()?.includes('› default') === true
+    ));
+    await flush();
+    rendered.stdin.write('\x1b[B');
+    await waitFor(() => (
+      rendered?.lastFrame()?.includes('› reviewer') === true
+    ));
+    rendered.stdin.write('\r');
     await waitFor(() => (
       rendered?.lastFrame()?.includes(
         'reviewer · DeepSeek Flash · high'
