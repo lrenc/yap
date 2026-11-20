@@ -30,13 +30,19 @@ const COMMANDS = [
     usage: '/new',
     description: 'Start a new chat',
   },
-] as const satisfies readonly CommandInfo[];
+] as const satisfies CommandInfo[];
 
 export type CommandName = (typeof COMMANDS)[number]['name'];
 
 export type Input =
-  | { type: 'message'; text: string }
-  | { type: 'command'; name: CommandName; args: readonly string[] };
+  | {
+    type: 'message';
+    text: string;
+  }
+  | {
+    type: 'command';
+    name: CommandName;
+  };
 
 const NAMES = new Set<string>(COMMANDS.map(command => command.name));
 
@@ -51,14 +57,17 @@ function failure(message: string): CommandResult {
 }
 
 export function parseInput(raw: string): Input {
-  if (raw.startsWith('//')) {
-    return { type: 'message', text: raw.slice(1) };
+  const command = raw.trimEnd();
+  if (NAMES.has(command)) {
+    return {
+      type: 'command',
+      name: command as CommandName,
+    };
   }
-  const [name = '', ...args] = raw.trimEnd().split(/\s+/u);
-  if (NAMES.has(name)) {
-    return { type: 'command', name: name as CommandName, args };
-  }
-  return { type: 'message', text: raw };
+  return {
+    type: 'message',
+    text: raw.startsWith('//') ? raw.slice(1) : raw,
+  };
 }
 
 export function isCommandDraft(input: string): boolean {
@@ -75,40 +84,28 @@ export function suggestCommands(input: string): readonly CommandInfo[] {
 }
 
 export function executeCommand(
-  { name, args }: Extract<Input, { type: 'command' }>,
+  { name }: Extract<Input, { type: 'command' }>,
 ): CommandResult {
   switch (name) {
     case '/model': {
-      if (args.length > 0) {
-        return failure('/model does not accept arguments.');
-      }
       return {
         type: 'panelRequest',
         panel: 'model',
       };
     }
     case '/config': {
-      if (args.length > 0) {
-        return failure('/config does not accept arguments.');
-      }
       return {
         type: 'panelRequest',
         panel: 'config',
       };
     }
     case '/prompt': {
-      if (args.length > 0) {
-        return failure('/prompt does not accept arguments.');
-      }
       return {
         type: 'panelRequest',
         panel: 'prompt',
       };
     }
     case '/new': {
-      if (args.length > 0) {
-        return failure('/new does not accept arguments.');
-      }
       return {
         type: 'newSession',
       };

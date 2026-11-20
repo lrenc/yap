@@ -92,9 +92,9 @@ On the first run:
 
 Type `/` to open the command palette.
 
-Only the commands above are interpreted as commands. Other text beginning with
-`/` is sent as a message. Prefix `/` with another `/` to send command text
-literally.
+Commands must match exactly. Text containing a command plus additional content
+is sent as a message. Other text beginning with `/` is also sent as a message.
+Prefix `/` with another `/` to send exact command text literally.
 
 ## Interaction and Run Control
 

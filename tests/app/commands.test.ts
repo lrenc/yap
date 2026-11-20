@@ -18,16 +18,26 @@ describe('input parsing', () => {
     expect(parseInput('/new')).toEqual({
       type: 'command',
       name: '/new',
-      args: [],
     });
     expect(parseInput('/prompt')).toEqual({
       type: 'command',
       name: '/prompt',
-      args: [],
     });
   });
 
   test('keeps other slash text as messages', () => {
+    expect(parseInput('/model foo')).toEqual({
+      type: 'message',
+      text: '/model foo',
+    });
+    expect(parseInput('/model 命令的处理逻辑是什么？')).toEqual({
+      type: 'message',
+      text: '/model 命令的处理逻辑是什么？',
+    });
+    expect(parseInput('/prompt default')).toEqual({
+      type: 'message',
+      text: '/prompt default',
+    });
     expect(parseInput('/usr/local/bin')).toEqual({
       type: 'message',
       text: '/usr/local/bin',
@@ -43,6 +53,14 @@ describe('input parsing', () => {
   });
 
   test('unescapes double-slash messages', () => {
+    expect(parseInput('//model')).toEqual({
+      type: 'message',
+      text: '/model',
+    });
+    expect(parseInput('//model foo')).toEqual({
+      type: 'message',
+      text: '/model foo',
+    });
     expect(parseInput('//new')).toEqual({
       type: 'message',
       text: '/new',
@@ -76,41 +94,17 @@ describe('command suggestions', () => {
     expect(suggestCommands('//new')).toEqual([]);
   });
 
-  test('opens the model picker and rejects arguments', () => {
+  test('opens the model picker for the exact command', () => {
     expect(executeCommand(cmd('/model')))
       .toEqual({ type: 'panelRequest', panel: 'model' });
     expect(executeCommand(cmd('/model ')))
       .toEqual({ type: 'panelRequest', panel: 'model' });
-    expect(executeCommand(cmd('/model deepseek-flash')))
-      .toMatchObject({
-        type: 'notice',
-        level: 'error',
-        message: expect.stringContaining('/model does not accept arguments.'),
-      });
   });
 
-  test('opens the Prompt panel and rejects arguments', () => {
+  test('opens the Prompt panel for the exact command', () => {
     expect(executeCommand(cmd('/prompt')))
       .toEqual({ type: 'panelRequest', panel: 'prompt' });
     expect(executeCommand(cmd('/prompt ')))
       .toEqual({ type: 'panelRequest', panel: 'prompt' });
-
-    for (const input of ['/prompt reviewer', '/prompt default']) {
-      expect(executeCommand(cmd(input))).toMatchObject({
-        type: 'notice',
-        level: 'error',
-        message: expect.stringContaining('/prompt does not accept arguments.'),
-      });
-    }
-  });
-
-  test('rejects direct Prompt selection with multiple arguments', () => {
-    expect(executeCommand(cmd('/prompt my prompt'))).toMatchObject({
-      type: 'notice',
-      level: 'error',
-      message: expect.stringContaining(
-        '/prompt does not accept arguments.'
-      ),
-    });
   });
 });
